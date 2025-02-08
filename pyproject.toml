@@ -11,6 +11,8 @@ python = "~3.11"
 torch = "^2.6.0"
 scikit-learn = "^1.6.1"
 pandas = "^2.2.3"
+pydantic-settings = "^2.7.1"
+pydantic = "^2.10.6"
 
 
 [build-system]
