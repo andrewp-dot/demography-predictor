@@ -69,12 +69,14 @@ class LSTMHyperparameters:
         self,
         input_size: int,
         hidden_size: int,
+        sequence_length: int,
         learning_rate: float,
         epochs: int,
         batch_size: int,
     ):
         self.input_size = input_size  # number of input features
         self.hidden_size = hidden_size  # number of hidden units in the LSTM layer
+        self.sequence_length = sequence_length  # length of the input sequence, i.e., how many time steps the model will look back
         self.learning_rate = (
             learning_rate  # how much the model is learning from the data
         )
@@ -90,6 +92,38 @@ class LocalModel(nn.Module):
         super(LocalModel, self).__init__()
 
         self.hyperparameters: LSTMHyperparameters = hyperparameters
+
+        # 3 layer model:
+        # 1. LSTM layer
+        lstm1 = nn.LSTMCell(
+            input_size=hyperparameters.input_size,
+            hidden_size=hyperparameters.hidden_size,
+        )
+
+        # 2. LSTM layer
+        lstm2 = nn.LSTMCell(
+            input_size=hyperparameters.hidden_size,
+            hidden_size=hyperparameters.hidden_size,
+        )
+
+        # 3. LSTM layer
+        lstm3 = nn.LSTMCell(
+            input_size=hyperparameters.hidden_size,
+            hidden_size=hyperparameters.hidden_size,
+        )
+
+        # 4. Linear layer - output layer
+        linear = nn.Linear(
+            in_features=hyperparameters.hidden_size,
+            out_features=hyperparameters.input_size,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # define outputs
+        outputs = []
+        n_samples = x.size(0)  # or batch_size
+
+        raise NotImplementedError("forward method is not implemented yet.")
 
     def train(self):
         raise NotImplementedError("train method is not implemented yet.")
