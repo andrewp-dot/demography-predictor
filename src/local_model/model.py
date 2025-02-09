@@ -1,5 +1,5 @@
 # Standart library imports
-from typing import Union
+from typing import Union, Tuple
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 
 import pandas as pd
@@ -118,10 +118,35 @@ class LocalModel(nn.Module):
             out_features=hyperparameters.input_size,
         )
 
+    def __initialize_hidden_states(
+        self, n_samples: int
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Initializes the hidden states for the LSTM layers.
+
+        Args:
+            n_samples (int): number of samples
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: hidden states: h_t, c_t
+        """
+        h_t = torch.zeros(
+            n_samples, self.hyperparameters.hidden_size, dtype=torch.float32
+        )
+        c_t = torch.zeros(
+            n_samples, self.hyperparameters.hidden_size, dtype=torch.float32
+        )
+
+        return h_t, c_t
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # define outputs
         outputs = []
         n_samples = x.size(0)  # or batch_size
+
+        # initialize the hidden states
+        h_t, c_t = self.__initialize_hidden_states(n_samples)
+        h_t2, c_t2 = self.__initialize_hidden_states(n_samples)
+        h_t3, c_t3 = self.__initialize_hidden_states(n_samples)
 
         raise NotImplementedError("forward method is not implemented yet.")
 
@@ -130,4 +155,5 @@ class LocalModel(nn.Module):
 
 
 if __name__ == "__main__":
+    # LSTM explanation - https://medium.com/analytics-vidhya/lstms-explained-a-complete-technically-accurate-conceptual-guide-with-keras-2a650327e8f2
     pass
