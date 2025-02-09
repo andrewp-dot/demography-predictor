@@ -53,7 +53,7 @@ class StateDataLoader:
     def preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Scales and transforms the data for the specified format (3D tensor): `(batch_size,time_steps,input_features)`, where:
-        - batch_size: the number of samples processed in one forward/backward pass
+        - batch_size: the number of samples processed in one forward/backward pass (how many samples the network sees before it updates itself)
         - time_steps or sequence_length: number of time steps
         - input_features: number of input features
 
@@ -63,12 +63,33 @@ class StateDataLoader:
         raise NotImplementedError("preprocess_data method is not implemented yet.")
 
 
+class LSTMHyperparameters:
+
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        learning_rate: float,
+        epochs: int,
+        batch_size: int,
+    ):
+        self.input_size = input_size  # number of input features
+        self.hidden_size = hidden_size  # number of hidden units in the LSTM layer
+        self.learning_rate = (
+            learning_rate  # how much the model is learning from the data
+        )
+        self.epochs = epochs  # number of times the entire dataset is passed forward and backward through the neural network
+        self.batch_size = (
+            batch_size  # number of samples processed in one forward/backward pass
+        )
+
+
 class LocalModel(nn.Module):
 
-    def __init__(self, embedding_dim: int, hidden_dim: int):
+    def __init__(self, hyperparameters: LSTMHyperparameters):
         super(LocalModel, self).__init__()
-        self.hidden_dim = hidden_dim
-        self.embedding_dim = embedding_dim
+
+        self.hyperparameters: LSTMHyperparameters = hyperparameters
 
     def train(self):
         raise NotImplementedError("train method is not implemented yet.")
