@@ -1,5 +1,6 @@
 # Standard libraries imports
 import pandas as pd
+import torch
 from typing import Union, Tuple
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 
@@ -60,7 +61,13 @@ class StateDataLoader:
 
         return train_data, test_data
 
-    def preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
+    def preprocess_data(
+        self,
+        data: pd.DataFrame,
+        batch_size: int,
+        sequence_len: int,
+        features: list[str],
+    ) -> pd.DataFrame:
         """
         Scales and transforms the data for the specified format (3D tensor): `(batch_size,time_steps,input_features)`, where:
         - batch_size: the number of samples processed in one forward/backward pass (how many samples the network sees before it updates itself)
@@ -70,7 +77,31 @@ class StateDataLoader:
         :param data: pd.DataFrame
         :return: pd.DataFrame
         """
-        raise NotImplementedError("preprocess_data method is not implemented yet.")
+
+        # Copy data to avoid modifying the original data
+        current_data = data.copy()
+
+        # Select features
+        current_data = current_data[features]
+
+        # Transform data
+        format_tuple = (batch_size, sequence_len, len(features))
+
+        # Get data using rolling window
+
+        samples = []
+        number_of_samples = current_data.shape[0] - sequence_len
+        for i in range(number_of_samples):
+            sample_df = current_data.iloc[i : i + sequence_len]
+
+            # Converting to a PyTorch tensor
+            tensor = torch.tensor(sample_df.values, dtype=torch.float32)
+
+            print(tensor.shape)
+            samples.append(current_data.iloc[i : i + sequence_len])
+
+        print(samples)
+        print(len(samples))
 
 
 if __name__ == "__main__":
@@ -88,3 +119,10 @@ if __name__ == "__main__":
     print("-" * 100)
     print("Test data head:")
     print(test.head())
+
+    # Preprocess data
+    print("-" * 100)
+    print("Preprocess data:")
+    train = czech_data_loader.preprocess_data(
+        train, 32, 5, ["year", "population, total"]
+    )
