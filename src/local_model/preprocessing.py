@@ -84,24 +84,33 @@ class StateDataLoader:
         # Select features
         current_data = current_data[features]
 
-        # Transform data
-        format_tuple = (batch_size, sequence_len, len(features))
-
         # Get data using rolling window
-
-        samples = []
+        input_sequences = []
+        target_sequences = []
         number_of_samples = current_data.shape[0] - sequence_len
         for i in range(number_of_samples):
-            sample_df = current_data.iloc[i : i + sequence_len]
 
-            # Converting to a PyTorch tensor
-            tensor = torch.tensor(sample_df.values, dtype=torch.float32)
+            # Get the input sequence
+            input_sequences.append(
+                # Converting to a PyTorch tensor
+                torch.tensor(
+                    current_data.iloc[i : i + sequence_len].values, dtype=torch.float32
+                )
+            )
 
-            print(tensor.shape)
-            samples.append(current_data.iloc[i : i + sequence_len])
+            # Get tha target sequence output
+            target_sequences.append(
+                # Converting to a PyTorch tensor
+                torch.tensor(current_data.iloc[i + sequence_len].values)
+            )
 
-        print(samples)
-        print(len(samples))
+        # TODO: use batch_size parameter
+
+        # Return
+        for input, target in zip(input_sequences, target_sequences):
+            print(f"Input: {input}, Target: {target}")
+
+        return input_sequences, target_sequences
 
 
 if __name__ == "__main__":
@@ -124,5 +133,5 @@ if __name__ == "__main__":
     print("-" * 100)
     print("Preprocess data:")
     train = czech_data_loader.preprocess_data(
-        train, 32, 5, ["year", "population, total"]
+        train, 18, 5, ["year", "population, total"]
     )
