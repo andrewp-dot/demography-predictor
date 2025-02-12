@@ -52,6 +52,9 @@ class LocalModel(nn.Module):
 
         self.hyperparameters: LSTMHyperparameters = hyperparameters
 
+        # Set device
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         # 3 layer model:
         self.lstm = nn.LSTM(
             input_size=hyperparameters.input_size,
