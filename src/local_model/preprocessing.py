@@ -61,13 +61,37 @@ class StateDataLoader:
 
         return train_data, test_data
 
+    def create_batches(
+        self,
+        batch_size: int,
+        input_sequences: torch.Tensor,
+        target_sequences: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        # TODO: use batch_size parameter
+        num_samples = len(input_sequences)
+
+        # Trim extra samples to ensure divisibility
+        num_batches = num_samples // batch_size * batch_size
+        input_sequences = input_sequences[:num_batches]
+        target_sequences = target_sequences[:num_batches]
+
+        # Reshape
+        input_batches = input_sequences.view(
+            -1, batch_size, 5, 2
+        )  # (num_batches, batch_size, sequence_len, num_features)
+        target_batches = target_sequences.view(
+            -1, batch_size, 2
+        )  # (num_batches, batch_size, num_features)
+
+        return input_batches, target_batches
+
     def preprocess_data(
         self,
         data: pd.DataFrame,
-        batch_size: int,
+        # batch_size: int,
         sequence_len: int,
         features: list[str],
-    ) -> pd.DataFrame:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Scales and transforms the data for the specified format (3D tensor): `(batch_size,time_steps,input_features)`, where:
         - batch_size: the number of samples processed in one forward/backward pass (how many samples the network sees before it updates itself)
@@ -104,13 +128,11 @@ class StateDataLoader:
                 torch.tensor(current_data.iloc[i + sequence_len].values)
             )
 
-        # TODO: use batch_size parameter
-
         # Return
         for input, target in zip(input_sequences, target_sequences):
-            print(f"Input: {input}, Target: {target}")
+            print(f"Input: {input.shape}, Target: {target.shape}")
 
-        return input_sequences, target_sequences
+        return torch.stack(input_sequences), torch.stack(target_sequences)
 
 
 if __name__ == "__main__":
@@ -132,6 +154,23 @@ if __name__ == "__main__":
     # Preprocess data
     print("-" * 100)
     print("Preprocess data:")
-    train = czech_data_loader.preprocess_data(
-        train, 18, 5, ["year", "population, total"]
+    input_sequences, target_sequences = czech_data_loader.preprocess_data(
+        train, 5, ["year", "population, total"]
     )
+
+    input_batches, target_batches = czech_data_loader.create_batches(
+        6, input_sequences=input_sequences, target_sequences=target_sequences
+    )
+
+    print("-" * 100)
+    print("Batches: ")
+
+    # Input batches
+    print("-" * 100)
+    print("Input:")
+    print(input_batches.shape)
+
+    # Output batches
+    print("-" * 100)
+    print("Target:")
+    print(target_batches.shape)

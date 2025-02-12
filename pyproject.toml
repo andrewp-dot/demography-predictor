@@ -13,6 +13,7 @@ scikit-learn = "^1.6.1"
 pandas = "^2.2.3"
 pydantic-settings = "^2.7.1"
 pydantic = "^2.10.6"
+optree = ">=0.13.0"
 
 
 [build-system]
