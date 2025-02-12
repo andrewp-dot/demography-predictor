@@ -43,7 +43,9 @@ class StateDataLoader:
         """
         raise NotImplementedError("scale_data method is not implemented yet.")
 
-    def split_data(self, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def split_data(
+        self, data: pd.DataFrame, split_rate: float = 0.8
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Splits the data into train and test sets.
 
@@ -55,7 +57,6 @@ class StateDataLoader:
         data.sort_values(by="year", inplace=True)
 
         # Split data
-        split_rate = 0.8
         train_data = data.iloc[: int(split_rate * len(data))]
         test_data = data.iloc[int(split_rate * len(data)) :]
 
@@ -72,15 +73,16 @@ class StateDataLoader:
 
         # Trim extra samples to ensure divisibility
         num_batches = num_samples // batch_size * batch_size
-        input_sequences = input_sequences[:num_batches]
-        target_sequences = target_sequences[:num_batches]
+        # input_sequences = input_sequences[:num_batches]
+        # target_sequences = target_sequences[:num_batches]
 
         # Reshape
+
         input_batches = input_sequences.view(
-            -1, batch_size, 5, 2
+            -1, batch_size, input_sequences.shape[1], input_sequences.shape[2]
         )  # (num_batches, batch_size, sequence_len, num_features)
         target_batches = target_sequences.view(
-            -1, batch_size, 2
+            -1, batch_size, target_sequences.shape[1]
         )  # (num_batches, batch_size, num_features)
 
         return input_batches, target_batches
