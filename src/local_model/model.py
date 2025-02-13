@@ -2,6 +2,7 @@
 from typing import Tuple
 import torch
 from torch import nn
+import matplotlib.pyplot as plt
 
 # Custom imports
 from src.local_model.preprocessing import StateDataLoader
@@ -49,7 +50,20 @@ class TrainingStats:
         self.epochs = []
 
     def plot(self):
-        raise NotImplementedError("Plot method is not implemented yet.")
+        # Define figure parameters
+        plt.figure(figsize=(10, 5))
+
+        # Name the axis
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+
+        # Plot the graph(s)
+        plt.plot(self.epochs, self.losses)
+
+        # Show the plot
+        # plt.legend()
+        plt.grid()
+        plt.show()
 
 
 class LocalModel(nn.Module):
@@ -119,8 +133,11 @@ class LocalModel(nn.Module):
         # initialize the hidden states
         h_t, c_t = self.__initialize_hidden_states(bath_size)
 
+        if x.dim() == 2:
+            x = x.unsqueeze(0)  # Add batch dimension: (1, seq_len, input_size)
+
         # Forward propagate through LSTM
-        print(f"X SHAPE: {x.shape}")
+        # print(f"X SHAPE: {x.shape}")
         out, (h_n, c_n) = self.lstm(x, (h_t, c_t))  # In here 'out' is a tensor
 
         out = self.linear(out[:, -1, :])  # Using the last time step's output
@@ -142,45 +159,40 @@ class LocalModel(nn.Module):
         # Define the training loop
         num_epochs = self.hyperparameters.epochs
 
+        # Setup epochs for stats
         self.training_stats.epochs = list(range(num_epochs))
+
+        # Training loop
         for epoch in range(num_epochs):
+
+            # Init epoch loss
+            epoch_loss = 0
+
             for batch_input, batch_target in zip(batch_inputs, batch_targets):
                 # print(f"[Training loop] input: {batch_input.shape}")
                 # print(f"[Training loop] target: {batch_target.shape}")
-                batch_inputs, batch_targets = batch_inputs.to(
+
+                # Put the targets to the device
+                batch_input, batch_target = batch_input.to(
                     self.device
-                ), batch_targets.to(self.device)
+                ), batch_target.to(self.device)
 
                 # Forward pass
                 outputs = self(batch_input)
 
                 # Compute loss
                 loss = criterion(outputs, batch_target)
+                epoch_loss += loss.item()
 
                 # Backward pass
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                self.training_stats.losses.append(loss.item())
+            epoch_loss /= len(batch_inputs)
+            self.training_stats.losses.append(epoch_loss)
 
-            print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
-            # # Forward pass
-            # self.train()
-
-            # # Forward pass
-            # outputs = self(X_train)
-            # loss = criterion(outputs, y_train)
-
-            # # get loss
-            # self.training_stats.losses.append(loss.item())
-
-            # # Backward pass
-            # optimizer.zero_grad()
-            # loss.backward()
-            # optimizer.step()
-
-            # print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
+            print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
 
 
 if __name__ == "__main__":
@@ -193,10 +205,10 @@ if __name__ == "__main__":
     FEATURES = ["population, total"]
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
-        hidden_size=100,
+        hidden_size=64,
         sequence_length=5,
-        learning_rate=0.001,
-        epochs=100,
+        learning_rate=0.1,
+        epochs=10,
         batch_size=1,
         num_layers=3,
     )
@@ -236,3 +248,5 @@ if __name__ == "__main__":
     print("-" * 100)
     print("Loses:")
     print(stats.losses)
+
+    stats.plot()
