@@ -15,6 +15,7 @@ pydantic-settings = "^2.7.1"
 pydantic = "^2.10.6"
 optree = ">=0.13.0"
 matplotlib = "^3.10.0"
+colorama = "^0.4.6"
 
 
 [build-system]

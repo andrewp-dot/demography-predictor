@@ -1,0 +1,31 @@
+version: 1.0
+
+# Formatters configuration
+formatters:
+  default:
+    datefmt: '%Y-%m-%d %H:%M:%S'
+    format: 
+  colorful:
+    (): src.utils.logger.ColorfulFormatter
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+# Handlers configuration
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: colorful
+    level: DEBUG
+    stream: ext://sys.stdout
+
+  local_model: 
+    class: logging.FileHandler
+    formatter: default
+    level: INFO
+    filename: logs/local_model.log
+
+# Logger(s) configuration
+loggers:
+  local_model:
+    level: DEBUG
+    handlers: [console, local_model]
+    propagate: no
