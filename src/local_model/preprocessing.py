@@ -127,7 +127,9 @@ class StateDataLoader:
             # Get tha target sequence output
             target_sequences.append(
                 # Converting to a PyTorch tensor
-                torch.tensor(current_data.iloc[i + sequence_len].values)
+                torch.tensor(
+                    current_data.iloc[i + sequence_len].values, dtype=torch.float32
+                )
             )
 
         # Return

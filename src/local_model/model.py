@@ -84,7 +84,7 @@ class LocalModel(nn.Module):
         self.training_stats = TrainingStats()
 
     def __initialize_hidden_states(
-        self, n_samples: int
+        self, batch_size: int
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Initializes the hidden states for the LSTM layers.
 
@@ -97,7 +97,7 @@ class LocalModel(nn.Module):
         h_t = torch.zeros(
             self.hyperparameters.num_layers
             * (2 if self.hyperparameters.bidirectional else 1),  # for bidirectional
-            self.hyperparameters.batch_size,
+            batch_size,
             self.hyperparameters.hidden_size,
             dtype=torch.float32,
         )
@@ -105,7 +105,7 @@ class LocalModel(nn.Module):
         c_t = torch.zeros(
             self.hyperparameters.num_layers
             * (2 if self.hyperparameters.bidirectional else 1),  # for bidirectional
-            self.hyperparameters.batch_size,
+            batch_size,
             self.hyperparameters.hidden_size,
             dtype=torch.float32,
         )
@@ -113,13 +113,14 @@ class LocalModel(nn.Module):
         return h_t, c_t
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # get the number batch size
-        n_samples = x.size(0)
+        # Get the number batch size
+        bath_size = x.size(0)
 
         # initialize the hidden states
-        h_t, c_t = self.__initialize_hidden_states(n_samples)
+        h_t, c_t = self.__initialize_hidden_states(bath_size)
 
         # Forward propagate through LSTM
+        print(f"X SHAPE: {x.shape}")
         out, (h_n, c_n) = self.lstm(x, (h_t, c_t))  # In here 'out' is a tensor
 
         out = self.linear(out[:, -1, :])  # Using the last time step's output
@@ -144,8 +145,8 @@ class LocalModel(nn.Module):
         self.training_stats.epochs = list(range(num_epochs))
         for epoch in range(num_epochs):
             for batch_input, batch_target in zip(batch_inputs, batch_targets):
-                print(f"[Training loop] input: {batch_input.shape}")
-                print(f"[Training loop] target: {batch_target.shape}")
+                # print(f"[Training loop] input: {batch_input.shape}")
+                # print(f"[Training loop] target: {batch_target.shape}")
                 batch_inputs, batch_targets = batch_inputs.to(
                     self.device
                 ), batch_targets.to(self.device)
@@ -160,6 +161,8 @@ class LocalModel(nn.Module):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+
+                self.training_stats.losses.append(loss.item())
 
             print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
             # # Forward pass
@@ -187,8 +190,9 @@ if __name__ == "__main__":
     # statefull vs stateless LSTM - can I pass data with different batch sizes?
 
     # TODO: transform this based on the data to be in the right format
+    FEATURES = ["population, total"]
     hyperparameters = LSTMHyperparameters(
-        input_size=2,
+        input_size=len(FEATURES),
         hidden_size=100,
         sequence_length=5,
         learning_rate=0.001,
@@ -207,7 +211,7 @@ if __name__ == "__main__":
 
     # Get input/output sequences
     input_sequences, target_sequences = czech_loader.preprocess_data(
-        train, hyperparameters.sequence_length, features=["population, total"]
+        train, hyperparameters.sequence_length, features=FEATURES
     )
 
     # Get input/output batches of sequences
