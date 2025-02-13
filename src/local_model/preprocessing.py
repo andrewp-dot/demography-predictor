@@ -19,6 +19,7 @@ class StateDataLoader:
     def load_data(self) -> pd.DataFrame:
         """
         Load the state data
+
         :return: pd.DataFrame
         """
         data = pd.read_csv(f"{config.states_data_dir}/{self.state}.csv")
@@ -31,17 +32,25 @@ class StateDataLoader:
         self,
         data: pd.DataFrame,
         scaler: Union[RobustScaler, StandardScaler, MinMaxScaler],
-    ) -> pd.DataFrame:
+    ) -> Tuple[pd.DataFrame, Union[RobustScaler, StandardScaler, MinMaxScaler]]:
         """
         Scales the data using the specified scaler.
 
         :param data: pd.DataFrame: input data
         :param scaler: Union[RobustScaler, StandardScaler, MinMaxScaler]: scaler to use
 
-        Returns:
-            pd.DataFrame: scaled data
+        :return: Tuple[pd.DataFrame, Union[RobustScaler, StandardScaler, MinMaxScaler]]: scaled dataframe and fitted scaler for data unscaling
         """
-        raise NotImplementedError("scale_data method is not implemented yet.")
+
+        # Copy data to avoid inplace edits
+        to_scale_data = data.copy()
+
+        # Scale data
+        scaled_data = scaler.fit_transform(to_scale_data)
+
+        # Create dataframe from scaled data
+        scaled_data_df = pd.DataFrame(scaled_data, columns=to_scale_data.columns)
+        return scaled_data_df, scaler
 
     def split_data(
         self, data: pd.DataFrame, split_rate: float = 0.8

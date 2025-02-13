@@ -3,6 +3,7 @@ from typing import Tuple
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import RobustScaler
 
 # Custom imports
 from src.local_model.preprocessing import StateDataLoader
@@ -133,8 +134,8 @@ class LocalModel(nn.Module):
         # initialize the hidden states
         h_t, c_t = self.__initialize_hidden_states(bath_size)
 
-        if x.dim() == 2:
-            x = x.unsqueeze(0)  # Add batch dimension: (1, seq_len, input_size)
+        # if x.dim() == 2:
+        #     x = x.unsqueeze(0)  # Add batch dimension: (1, seq_len, input_size)
 
         # Forward propagate through LSTM
         # print(f"X SHAPE: {x.shape}")
@@ -202,13 +203,34 @@ if __name__ == "__main__":
     # statefull vs stateless LSTM - can I pass data with different batch sizes?
 
     # TODO: transform this based on the data to be in the right format
-    FEATURES = ["population, total"]
+    FEATURES = ["population, total", "net migration"]
+
+    # FEATURES = [
+    #     "Fertility rate, total",
+    #     "Population, total",
+    #     "Net migration",
+    #     "Arable land",
+    #     "Birth rate, crude",
+    #     "GDP growth",
+    #     "Death rate, crude",
+    #     "Agricultural land",
+    #     "Rural population",
+    #     "Rural population growth",
+    #     "Age dependency ratio",
+    #     "Urban population",
+    #     "Population growth",
+    #     "Adolescent fertility rate",
+    #     "Life expectancy at birth, total",
+    # ]
+
+    # FEATURES = [col.lower() for col in FEATURES]
+
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
         hidden_size=64,
         sequence_length=5,
-        learning_rate=0.1,
-        epochs=10,
+        learning_rate=0.001,
+        epochs=30,
         batch_size=1,
         num_layers=3,
     )
@@ -219,7 +241,17 @@ if __name__ == "__main__":
 
     czech_data = czech_loader.load_data()
 
-    train, test = czech_loader.split_data(czech_data)
+    # Exclude country name
+    czech_data = czech_data.drop(columns=["country name"])
+
+    # Scale data
+    scaled_cz_data, cz_scaler = czech_loader.scale_data(
+        czech_data, scaler=RobustScaler()
+    )
+
+    print(scaled_cz_data.head())
+
+    train, test = czech_loader.split_data(scaled_cz_data)
 
     # Get input/output sequences
     input_sequences, target_sequences = czech_loader.preprocess_data(
