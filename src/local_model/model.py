@@ -1,4 +1,5 @@
 # Standard library imports
+import pandas as pd
 from typing import Tuple
 import torch
 from torch import nn
@@ -199,6 +200,26 @@ class LocalModel(nn.Module):
             self.training_stats.losses.append(epoch_loss)
 
             print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+
+        def predict(
+            self, input_sequences: torch.Tensor, target_year: int
+        ) -> torch.Tensor:
+            # TODO:
+            # 1. Predict output sequence -> use as much data for prediction as you can (Rolling window, statefull / stateless LSTM?)
+            # 2. Predict to params to target year
+            raise NotImplementedError("Predict method has not been implemented yet!")
+
+
+class EvaluateLSTM:
+
+    def __init__(self, model: nn.Module):
+        pass
+
+    def eval_with_past(self, test_X: pd.DataFrame, test_y: pd.DataFrame) -> None:
+        raise NotImplementedError()
+
+    def eval(self, test_X: pd.DataFrame, test_y: pd.DataFrame) -> None:
+        raise NotImplementedError()
 
 
 if __name__ == "__main__":
