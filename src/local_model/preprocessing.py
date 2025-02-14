@@ -3,10 +3,12 @@ import pandas as pd
 import torch
 from typing import Union, Tuple
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
+import logging
 
 # Custom libraries imports
-from config import Config
+from config import Config, setup_logging
 
+logger = logging.getLogger("data_preprocessing")
 
 config = Config()
 
@@ -143,12 +145,15 @@ class StateDataLoader:
 
         # Return
         for input, target in zip(input_sequences, target_sequences):
-            print(f"Input: {input.shape}, Target: {target.shape}")
+            logger.debug(f"Input: {input.shape}, Target: {target.shape}")
 
         return torch.stack(input_sequences), torch.stack(target_sequences)
 
 
 if __name__ == "__main__":
+
+    # Set up logging
+    setup_logging()
 
     # Load czech data
     czech_data_loader = StateDataLoader("Czechia")

@@ -28,19 +28,3 @@ class ColorfulFormatter(logging.Formatter):
         formatted_msg = f"{asctime} - {self.LEVEL_COLOR[level_no]}[{level_name} - {file_name}:{line_num}]{Fore.RESET}: {msg} "
 
         return formatted_msg
-
-
-# TODO: maybe custom logger class
-# def create_logger(logger_name: str) -> logging.Logger:
-#     # create custom logger
-#     new_logger = logging.getLogger(logger_name)
-
-#     return
-
-
-# def get_logger(logger_name: str) -> logging.Logger:
-#     # If logger does not exist, create a new one
-#     if logger_name not in logging.root.manager.loggerDict:
-#         return create_logger(logger_name)
-
-#     return logging.getLogger(logger_name)

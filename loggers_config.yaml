@@ -14,18 +14,29 @@ handlers:
   console:
     class: logging.StreamHandler
     formatter: colorful
-    level: DEBUG
+    # level: DEBUG
     stream: ext://sys.stdout
 
   local_model: 
     class: logging.FileHandler
     formatter: default
-    level: INFO
+    # level: INFO
+    filename: logs/local_model.log
+
+  data_preprocessing: 
+    class: logging.FileHandler
+    formatter: default
+    # level: INFO
     filename: logs/local_model.log
 
 # Logger(s) configuration
 loggers:
   local_model:
-    level: DEBUG
+    level: INFO
     handlers: [console, local_model]
+    propagate: no
+
+  data_preprocessing:
+    level: DEBUG
+    handlers: [console, data_preprocessing]
     propagate: no

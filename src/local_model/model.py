@@ -10,8 +10,7 @@ import logging
 from src.local_model.preprocessing import StateDataLoader
 from config import setup_logging
 
-# Setup logging
-setup_logging()
+
 logger = logging.getLogger("local_model")
 
 
@@ -176,8 +175,8 @@ class LocalModel(nn.Module):
             epoch_loss = 0
 
             for batch_input, batch_target in zip(batch_inputs, batch_targets):
-                # print(f"[Training loop] input: {batch_input.shape}")
-                # print(f"[Training loop] target: {batch_target.shape}")
+                logger.debug(f"[Training loop] input: {batch_input.shape}")
+                logger.debug(f"[Training loop] target: {batch_target.shape}")
 
                 # Put the targets to the device
                 batch_input, batch_target = batch_input.to(
@@ -207,6 +206,9 @@ if __name__ == "__main__":
 
     # Notes:
     # statefull vs stateless LSTM - can I pass data with different batch sizes?
+
+    # Setup logging
+    setup_logging()
 
     # TODO: transform this based on the data to be in the right format
     FEATURES = ["population, total", "net migration"]
