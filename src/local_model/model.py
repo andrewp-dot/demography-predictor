@@ -241,9 +241,14 @@ class LocalModel(nn.Module):
 
         num_timesteps, input_size = input_sequence.shape
         sequence_length = self.hyperparameters.sequence_length
+
+        # Array of predicions of previous values
         predictions = []
 
+        # Predictions for new years (from last to target_year)
+        new_predictions = []
         with torch.no_grad():
+            # Use past data for further context
             for i in range(num_timesteps - sequence_length + 1):
 
                 # Slide over the sequence
@@ -266,6 +271,28 @@ class LocalModel(nn.Module):
                 print("-" * 100)
 
                 predictions.append(pred.cpu())
+
+            current_window = input_sequence[-sequence_length:].unsqueeze(0)
+            # Predict new data using autoregression
+            for step in range(to_predict_years_num):
+                logger.debug(f"Current input window: {current_window}")
+
+                # Forward pass
+                pred = self(current_window)  # Shape: (1, output_size)
+                pred_value = pred.squeeze(0)  # Remove batch dim
+
+                print("-" * 100)
+                print(f"Step {step + 1} Prediction:")
+                pprint.pprint(pred_value.cpu().numpy())
+                print("-" * 100)
+
+                predictions.append(pred.cpu())  # Store new prediction
+                new_predictions.append(pred.cpu())
+
+                # Shift the window by removing the first value and adding the new prediction
+                current_window = torch.cat(
+                    (current_window[:, 1:, :], pred.unsqueeze(0)), dim=1
+                )
 
         prediction_tensor = torch.cat(predictions, dim=0)  # Combine all predictions
         logger.info(f"Prediction tensor: {prediction_tensor}")
