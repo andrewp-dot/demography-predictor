@@ -1,11 +1,12 @@
 # Standard library imports
 import pandas as pd
-from typing import Tuple
+from typing import Tuple, Optional
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import RobustScaler, MinMaxScaler
 import logging
+import pprint
 
 # Custom imports
 from src.local_model.preprocessing import StateDataLoader
@@ -133,22 +134,33 @@ class LocalModel(nn.Module):
 
         return h_t, c_t
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Get the number batch size
-        bath_size = x.size(0)
+    def forward(
+        self,
+        x: torch.Tensor,
+        # hidden_state: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+    ) -> torch.Tensor:
+        # Get the size of the batch
+        batch_size = x.size(0)
 
-        # initialize the hidden states
-        h_t, c_t = self.__initialize_hidden_states(bath_size)
-
-        # if x.dim() == 2:
-        #     x = x.unsqueeze(0)  # Add batch dimension: (1, seq_len, input_size)
+        # If no hidden state is passed, initialize it
+        # if hidden_state is None:
+        h_t, c_t = self.__initialize_hidden_states(batch_size)
+        # else:
+        #     # If hidden state is passed, use it
+        #     h_t, c_t = hidden_state
 
         # Forward propagate through LSTM
-        # print(f"X SHAPE: {x.shape}")
         out, (h_n, c_n) = self.lstm(x, (h_t, c_t))  # In here 'out' is a tensor
 
+        # You can detach the hidden state here if you need to avoid backprop through the entire sequence
+        # h_n = h_n.detach()
+        # c_n = c_n.detach()
+
+        # Use the output from the last time step
         out = self.linear(out[:, -1, :])  # Using the last time step's output
 
+        # Return both output and the updated hidden state (for the next batch)
+        # return out, (h_n, c_n)
         return out
 
     def train_model(self, batch_inputs: torch.Tensor, batch_targets: torch.Tensor):
@@ -204,14 +216,14 @@ class LocalModel(nn.Module):
     def predict(
         self,
         input_data: pd.DataFrame,
-        preprocessor: StateDataLoader,
         batch_size: int,
         target_year: int,
     ) -> torch.Tensor:
 
         # Get the last year and get the number of years
-        years = input_data[["year"]]
-        last_year = int(years.iloc[-1].item())
+        # years = input_data[["year"]]
+        # last_year = int(years.iloc[-1].item())
+        last_year = 2021
         to_predict_years_num = target_year - last_year
 
         logger.info(f"Last recorder year: {last_year}")
@@ -220,53 +232,44 @@ class LocalModel(nn.Module):
         # Put the model into the evaluation mode
         self.eval()
 
-        # Preprocess data
-        # Assign batch size to prediction batch size
-        prediction_batch_size = batch_size
+        input_sequence = torch.tensor(data=input_data.values, dtype=torch.float32)
 
-        preprocessor.preprocess_data(
-            data=input_data,
-            sequence_len=self.hyperparameters.sequence_length,
-            features=input_data.columns.to_list(),
-        )
-
-        return None
+        logger.debug(f"Input sequence: {input_sequence.shape}")
 
         # Move input to the appropriate device
-        input_sequence = input_sequence.to(self.device)
+        input_sequence.to(self.device)
 
-        # Number of sequences
+        num_timesteps, input_size = input_sequence.shape
+        sequence_length = self.hyperparameters.sequence_length
+        predictions = []
 
-        # Disable gradient computation for inference
         with torch.no_grad():
-            output = self(input_sequence)
+            for i in range(num_timesteps - sequence_length + 1):
 
-            for i in range(0, len(input_sequences), batch_size):
-                batch_input = input_sequences[i : i + batch_size]
-                batch_output = self(batch_input)
-                predictions.append(batch_output.cpu())  # Move to CPU for processing
+                # Slide over the sequence
+                logger.debug(
+                    f"Input sequence: {input_sequence[i : i + sequence_length]}"
+                )
+                window = input_sequence[i : i + sequence_length]  # Extract window
+                window = window.unsqueeze(
+                    0
+                )  # Add batch dimension: (1, sequence_length, input_size)
 
-        # TODO:
-        # 1. Predict output sequence -> use as much data for prediction as you can (Rolling window, statefull / stateless LSTM?)
-        # outputs = self(batch_input)
-        # 2. Predict to params to target year
-        raise NotImplementedError("Predict method has not been implemented yet!")
+                print("-" * 100)
+                print("Input:")
+                pprint.pprint(window)
 
-    def predict_with_preprocessing(
-        self,
-        data: pd.DataFrame,
-        target_year: int,
-        preprocessor: StateDataLoader,
-        hyperparameters: LSTMHyperparameters,
-        features: str,
-    ) -> torch.Tensor:
-        # 1. Preprocess data
-        input_batches, target_batches = preprocessor.preprocess_data(
-            data, sequence_len=hyperparameters.sequence_length, features=features
-        )
+                pred = self(window)  # Forward pass
 
-        # 2. Predict data
-        raise NotImplementedError("Predict method has not been implemented yet!")
+                print("Output:")
+                pprint.pprint(pred.cpu())
+                print("-" * 100)
+
+                predictions.append(pred.cpu())
+
+        prediction_tensor = torch.cat(predictions, dim=0)  # Combine all predictions
+        logger.info(f"Prediction tensor: {prediction_tensor}")
+        return prediction_tensor
 
 
 class EvaluateLSTM:
@@ -291,34 +294,34 @@ if __name__ == "__main__":
     setup_logging()
 
     # TODO: transform this based on the data to be in the right format
-    FEATURES = ["year", "population, total", "net migration"]
 
-    # FEATURES = [
-    #     "Fertility rate, total",
-    #     "Population, total",
-    #     "Net migration",
-    #     "Arable land",
-    #     "Birth rate, crude",
-    #     "GDP growth",
-    #     "Death rate, crude",
-    #     "Agricultural land",
-    #     "Rural population",
-    #     "Rural population growth",
-    #     "Age dependency ratio",
-    #     "Urban population",
-    #     "Population growth",
-    #     "Adolescent fertility rate",
-    #     "Life expectancy at birth, total",
-    # ]
+    FEATURES = [
+        "year",
+        # "Fertility rate, total",
+        # "Population, total",
+        # "Net migration",
+        # "Arable land",
+        # "Birth rate, crude",
+        # "GDP growth",
+        # "Death rate, crude",
+        # "Agricultural land",
+        # "Rural population",
+        # "Rural population growth",
+        # "Age dependency ratio",
+        # "Urban population",
+        # "Population growth",
+        # "Adolescent fertility rate",
+        # "Life expectancy at birth, total",
+    ]
 
-    # FEATURES = [col.lower() for col in FEATURES]
+    FEATURES = [col.lower() for col in FEATURES]
 
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
-        hidden_size=64,
+        hidden_size=128,
         sequence_length=5,
-        learning_rate=0.001,
-        epochs=30,
+        learning_rate=0.0001,
+        epochs=40,
         batch_size=1,
         num_layers=3,
     )
@@ -332,9 +335,11 @@ if __name__ == "__main__":
     # Exclude country name
     czech_data = czech_data.drop(columns=["country name"])
 
+    print(czech_data[FEATURES])
+
     # Scale data
     scaled_cz_data, cz_scaler = czech_loader.scale_data(
-        czech_data, scaler=RobustScaler()
+        czech_data[FEATURES], scaler=RobustScaler()
     )
 
     print(scaled_cz_data.head())
@@ -360,12 +365,19 @@ if __name__ == "__main__":
     # Train model
     rnn.train_model(batch_inputs=batch_inputs, batch_targets=batch_targets)
 
-    rnn.predict(
-        input_data=czech_data[FEATURES],
-        preprocessor=czech_loader,
+    predictions = rnn.predict(
+        input_data=scaled_cz_data[FEATURES],
         batch_size=1,
         target_year=2030,
     )
+
+    predictions_df = pd.DataFrame(predictions, columns=FEATURES)
+    print(predictions_df)
+    denormalized_predicions = cz_scaler.inverse_transform(predictions)
+
+    denormalized_predicions_df = pd.DataFrame(denormalized_predicions, columns=FEATURES)
+    print(denormalized_predicions_df)
+    # exit(1)
 
     # Get train stats
     stats = rnn.training_stats

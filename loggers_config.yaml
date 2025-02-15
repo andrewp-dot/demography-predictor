@@ -37,6 +37,6 @@ loggers:
     propagate: no
 
   data_preprocessing:
-    level: DEBUG
+    level: INFO
     handlers: [console, data_preprocessing]
     propagate: no

@@ -65,7 +65,7 @@ class StateDataLoader:
         """
 
         # Sort data by year
-        data.sort_values(by="year", inplace=True)
+        # data.sort_values(by="year", inplace=True)
 
         # Split data
         train_data = data.iloc[: int(split_rate * len(data))]
@@ -77,27 +77,31 @@ class StateDataLoader:
         self,
         batch_size: int,
         input_sequences: torch.Tensor,
-        target_sequences: torch.Tensor,
+        target_sequences: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Groups sequences to batches.
 
         :param batch_size: int: the number of samples processed in one forward/backward pass (how many samples the network sees before it updates itself)
         :param input_sequences: torch.Tensor: sequences to create a input batches
-        :param target_sequences: torch.Tensor: sequences to create a target batches
+        :param target_sequences: torch.Tensor: sequences to create a target batches. Defaults to None.
 
-        :return: Tuple[torch.Tensor, torch.Tensor]: input_batches, target_batches
+        :return: Tuple[torch.Tensor, torch.Tensor]: input_batches, target_batches. If target_sequences are not specified returns (input_batches, None)
         """
 
         # Reshape
         input_batches = input_sequences.view(
             -1, batch_size, input_sequences.shape[1], input_sequences.shape[2]
         )  # (num_batches, batch_size, sequence_len, num_features)
-        target_batches = target_sequences.view(
-            -1, batch_size, target_sequences.shape[1]
-        )  # (num_batches, batch_size, num_features)
 
-        return input_batches, target_batches
+        if target_sequences is not None:
+            target_batches = target_sequences.view(
+                -1, batch_size, target_sequences.shape[1]
+            )  # (num_batches, batch_size, num_features)
+
+            return input_batches, target_batches
+
+        return input_batches, None
 
     def preprocess_training_data(
         self,
