@@ -211,20 +211,28 @@ class LocalModel(nn.Module):
             epoch_loss /= len(batch_inputs)
             self.training_stats.losses.append(epoch_loss)
 
-            print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+            if not epoch % 10:
+                print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
 
     def predict(
         self,
         input_data: pd.DataFrame,
-        batch_size: int,
+        last_year: int,
         target_year: int,
     ) -> torch.Tensor:
+        """
+        Predicts values using past data. 2 cycles: 1st to gain context for all past data. 2nd is used to generate predictions.
 
-        # Get the last year and get the number of years
-        # years = input_data[["year"]]
-        # last_year = int(years.iloc[-1].item())
-        last_year = 2021
-        to_predict_years_num = target_year - last_year
+        :param input_data: pd.DataFrame: input data
+        :param last_year: int: the last known year used in order to compute the number of new data iterations
+        :param target_year: int: predict data to year
+
+        :return torch.Tensor: prediction tensor
+        """
+
+        to_predict_years_num = (
+            target_year - last_year + 1
+        )  # To include also the target year
 
         logger.info(f"Last recorder year: {last_year}")
         logger.info(f"To predict years: {to_predict_years_num}")
@@ -273,18 +281,15 @@ class LocalModel(nn.Module):
                 predictions.append(pred.cpu())
 
             current_window = input_sequence[-sequence_length:].unsqueeze(0)
+
             # Predict new data using autoregression
-            for step in range(to_predict_years_num):
+            for _ in range(to_predict_years_num):
                 logger.debug(f"Current input window: {current_window}")
 
                 # Forward pass
                 pred = self(current_window)  # Shape: (1, output_size)
                 pred_value = pred.squeeze(0)  # Remove batch dim
-
-                print("-" * 100)
-                print(f"Step {step + 1} Prediction:")
-                pprint.pprint(pred_value.cpu().numpy())
-                print("-" * 100)
+                logger.debug(f"New prediction value: {pred_value}")
 
                 predictions.append(pred.cpu())  # Store new prediction
                 new_predictions.append(pred.cpu())
@@ -296,6 +301,11 @@ class LocalModel(nn.Module):
 
         prediction_tensor = torch.cat(predictions, dim=0)  # Combine all predictions
         logger.info(f"Prediction tensor: {prediction_tensor}")
+
+        # Combine with years
+        for year, pred in zip(range(2021, target_year + 1), new_predictions):
+            print(f"{year}: {pred}")
+
         return prediction_tensor
 
 
@@ -346,11 +356,11 @@ if __name__ == "__main__":
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
         hidden_size=128,
-        sequence_length=5,
+        sequence_length=10,
         learning_rate=0.0001,
         epochs=40,
         batch_size=1,
-        num_layers=3,
+        num_layers=4,
     )
     rnn = LocalModel(hyperparameters)
 
@@ -366,7 +376,7 @@ if __name__ == "__main__":
 
     # Scale data
     scaled_cz_data, cz_scaler = czech_loader.scale_data(
-        czech_data[FEATURES], scaler=RobustScaler()
+        czech_data[FEATURES], scaler=MinMaxScaler()
     )
 
     print(scaled_cz_data.head())
@@ -392,25 +402,40 @@ if __name__ == "__main__":
     # Train model
     rnn.train_model(batch_inputs=batch_inputs, batch_targets=batch_targets)
 
+    # Get the last year and get the number of years
+    years = czech_data[["year"]]
+    last_year = int(years.iloc[-1].item())
+    target_year = 2100
+
     predictions = rnn.predict(
         input_data=scaled_cz_data[FEATURES],
-        batch_size=1,
-        target_year=2030,
+        last_year=last_year,
+        target_year=target_year,
     )
 
     predictions_df = pd.DataFrame(predictions, columns=FEATURES)
-    print(predictions_df)
     denormalized_predicions = cz_scaler.inverse_transform(predictions)
 
     denormalized_predicions_df = pd.DataFrame(denormalized_predicions, columns=FEATURES)
-    print(denormalized_predicions_df)
-    # exit(1)
+
+    if FEATURES == ["year"]:
+        print("-" * 100)
+        print("Predictions:")
+
+        # Just print predictions in fancier way
+        first_predicted_year = int(
+            years.iloc[0 + hyperparameters.sequence_length].item()
+        )
+        for index, year in enumerate(
+            range(first_predicted_year, target_year + 1)
+        ):  # + 1 in order to include also the target year
+            print(f"{year}: {denormalized_predicions_df.iloc[index,0]}")
 
     # Get train stats
     stats = rnn.training_stats
 
-    print("-" * 100)
-    print("Loses:")
-    print(stats.losses)
+    # print("-" * 100)
+    # print("Loses:")
+    # pprint.pprint(stats.losses)
 
     stats.plot()
