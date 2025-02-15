@@ -1,0 +1,42 @@
+version: 1.0
+
+# Formatters configuration
+formatters:
+  default:
+    datefmt: '%Y-%m-%d %H:%M:%S'
+    format: "%(asctime)s - [%(levelname)s - %(filename)s:%(lineno)d]: %(message)s"
+  colorful:
+    (): src.utils.logger.ColorfulFormatter
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+# Handlers configuration
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: colorful
+    # level: DEBUG
+    stream: ext://sys.stdout
+
+  local_model: 
+    class: logging.FileHandler
+    formatter: default
+    # level: INFO
+    filename: logs/local_model.log
+
+  data_preprocessing: 
+    class: logging.FileHandler
+    formatter: default
+    # level: INFO
+    filename: logs/data_preprocessing.log
+
+# Logger(s) configuration
+loggers:
+  local_model:
+    level: INFO
+    handlers: [console, local_model]
+    propagate: no
+
+  data_preprocessing:
+    level: DEBUG
+    handlers: [console, data_preprocessing]
+    propagate: no

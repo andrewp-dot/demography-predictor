@@ -151,7 +151,7 @@ class LocalModel(nn.Module):
 
         return out
 
-    def train(self, batch_inputs: torch.Tensor, batch_targets: torch.Tensor):
+    def train_model(self, batch_inputs: torch.Tensor, batch_targets: torch.Tensor):
         # Put the model to the device
         self.to(device=self.device)
 
@@ -201,13 +201,72 @@ class LocalModel(nn.Module):
 
             print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
 
-        def predict(
-            self, input_sequences: torch.Tensor, target_year: int
-        ) -> torch.Tensor:
-            # TODO:
-            # 1. Predict output sequence -> use as much data for prediction as you can (Rolling window, statefull / stateless LSTM?)
-            # 2. Predict to params to target year
-            raise NotImplementedError("Predict method has not been implemented yet!")
+    def predict(
+        self,
+        input_data: pd.DataFrame,
+        preprocessor: StateDataLoader,
+        batch_size: int,
+        target_year: int,
+    ) -> torch.Tensor:
+
+        # Get the last year and get the number of years
+        years = input_data[["year"]]
+        last_year = int(years.iloc[-1].item())
+        to_predict_years_num = target_year - last_year
+
+        logger.info(f"Last recorder year: {last_year}")
+        logger.info(f"To predict years: {to_predict_years_num}")
+
+        # Put the model into the evaluation mode
+        self.eval()
+
+        # Preprocess data
+        # Assign batch size to prediction batch size
+        prediction_batch_size = batch_size
+
+        preprocessor.preprocess_data(
+            data=input_data,
+            sequence_len=self.hyperparameters.sequence_length,
+            features=input_data.columns.to_list(),
+        )
+
+        return None
+
+        # Move input to the appropriate device
+        input_sequence = input_sequence.to(self.device)
+
+        # Number of sequences
+
+        # Disable gradient computation for inference
+        with torch.no_grad():
+            output = self(input_sequence)
+
+            for i in range(0, len(input_sequences), batch_size):
+                batch_input = input_sequences[i : i + batch_size]
+                batch_output = self(batch_input)
+                predictions.append(batch_output.cpu())  # Move to CPU for processing
+
+        # TODO:
+        # 1. Predict output sequence -> use as much data for prediction as you can (Rolling window, statefull / stateless LSTM?)
+        # outputs = self(batch_input)
+        # 2. Predict to params to target year
+        raise NotImplementedError("Predict method has not been implemented yet!")
+
+    def predict_with_preprocessing(
+        self,
+        data: pd.DataFrame,
+        target_year: int,
+        preprocessor: StateDataLoader,
+        hyperparameters: LSTMHyperparameters,
+        features: str,
+    ) -> torch.Tensor:
+        # 1. Preprocess data
+        input_batches, target_batches = preprocessor.preprocess_data(
+            data, sequence_len=hyperparameters.sequence_length, features=features
+        )
+
+        # 2. Predict data
+        raise NotImplementedError("Predict method has not been implemented yet!")
 
 
 class EvaluateLSTM:
@@ -232,7 +291,7 @@ if __name__ == "__main__":
     setup_logging()
 
     # TODO: transform this based on the data to be in the right format
-    FEATURES = ["population, total", "net migration"]
+    FEATURES = ["year", "population, total", "net migration"]
 
     # FEATURES = [
     #     "Fertility rate, total",
@@ -283,7 +342,7 @@ if __name__ == "__main__":
     train, test = czech_loader.split_data(scaled_cz_data)
 
     # Get input/output sequences
-    input_sequences, target_sequences = czech_loader.preprocess_data(
+    input_sequences, target_sequences = czech_loader.preprocess_training_data(
         train, hyperparameters.sequence_length, features=FEATURES
     )
 
@@ -299,7 +358,14 @@ if __name__ == "__main__":
     logger.info(f"Batch targets shape: {batch_targets.shape}")
 
     # Train model
-    rnn.train(batch_inputs=batch_inputs, batch_targets=batch_targets)
+    rnn.train_model(batch_inputs=batch_inputs, batch_targets=batch_targets)
+
+    rnn.predict(
+        input_data=czech_data[FEATURES],
+        preprocessor=czech_loader,
+        batch_size=1,
+        target_year=2030,
+    )
 
     # Get train stats
     stats = rnn.training_stats

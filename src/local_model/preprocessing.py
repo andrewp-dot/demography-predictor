@@ -79,16 +79,17 @@ class StateDataLoader:
         input_sequences: torch.Tensor,
         target_sequences: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        # TODO: use batch_size parameter
-        num_samples = len(input_sequences)
+        """
+        Groups sequences to batches.
 
-        # Trim extra samples to ensure divisibility
-        num_batches = num_samples // batch_size * batch_size
-        # input_sequences = input_sequences[:num_batches]
-        # target_sequences = target_sequences[:num_batches]
+        :param batch_size: int: the number of samples processed in one forward/backward pass (how many samples the network sees before it updates itself)
+        :param input_sequences: torch.Tensor: sequences to create a input batches
+        :param target_sequences: torch.Tensor: sequences to create a target batches
+
+        :return: Tuple[torch.Tensor, torch.Tensor]: input_batches, target_batches
+        """
 
         # Reshape
-
         input_batches = input_sequences.view(
             -1, batch_size, input_sequences.shape[1], input_sequences.shape[2]
         )  # (num_batches, batch_size, sequence_len, num_features)
@@ -98,21 +99,19 @@ class StateDataLoader:
 
         return input_batches, target_batches
 
-    def preprocess_data(
+    def preprocess_training_data(
         self,
         data: pd.DataFrame,
-        # batch_size: int,
         sequence_len: int,
         features: list[str],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Scales and transforms the data for the specified format (3D tensor): `(batch_size,time_steps,input_features)`, where:
-        - batch_size: the number of samples processed in one forward/backward pass (how many samples the network sees before it updates itself)
         - time_steps or sequence_length: number of time steps
         - input_features: number of input features
 
         :param data: pd.DataFrame
-        :return: pd.DataFrame
+        :return: Tuple[torch.Tensor, torch.Tensor]: input_sequences, target_sequences
         """
 
         # Copy data to avoid modifying the original data
@@ -149,6 +148,35 @@ class StateDataLoader:
 
         return torch.stack(input_sequences), torch.stack(target_sequences)
 
+    def preprocess_data(
+        self,
+        data: pd.DataFrame,
+        sequence_len: int,
+        features: list[str],
+    ) -> torch.Tensor:
+        # Copy data to avoid modifying the original data
+        current_data = data.copy()
+
+        # Select features
+        current_data = current_data[features]
+
+        # Get data using rolling window
+        input_sequences = []
+
+        # + 1 in order to get also the last sample
+        number_of_samples = current_data.shape[0] - sequence_len + 1
+        for i in range(number_of_samples):
+
+            # Get the input sequence
+            input_sequences.append(
+                # Converting to a PyTorch tensor
+                torch.tensor(
+                    current_data.iloc[i : i + sequence_len].values, dtype=torch.float32
+                )
+            )
+
+        return torch.stack(input_sequences)
+
 
 if __name__ == "__main__":
 
@@ -172,7 +200,7 @@ if __name__ == "__main__":
     # Preprocess data
     print("-" * 100)
     print("Preprocess data:")
-    input_sequences, target_sequences = czech_data_loader.preprocess_data(
+    input_sequences, target_sequences = czech_data_loader.preprocess_training_data(
         train, 5, ["year", "population, total"]
     )
 
