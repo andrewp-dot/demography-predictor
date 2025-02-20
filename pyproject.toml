@@ -9,13 +9,15 @@ package-mode = false
 [tool.poetry.dependencies]
 python = "~3.11"
 torch = "^2.6.0"
-scikit-learn = "^1.6.1"
-pandas = "^2.2.3"
+scikit-learn = "<1.5.0"
+pandas = "<2.2.0"
 pydantic-settings = "^2.7.1"
 pydantic = "^2.10.6"
 optree = ">=0.13.0"
-matplotlib = "^3.10.0"
+matplotlib = "<3.8.0"
 colorama = "^0.4.6"
+kaleido = "0.2.1"
+pycaret = "^3.3.2"
 
 
 [build-system]

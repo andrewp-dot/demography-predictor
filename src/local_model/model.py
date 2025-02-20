@@ -4,7 +4,7 @@ from typing import Tuple, Optional
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import RobustScaler, MinMaxScaler
+from sklearn.preprocessing import RobustScaler, MinMaxScaler, StandardScaler
 import logging
 import pprint
 
@@ -312,13 +312,44 @@ class LocalModel(nn.Module):
 class EvaluateLSTM:
 
     def __init__(self, model: nn.Module):
-        pass
+        self.model: LocalModel = model
+        self.predicted = None
+        self.reference_values = None
 
-    def eval_with_past(self, test_X: pd.DataFrame, test_y: pd.DataFrame) -> None:
-        raise NotImplementedError()
+    def eval(
+        self, test_X: pd.DataFrame, test_y: pd.DataFrame, features: list[str]
+    ) -> None:
 
-    def eval(self, test_X: pd.DataFrame, test_y: pd.DataFrame) -> None:
-        raise NotImplementedError()
+        # Set features as a constant
+        FEATURES = features
+
+        # Get the last year and get the number of years
+        X_years = test_X[["year"]]
+        last_year = int(X_years.iloc[-1].item())
+
+        # Get the prediction year
+        y_target_years = test_y[["year"]]
+        target_year = int(y_target_years.iloc[-1].item())
+
+        # Generate predictions
+        predictions = self.model.predict(
+            input_data=scaled_cz_data[FEATURES],
+            last_year=last_year,
+            target_year=target_year,
+        )
+
+        logger.debug(f"[Eval]: predictions shape: {predictions.shape}")
+
+        # Get the real value of the predicions
+        denormalized_predictions = cz_scaler.inverse_transform(predictions)
+
+        # Create dataframe from predictions the real value of the predicions
+        denormalized_predicions_df = pd.DataFrame(
+            denormalized_predictions, columns=test_X.columns
+        )
+
+        # TODO:
+        # Compare predictions with the target values
 
 
 if __name__ == "__main__":
@@ -334,13 +365,13 @@ if __name__ == "__main__":
 
     FEATURES = [
         "year",
-        # "Fertility rate, total",
-        # "Population, total",
-        # "Net migration",
-        # "Arable land",
-        # "Birth rate, crude",
-        # "GDP growth",
-        # "Death rate, crude",
+        "Fertility rate, total",
+        "Population, total",
+        "Net migration",
+        "Arable land",
+        "Birth rate, crude",
+        "GDP growth",
+        "Death rate, crude",
         # "Agricultural land",
         # "Rural population",
         # "Rural population growth",
@@ -383,7 +414,7 @@ if __name__ == "__main__":
 
     train, test = czech_loader.split_data(scaled_cz_data)
 
-    # Get input/output sequences
+    # Get input/output sequences from train data
     input_sequences, target_sequences = czech_loader.preprocess_training_data(
         train, hyperparameters.sequence_length, features=FEATURES
     )
@@ -401,6 +432,10 @@ if __name__ == "__main__":
 
     # Train model
     rnn.train_model(batch_inputs=batch_inputs, batch_targets=batch_targets)
+
+    model_evaluation = EvaluateLSTM(rnn)
+
+    model_evaluation.eval(train, test, features=FEATURES)
 
     # Get the last year and get the number of years
     years = czech_data[["year"]]
@@ -434,8 +469,8 @@ if __name__ == "__main__":
     # Get train stats
     stats = rnn.training_stats
 
-    # print("-" * 100)
-    # print("Loses:")
-    # pprint.pprint(stats.losses)
+    print("-" * 100)
+    print("Loses:")
+    pprint.pprint(stats.losses)
 
     stats.plot()

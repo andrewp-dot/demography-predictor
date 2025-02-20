@@ -18,3 +18,12 @@ In this file are experiments with local model.
 
 # Use different scaler(s)
 # 1. Robust scalers, MinMax, Logaritmic transformation
+
+# Odstranit outliers?
+# Zaokrúhlenie dát, čo s nimi?
+
+# Spájanie modelov:
+# Stacking? - priemerovanie vysledkov viacerych modelov subezne
+# Boosting? - Ada boost (les neuroniek? :D) , XGBoost
+
+# Try pycaret

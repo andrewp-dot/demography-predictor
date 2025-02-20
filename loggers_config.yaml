@@ -40,3 +40,8 @@ loggers:
     level: INFO
     handlers: [console, data_preprocessing]
     propagate: no
+
+  method_selection:
+    level: INFO
+    handlers: [console]
+    propagate: no
