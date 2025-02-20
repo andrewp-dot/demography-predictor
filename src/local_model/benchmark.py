@@ -8,6 +8,7 @@ In this file are experiments with local model.
 # 1. Use data for just a single state
 # 2. Use data for all states (whole dataset)
 # 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)
+# 4. Devide data for aligned sequences (% values - 0 - 100) and for absolute values, which can rise (population, total, ...)
 
 # Model input based eperiments:
 # 1. Compare performance of LSTM networks with different neurons in layers, try to find optimal
