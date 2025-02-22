@@ -32,9 +32,11 @@ def load_data() -> pd.DataFrame:
 
 
 # 2. Create regression experiment
-def regression_experiment(data: pd.DataFrame, target: str) -> List[Any]:
+def regression_experiment(
+    data: pd.DataFrame, target: str, session_id: int
+) -> List[Any]:
     # Setup experiment
-    experiment = setup(data, target=target, session_id=42)
+    experiment = setup(data, target=target, session_id=session_id)
 
     best_model = compare_models()
 
