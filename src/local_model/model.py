@@ -397,15 +397,19 @@ class EvaluateLSTM:
 
         # Save predictions
         predictions_df = pd.DataFrame(predictions, columns=test_y.columns)
-        self.predicted = predictions_df
+        self.predicted = scaler.inverse_transform(predictions_df)
 
         # Save true values
-        self.reference_values = test_y
+        self.reference_values = scaler.inverse_transform(test_y)
 
         logger.debug(f"[Eval]: predictions shape: {predictions.shape}")
 
         # Get the real value of the predicions
         denormalized_predictions = scaler.inverse_transform(predictions)
+
+        print(f"Refference | Predicted")
+        for index in range(len(self.reference_values)):
+            print(f"{self.reference_values[index]} | {self.predicted[index]}")
 
         # Create dataframe from predictions the real value of the predicions
         denormalized_predicions_df = pd.DataFrame(
@@ -439,13 +443,13 @@ if __name__ == "__main__":
 
     FEATURES = [
         "year",
-        "Fertility rate, total",
-        "Population, total",
-        "Net migration",
-        "Arable land",
-        "Birth rate, crude",
-        "GDP growth",
-        "Death rate, crude",
+        # "Fertility rate, total",
+        # "Population, total",
+        # "Net migration",
+        # "Arable land",
+        # "Birth rate, crude",
+        # "GDP growth",
+        # "Death rate, crude",
         # "Agricultural land",
         # "Rural population",
         # "Rural population growth",
@@ -517,7 +521,8 @@ if __name__ == "__main__":
         test_X=val_X, test_y=val_y, features=FEATURES, scaler=cz_scaler
     )
 
-    logger.info(f"Model evaluation by metrics: {model_evaluation.metrics}")
+    formatted_metrics = pprint.pformat(model_evaluation.metrics)
+    logger.info(f"Model evaluation by metrics: {formatted_metrics}")
 
     exit(1)
     # Get the last year and get the number of years
