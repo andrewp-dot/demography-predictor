@@ -467,7 +467,7 @@ if __name__ == "__main__":
         hidden_size=128,
         sequence_length=10,
         learning_rate=0.0001,
-        epochs=40,
+        epochs=30,
         batch_size=1,
         num_layers=4,
     )
@@ -522,9 +522,10 @@ if __name__ == "__main__":
     )
 
     formatted_metrics = pprint.pformat(model_evaluation.metrics)
-    logger.info(f"Model evaluation by metrics: {formatted_metrics}")
+    logger.info(f"Model evaluation by metrics: \n{formatted_metrics}")
 
     exit(1)
+
     # Get the last year and get the number of years
     years = czech_data[["year"]]
     last_year = int(years.iloc[-1].item())
