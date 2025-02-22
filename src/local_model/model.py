@@ -1,10 +1,16 @@
 # Standard library imports
 import pandas as pd
-from typing import Tuple, Optional
+from typing import Tuple, Dict, List, Callable
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import RobustScaler, MinMaxScaler, StandardScaler
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    root_mean_squared_error,
+    r2_score,
+)
 import logging
 import pprint
 
@@ -188,8 +194,8 @@ class LocalModel(nn.Module):
             epoch_loss = 0
 
             for batch_input, batch_target in zip(batch_inputs, batch_targets):
-                logger.debug(f"[Training loop] input: {batch_input.shape}")
-                logger.debug(f"[Training loop] target: {batch_target.shape}")
+                # logger.debug(f"[Training loop] input: {batch_input.shape}")
+                # logger.debug(f"[Training loop] target: {batch_target.shape}")
 
                 # Put the targets to the device
                 batch_input, batch_target = batch_input.to(
@@ -212,7 +218,7 @@ class LocalModel(nn.Module):
             self.training_stats.losses.append(epoch_loss)
 
             if not epoch % 10:
-                print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+                logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
 
     def predict(
         self,
@@ -231,7 +237,7 @@ class LocalModel(nn.Module):
         """
 
         to_predict_years_num = (
-            target_year - last_year + 1
+            target_year - last_year
         )  # To include also the target year
 
         logger.info(f"Last recorder year: {last_year}")
@@ -303,21 +309,63 @@ class LocalModel(nn.Module):
         logger.info(f"Prediction tensor: {prediction_tensor}")
 
         # Combine with years
-        for year, pred in zip(range(2021, target_year + 1), new_predictions):
-            print(f"{year}: {pred}")
+        for year, pred in zip(range(last_year + 1, target_year + 1), new_predictions):
+            logger.debug(f"{year}: {pred}")
 
-        return prediction_tensor
+        new_predictions_tensor = torch.cat(new_predictions, dim=0)
+        return new_predictions_tensor
 
 
 class EvaluateLSTM:
 
     def __init__(self, model: nn.Module):
         self.model: LocalModel = model
-        self.predicted = None
-        self.reference_values = None
+        self.predicted: pd.DataFrame | None = None
+        self.reference_values: pd.DataFrame | None = None
+
+        # Define metric
+        self.metrics: Dict[str, float | List[float]] = {}
+
+    def __get_metric(
+        self,
+        metric: Callable,
+        metric_key: str = "",
+    ) -> None:
+        """
+        Computes and saves given metric.
+
+        Args:
+            metric (callable): Function for metric computation.
+            metric_key (str, optional): Key of the metric which can be accasible in `EvaluateLSTM.metrics` dict ({metric_key}, {metric_key}_per_target if per target is available).
+            If not given, the name of the function is used. Defaults to "".
+        """
+
+        # Adjust metric key if not given
+        metric_key = metric_key or metric.__name__
+
+        if metric != r2_score:
+            # Compute metric for each target separately
+            metric_per_target_value = metric(
+                self.reference_values, self.predicted, multioutput="raw_values"
+            )
+            logger.info(f"'{metric_key}' per target: {metric_per_target_value}")
+
+            # Save the metric value
+            self.metrics[f"{metric_key}_per_target"] = metric_per_target_value
+
+        # Average MAE across all targets
+        average_metric_value = metric(
+            self.reference_values, self.predicted, multioutput="uniform_average"
+        )
+        logger.info(f"Average '{metric_key}' across targets: {average_metric_value}")
+        self.metrics[metric_key] = average_metric_value
 
     def eval(
-        self, test_X: pd.DataFrame, test_y: pd.DataFrame, features: list[str]
+        self,
+        test_X: pd.DataFrame,
+        test_y: pd.DataFrame,
+        features: list[str],
+        scaler: MinMaxScaler | RobustScaler | StandardScaler,
     ) -> None:
 
         # Set features as a constant
@@ -331,17 +379,33 @@ class EvaluateLSTM:
         y_target_years = test_y[["year"]]
         target_year = int(y_target_years.iloc[-1].item())
 
+        # Scale data
+        test_X = scaler.transform(test_X)
+        test_y = scaler.transform(test_y)
+
+        # Transform data back to dataframe
+        test_X = pd.DataFrame(test_X, columns=FEATURES)
+        test_y = pd.DataFrame(test_y, columns=FEATURES)
+
         # Generate predictions
+        logger.debug(f"[Eval]: predicting values from {last_year} to {target_year}...")
         predictions = self.model.predict(
             input_data=scaled_cz_data[FEATURES],
             last_year=last_year,
             target_year=target_year,
         )
 
+        # Save predictions
+        predictions_df = pd.DataFrame(predictions, columns=test_y.columns)
+        self.predicted = predictions_df
+
+        # Save true values
+        self.reference_values = test_y
+
         logger.debug(f"[Eval]: predictions shape: {predictions.shape}")
 
         # Get the real value of the predicions
-        denormalized_predictions = cz_scaler.inverse_transform(predictions)
+        denormalized_predictions = scaler.inverse_transform(predictions)
 
         # Create dataframe from predictions the real value of the predicions
         denormalized_predicions_df = pd.DataFrame(
@@ -350,6 +414,18 @@ class EvaluateLSTM:
 
         # TODO:
         # Compare predictions with the target values
+
+        # Get MAE
+        self.__get_metric(mean_absolute_error, "mae")
+
+        # Get MSE
+        self.__get_metric(mean_squared_error, "mse")
+
+        # Get RMSE
+        self.__get_metric(root_mean_squared_error, "rmse")
+
+        # Get R^2
+        self.__get_metric(r2_score, "r2")
 
 
 if __name__ == "__main__":
@@ -360,8 +436,6 @@ if __name__ == "__main__":
 
     # Setup logging
     setup_logging()
-
-    # TODO: transform this based on the data to be in the right format
 
     FEATURES = [
         "year",
@@ -433,10 +507,19 @@ if __name__ == "__main__":
     # Train model
     rnn.train_model(batch_inputs=batch_inputs, batch_targets=batch_targets)
 
+    # Evaluate model
     model_evaluation = EvaluateLSTM(rnn)
 
-    model_evaluation.eval(train, test, features=FEATURES)
+    # Split the raw data
+    val_X, val_y = czech_loader.split_data(czech_data[FEATURES])
 
+    model_evaluation.eval(
+        test_X=val_X, test_y=val_y, features=FEATURES, scaler=cz_scaler
+    )
+
+    logger.info(f"Model evaluation by metrics: {model_evaluation.metrics}")
+
+    exit(1)
     # Get the last year and get the number of years
     years = czech_data[["year"]]
     last_year = int(years.iloc[-1].item())
@@ -470,7 +553,7 @@ if __name__ == "__main__":
     stats = rnn.training_stats
 
     print("-" * 100)
-    print("Loses:")
+    print("Losses:")
     pprint.pprint(stats.losses)
 
     stats.plot()
