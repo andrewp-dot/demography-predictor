@@ -266,9 +266,9 @@ class LocalModel(nn.Module):
             for i in range(num_timesteps - sequence_length + 1):
 
                 # Slide over the sequence
-                logger.debug(
-                    f"Input sequence: {input_sequence[i : i + sequence_length]}"
-                )
+                # logger.debug(
+                #     f"Input sequence: {input_sequence[i : i + sequence_length]}"
+                # )
                 window = input_sequence[i : i + sequence_length]  # Extract window
                 window = window.unsqueeze(
                     0
