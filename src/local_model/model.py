@@ -344,17 +344,9 @@ class EvaluateLSTM:
         self.predicted: pd.DataFrame | None = None
         self.reference_values: pd.DataFrame | None = None
 
-        # Define metric
-        self.metrics: Dict[str, float | List[float]] = {}
-
+        # Define metric dataframes
         self.per_target_metrics: pd.DataFrame | None = None
         self.overall_metrics: pd.DataFrame | None = None
-
-        # dataframe:
-
-        # metric    | feature1  | feature2  | feature3  | ...
-        # mae       | value     | value     | value     | ...
-        # ...
 
     def __get_metric(
         self,
@@ -386,10 +378,6 @@ class EvaluateLSTM:
             metric_per_target_values = metric(
                 self.reference_values, self.predicted, multioutput="raw_values"
             )
-            # logger.info(f"'{metric_key}' per target: {metric_per_target_value}")
-
-            # Save the metric value
-            # self.metrics[f"{metric_key}_per_target"] = metric_per_target_value
 
             # Get metric values for separate targets
             metric_per_target_values_dict = {
@@ -405,8 +393,6 @@ class EvaluateLSTM:
         average_metric_value = metric(
             self.reference_values, self.predicted, multioutput="uniform_average"
         )
-        # logger.info(f"Average '{metric_key}' across targets: {average_metric_value}")
-        # self.metrics[metric_key] = average_metric_value
 
         # Get overall metric dataframe
         overall_metric_df = pd.DataFrame(
@@ -467,16 +453,12 @@ class EvaluateLSTM:
         logger.debug(f"[Eval]: predictions shape: {predictions.shape}")
 
         # Get the real value of the predicions
-        denormalized_predictions = scaler.inverse_transform(predictions)
-
-        # print(f"Refference | Predicted")
-        # for index in range(len(self.reference_values)):
-        #     print(f"{self.reference_values[index]} | {self.predicted[index]}")
+        # denormalized_predictions = scaler.inverse_transform(predictions)
 
         # Create dataframe from predictions the real value of the predicions
-        denormalized_predicions_df = pd.DataFrame(
-            denormalized_predictions, columns=test_X.columns
-        )
+        # denormalized_predicions_df = pd.DataFrame(
+        #     denormalized_predictions, columns=test_X.columns
+        # )
 
         # Get MAE
         overall_mae_df, mae_per_target_df = self.__get_metric(
@@ -505,8 +487,6 @@ class EvaluateLSTM:
         )
 
         # Get overall dataframe
-        # overall_dfs = [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df]
-
         self.overall_metrics = pd.concat(
             [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
             axis=0,
@@ -602,8 +582,12 @@ if __name__ == "__main__":
         test_X=val_X, test_y=val_y, features=FEATURES, scaler=cz_scaler
     )
 
-    formatted_metrics = pprint.pformat(model_evaluation.metrics)
-    logger.info(f"Model evaluation by metrics: \n{formatted_metrics}")
+    logger.info(
+        f"Model evaluation by per target metrics: \n{model_evaluation.per_target_metrics}"
+    )
+    logger.info(
+        f"Model evaluation by overall metrics: \n{model_evaluation.overall_metrics}"
+    )
 
     exit(1)
 
