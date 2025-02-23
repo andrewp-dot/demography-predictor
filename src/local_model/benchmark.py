@@ -89,7 +89,11 @@ def single_state_data_experiment() -> None:
     )
 
     # Get evaluation metrics
-    formated_metrics = pprint.pformat(single_state_rnn_evaluation.metrics)
+    # formated_metrics = pprint.pformat(single_state_rnn_evaluation.metrics)
+
+    print(single_state_rnn_evaluation.per_target_metrics.head())
+    print("-" * 100)
+    print(single_state_rnn_evaluation.overall_metrics.head())
 
 
 if __name__ == "__main__":

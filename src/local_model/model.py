@@ -347,11 +347,21 @@ class EvaluateLSTM:
         # Define metric
         self.metrics: Dict[str, float | List[float]] = {}
 
+        self.per_target_metrics: pd.DataFrame | None = None
+        self.overall_metrics: pd.DataFrame | None = None
+
+        # dataframe:
+
+        # metric    | feature1  | feature2  | feature3  | ...
+        # mae       | value     | value     | value     | ...
+        # ...
+
     def __get_metric(
         self,
         metric: Callable,
+        features: List[str],
         metric_key: str = "",
-    ) -> None:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame | None]:
         """
         Computes and saves given metric.
 
@@ -359,27 +369,51 @@ class EvaluateLSTM:
         :param metric: callable: Function for metric computation.
         :param metric_key: (str, optional): Key of the metric which can be accasible in `EvaluateLSTM.metrics` dict (`{metric_key}`, `{metric_key}_per_target` if per target is available).
             If not given, the name of the function is used. Defaults to "".
+
+        :returns: Tuple[pd.DataFrame, pd.DataFrame | None]: metric value for all targets, metric values for each target separately.
         """
 
         # Adjust metric key if not given
         metric_key = metric_key or metric.__name__
+        FEATURES = features
+
+        # Initialize metric values
+        overall_metric_df = None
+        separate_target_metric_values_df = None
 
         if metric != r2_score:
             # Compute metric for each target separately
-            metric_per_target_value = metric(
+            metric_per_target_values = metric(
                 self.reference_values, self.predicted, multioutput="raw_values"
             )
-            logger.info(f"'{metric_key}' per target: {metric_per_target_value}")
+            # logger.info(f"'{metric_key}' per target: {metric_per_target_value}")
 
             # Save the metric value
-            self.metrics[f"{metric_key}_per_target"] = metric_per_target_value
+            # self.metrics[f"{metric_key}_per_target"] = metric_per_target_value
+
+            # Get metric values for separate targets
+            metric_per_target_values_dict = {
+                "feature": FEATURES,
+                metric_key: metric_per_target_values,
+            }
+
+            separate_target_metric_values_df = pd.DataFrame(
+                metric_per_target_values_dict
+            )
 
         # Average MAE across all targets
         average_metric_value = metric(
             self.reference_values, self.predicted, multioutput="uniform_average"
         )
-        logger.info(f"Average '{metric_key}' across targets: {average_metric_value}")
-        self.metrics[metric_key] = average_metric_value
+        # logger.info(f"Average '{metric_key}' across targets: {average_metric_value}")
+        # self.metrics[metric_key] = average_metric_value
+
+        # Get overall metric dataframe
+        overall_metric_df = pd.DataFrame(
+            {"metric": metric_key, "value": [average_metric_value]}
+        )
+
+        return overall_metric_df, separate_target_metric_values_df
 
     def eval(
         self,
@@ -435,29 +469,48 @@ class EvaluateLSTM:
         # Get the real value of the predicions
         denormalized_predictions = scaler.inverse_transform(predictions)
 
-        print(f"Refference | Predicted")
-        for index in range(len(self.reference_values)):
-            print(f"{self.reference_values[index]} | {self.predicted[index]}")
+        # print(f"Refference | Predicted")
+        # for index in range(len(self.reference_values)):
+        #     print(f"{self.reference_values[index]} | {self.predicted[index]}")
 
         # Create dataframe from predictions the real value of the predicions
         denormalized_predicions_df = pd.DataFrame(
             denormalized_predictions, columns=test_X.columns
         )
 
-        # TODO:
-        # Compare predictions with the target values
-
         # Get MAE
-        self.__get_metric(mean_absolute_error, "mae")
+        overall_mae_df, mae_per_target_df = self.__get_metric(
+            mean_absolute_error, FEATURES, "mae"
+        )
 
         # Get MSE
-        self.__get_metric(mean_squared_error, "mse")
+        overall_mse_df, mse_per_target_df = self.__get_metric(
+            mean_squared_error, FEATURES, "mse"
+        )
 
         # Get RMSE
-        self.__get_metric(root_mean_squared_error, "rmse")
+        overall_rmse_df, rmse_per_target_df = self.__get_metric(
+            root_mean_squared_error, FEATURES, "rmse"
+        )
 
         # Get R^2
-        self.__get_metric(r2_score, "r2")
+        overall_r2_df, _ = self.__get_metric(r2_score, FEATURES, "r2")
+
+        # Create per target dataframe
+        mae_mse_df = pd.merge(
+            left=mae_per_target_df, right=mse_per_target_df, on="feature"
+        )
+        self.per_target_metrics = pd.merge(
+            left=mae_mse_df, right=rmse_per_target_df, on="feature"
+        )
+
+        # Get overall dataframe
+        # overall_dfs = [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df]
+
+        self.overall_metrics = pd.concat(
+            [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
+            axis=0,
+        )
 
 
 if __name__ == "__main__":
