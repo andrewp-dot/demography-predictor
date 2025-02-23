@@ -1,7 +1,7 @@
 # Standard libraries imports
 import pandas as pd
 import torch
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 import logging
 
@@ -20,7 +20,7 @@ class StateDataLoader:
 
     def load_data(self) -> pd.DataFrame:
         """
-        Load the state data
+        Load the state data. Renames the columns all to lower.
 
         :return: pd.DataFrame
         """
@@ -107,14 +107,16 @@ class StateDataLoader:
         self,
         data: pd.DataFrame,
         sequence_len: int,
-        features: list[str],
+        features: List[str],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Scales and transforms the data for the specified format (3D tensor): `(batch_size,time_steps,input_features)`, where:
+        Transforms the data for the specified format (3D tensor): `(batch_size,time_steps,input_features)`, where:
         - time_steps or sequence_length: number of time steps
         - input_features: number of input features
 
-        :param data: pd.DataFrame
+        :param data: pd.DataFrame: input data
+        :param sequence_len: int: sequence length of the input/target sequences
+        :param features: List[str]: list of features to use
         :return: Tuple[torch.Tensor, torch.Tensor]: input_sequences, target_sequences
         """
 
@@ -156,8 +158,20 @@ class StateDataLoader:
         self,
         data: pd.DataFrame,
         sequence_len: int,
-        features: list[str],
+        features: List[str],
     ) -> torch.Tensor:
+        """
+        Transforms the data for the specified format (3D tensor): `(batch_size,time_steps,input_features)`, where:
+        - time_steps or sequence_length: number of time steps
+        - input_features: number of input features
+
+        **Note: creates only input sequences from the provided data.**
+
+        :param data: pd.DataFrame: input data
+        :param sequence_len: int: sequence length of the input/target sequences
+        :param freatures: List[str]: list of features to use
+        :return: Tuple[torch.Tensor, torch.Tensor]: input_sequences
+        """
         # Copy data to avoid modifying the original data
         current_data = data.copy()
 

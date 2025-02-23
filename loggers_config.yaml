@@ -29,6 +29,12 @@ handlers:
     # level: INFO
     filename: logs/data_preprocessing.log
 
+  rnn_benchmark:
+    class: logging.FileHandler
+    formatter: default
+    # level: INFO
+    filename: logs/rnn_benchmark_experiments.log
+
 # Logger(s) configuration
 loggers:
   local_model:
@@ -44,4 +50,9 @@ loggers:
   method_selection:
     level: DEBUG
     handlers: [console]
+    propagate: no
+
+  benchmark:
+    level: INFO
+    handlers: [console, rnn_benchmark]
     propagate: no

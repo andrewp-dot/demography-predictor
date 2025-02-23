@@ -4,6 +4,7 @@ from typing import Tuple, Dict, List, Callable
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from sklearn.preprocessing import RobustScaler, MinMaxScaler, StandardScaler
 from sklearn.metrics import (
     mean_absolute_error,
@@ -63,9 +64,17 @@ class TrainingStats:
         # self.mse = []
         self.epochs = []
 
-    def plot(self):
+    def create_plot(self) -> Figure:
+        """
+        Creates a figure of training statistics.
+
+        :returns: Figure: figure of training statistics.
+        """
+
+        # TODO: change the plot function, to plot multiple metrcis
+
         # Define figure parameters
-        plt.figure(figsize=(10, 5))
+        fig = plt.figure(figsize=(10, 5))
 
         # Name the axis
         plt.xlabel("Epochs")
@@ -77,7 +86,12 @@ class TrainingStats:
         # Show the plot
         # plt.legend()
         plt.grid()
-        plt.show()
+
+        return fig
+
+    def plot(self) -> None:
+        fig: Figure = self.create_plot()
+        fig.show()
 
 
 class LocalModel(nn.Module):
@@ -170,6 +184,13 @@ class LocalModel(nn.Module):
         return out
 
     def train_model(self, batch_inputs: torch.Tensor, batch_targets: torch.Tensor):
+        """
+        Trains model using batched input sequences and batched target sequences.
+
+
+        :param batch_inputs: torch.Tensor: batches of input sequences
+        :param batch_targets: torch.Tensor: batches of target sequences
+        """
         # Put the model to the device
         self.to(device=self.device)
 
@@ -334,9 +355,9 @@ class EvaluateLSTM:
         """
         Computes and saves given metric.
 
-        Args:
-            metric (callable): Function for metric computation.
-            metric_key (str, optional): Key of the metric which can be accasible in `EvaluateLSTM.metrics` dict ({metric_key}, {metric_key}_per_target if per target is available).
+
+        :param metric: callable: Function for metric computation.
+        :param metric_key: (str, optional): Key of the metric which can be accasible in `EvaluateLSTM.metrics` dict (`{metric_key}`, `{metric_key}_per_target` if per target is available).
             If not given, the name of the function is used. Defaults to "".
         """
 
@@ -367,6 +388,13 @@ class EvaluateLSTM:
         features: list[str],
         scaler: MinMaxScaler | RobustScaler | StandardScaler,
     ) -> None:
+        """Evaluates model perforemance based on known and unknown sequences.
+
+        :param test_X: pd.DataFrame: unscaled validation input data (known sequences)
+        :param test_y: pd.DataFrame: unscaled validation target data (unknown sequences)
+        :param features: list[str]: input features list
+        :param scaler: (MinMaxScaler | RobustScaler | StandardScaler): scaler to scale data
+        """
 
         # Set features as a constant
         FEATURES = features
@@ -390,7 +418,7 @@ class EvaluateLSTM:
         # Generate predictions
         logger.debug(f"[Eval]: predicting values from {last_year} to {target_year}...")
         predictions = self.model.predict(
-            input_data=scaled_cz_data[FEATURES],
+            input_data=test_X[FEATURES],
             last_year=last_year,
             target_year=target_year,
         )
@@ -444,7 +472,7 @@ if __name__ == "__main__":
     FEATURES = [
         "year",
         # "Fertility rate, total",
-        # "Population, total",
+        "Population, total",
         # "Net migration",
         # "Arable land",
         # "Birth rate, crude",
