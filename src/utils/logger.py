@@ -8,7 +8,7 @@ class ColorfulFormatter(logging.Formatter):
         logging.DEBUG: Fore.CYAN,
         logging.WARNING: Fore.LIGHTYELLOW_EX,
         logging.INFO: Fore.GREEN,
-        logging.ERROR: Fore.GREEN,
+        logging.ERROR: Fore.RED,
         logging.CRITICAL: Fore.MAGENTA,
     }
 

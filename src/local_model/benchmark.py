@@ -9,7 +9,7 @@ from config import setup_logging
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
-from src.local_model.preprocessing import StateDataLoader
+from preprocessors.state_preprocessing import StateDataLoader
 from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateLSTM
 
 logger = logging.getLogger("benchmark")
