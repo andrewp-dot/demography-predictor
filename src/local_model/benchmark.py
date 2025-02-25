@@ -96,6 +96,17 @@ def single_state_data_experiment() -> None:
     print(single_state_rnn_evaluation.overall_metrics.head())
 
 
+## 2. Use data for all states (whole dataset)
+def whole_dataset_experiment() -> None:
+    # Load whole dataset
+
+    # Split data, create train and target sequences
+
+    # Train rnn
+
+    raise NotImplementedError("")
+
+
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
@@ -103,7 +114,7 @@ if __name__ == "__main__":
     # Run experiment
     single_state_data_experiment()
 
-## 2. Use data for all states (whole dataset)
+
 ## 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)
 ## 4. Devide data for aligned sequences (% values - 0 - 100) and for absolute values, which can rise (population, total, ...)
 

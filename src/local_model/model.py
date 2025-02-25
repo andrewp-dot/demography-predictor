@@ -16,7 +16,7 @@ import logging
 import pprint
 
 # Custom imports
-from src.local_model.preprocessing import StateDataLoader
+from preprocessors.preprocessing import StateDataLoader
 from config import setup_logging
 
 

@@ -58,7 +58,7 @@ class StateDataLoader:
         self, data: pd.DataFrame, split_rate: float = 0.8
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Splits the data into train and test sets.
+        Splits the data into train and test sets. Data are expected to be sorted by year in ascending order.
 
         :param data: pd.DataFrame
         :return: Tuple[pd.DataFrame, pd.DataFrame]: train and test data
