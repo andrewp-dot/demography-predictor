@@ -1,6 +1,7 @@
 import pandas as pd
 import logging
-from typing import Dict, List, Tuple
+from pydantic import BaseModel
+from typing import Dict, List, Tuple, Optional
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 from config import Config, setup_logging
@@ -11,7 +12,14 @@ settings = Config()
 
 logger = logging.getLogger("data_preprocessing")
 
+
 # TODO: maybe you can use generators from load functions
+# TODO: maybe use this instead of Dict
+# class SingleStateData(BaseModel):
+#     name: str
+#     data_df: pd.DataFrame
+#     train_data_df: Optional[pd.DataFrame] = None  # Set the default to None
+#     test_data_df: Optional[pd.DataFrame] = None  # Set the default to None
 
 
 class StatesDataLoader:
@@ -46,7 +54,7 @@ class StatesDataLoader:
             states (List[str]): List of state names which should be loaded to pandas dataframe.
 
         Returns:
-            Dict[str, pd.DataFrame]: The key is the state name and the value is state dataframe.
+            out: (Dict[str, pd.DataFrame]): The key is the state name and the value is state dataframe.
         """
 
         # Get loader for each state
@@ -65,7 +73,7 @@ class StatesDataLoader:
         Loads data from all states.
 
         Returns:
-            Dict[str, pd.DataFrame]: The key is the state name and the value is state dataframe.
+            out (Dict[str, pd.DataFrame]): The key is the state name and the value is state dataframe.
         """
 
         # Get loader for each state
@@ -95,7 +103,7 @@ class StatesDataLoader:
             split_rate (float, optional): Percentage value of the training data.. Defaults to 0.8.
 
         Returns:
-            Dict[str, Tuple[pd.DataFrame, pd.DataFrame]]: The 'state_name' is the key. Dict[state_name] = (train_data, test_data)
+            out (Dict[str, Tuple[pd.DataFrame, pd.DataFrame]]): The 'state_name' is the key. Dict[state_name] = (train_data, test_data)
         """
 
         # Initialize state split dict
@@ -117,7 +125,7 @@ class StatesDataLoader:
                 continue
 
             # Save the state train and test data
-            state_split_dict[state_name] = tuple(state_train_df, state_test_df)
+            state_split_dict[state_name] = tuple([state_train_df, state_test_df])
 
         return state_split_dict
 
@@ -125,26 +133,66 @@ class StatesDataLoader:
     # Test scaling function
     def scale_data(
         self,
-        states_data: pd.DataFrame,
+        states_data: Dict[str, pd.DataFrame],
         scaler: MinMaxScaler | RobustScaler | StandardScaler,
-    ) -> Tuple[pd.DataFrame, MinMaxScaler | RobustScaler | StandardScaler]:
+    ) -> Tuple[Dict[str, pd.DataFrame], MinMaxScaler | RobustScaler | StandardScaler]:
         """
-        Scales data for in the dafarame.
+        Scales data for in the dafarame. Scales only numerical data.
 
         Args:
-            states_data (pd.DataFrame): Data to scale.
+            states_data (Dict[str, pd.DataFrame]): States data to scale. The dictionary key should be the name of the state
             scaler (MinMaxScaler | RobustScaler | StandardScaler): Scaler which is used for data scaling.
 
         Returns:
-            Tuple[pd.DataFrame, MinMaxScaler | RobustScaler | StandardScaler]: Scaled data, fitted scaler.
+            out (Tuple[Dict[str, pd.DataFrame], MinMaxScaler | RobustScaler | StandardScaler]): Each state data scaled dict, fitted scaler.
         """
+
+        # Merge data by rows
+        states_merged_df = pd.concat(list(states_data.values()), axis=0)
+
+        # Get only numerical columns
+        numerical_features_df = states_merged_df.select_dtypes(include=["number"])
+
+        logger.debug(f"Numerical: {numerical_features_df.columns}")
+
+        # Categorical columns
+        categorical_features_df = states_merged_df.select_dtypes(exclude=["number"])
+        logger.debug(f"Categorical: {categorical_features_df.columns}")
+
         # Scale data
-        scaled_data = scaler.fit_transform(states_data)
+        merged_scaled_data = scaler.fit_transform(numerical_features_df)
 
         # Create pandas dataframe from ndarray
-        scaled_data_df = pd.DataFrame(scaled_data, columns=states_data.columns)
+        merged_scaled_data_df = pd.DataFrame(
+            merged_scaled_data,
+            columns=numerical_features_df.columns,
+            index=numerical_features_df.index,
+        )
 
-        return scaled_data_df, scaler
+        logger.debug(
+            f"Merged scaled dataframe: {merged_scaled_data_df.columns} {merged_scaled_data_df.shape}"
+        )
+
+        # Get the datframe with numerical data scaled
+        merged_scaled_data_df = pd.concat(
+            [categorical_features_df, merged_scaled_data_df], axis=1
+        )
+
+        logger.critical(
+            f"Concatenated merged scaled dataframe: {merged_scaled_data_df.columns} {merged_scaled_data_df.shape}"
+        )
+
+        # Split to separate states
+        scaled_states: Dict[str, pd.DataFrame] = {}
+
+        for state_name in states_data.keys():
+
+            # Save scaled datframe by state
+            scaled_states[state_name] = merged_scaled_data_df.loc[
+                merged_scaled_data_df["country name"] == state_name
+            ]
+
+        return scaled_states, scaler
 
 
 if __name__ == "__main__":
@@ -164,7 +212,6 @@ if __name__ == "__main__":
 
         # Check it does equal
         assert got_states == test_states
-        assert False
     except Exception as e:
         logger.error(
             f"Exception occured while loading states: {test_states}. Exeption: {e}"
@@ -187,3 +234,22 @@ if __name__ == "__main__":
         assert ref_number_all_states == got_number_of_states
     except Exception as e:
         logger.error(f"Exception occured while loading ALL states. Exeption: {e}")
+        exit(1)
+
+    # Split data function
+    states_train_test_data_dict = states_loader.split_data(
+        all_states_dict, sequence_len=5
+    )
+
+    train_data: Dict[str, pd.DataFrame] = {
+        state: data[0] for state, data in states_train_test_data_dict.items()
+    }
+
+    logger.info(f"Train data: \n {train_data['Czechia'].head()}")
+
+    # Scale states data
+    scaled_train_data, scaler = states_loader.scale_data(
+        train_data, scaler=MinMaxScaler()
+    )
+
+    logger.info(f"Train data: \n {scaled_train_data['Czechia'].head()}")
