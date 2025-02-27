@@ -203,6 +203,17 @@ class StatesDataLoader:
         sequence_len: int,
         features: List[str] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Creates input sequences and target sequences tensors from states data.
+
+        Args:
+            states_data (Dict[str, pd.DataFrame]): States data.
+            sequence_len (int): The lenght of each sequence
+            features (List[str], optional): Features to include in the data. If not set, the all numerical features are selected Defaults to None.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: input sequences, target sequences
+        """
 
         # For each state create train and target sequences
         train_sequences = []
@@ -239,10 +250,57 @@ class StatesDataLoader:
         )
         return train_tensor, target_tensor
 
+    # TODO: TRY THIS FUNCTIONS
+    def create_batches(self, sequences: torch.Tensor, batch_size: int) -> torch.Tensor:
+
+        if len(sequences.shape) != 3:
+            raise ValueError(
+                "Sequences must have shape (num_samples, sequence_len, feature_num)"
+            )
+
+        if batch_size <= 0:
+            raise ValueError("batch_size must be a positive integer")
+
+        num_samples, sequence_len, feature_num = sequences.shape
+
+        if batch_size > num_samples:
+            raise ValueError(
+                "batch_size cannot be larger than the number of available samples"
+            )
+
+        # Calculate the number of batches and use trimming for correct reshaping
+        num_batches = num_samples // batch_size
+        trimmed_size = num_batches * batch_size  # Only keep full batches
+
+        # Get only sequences which can craete full batch
+        trimmed_sequences = sequences[:trimmed_size]
+
+        # Reshape to (num_batches, batch_size, sequence_len, feature_num)
+        # Use view for effiecency
+        batches = trimmed_sequences.view(
+            num_batches, batch_size, sequence_len, feature_num
+        )
+
+        return batches
+
     def create_train_batches(
-        self, input_sequences: torch.Tensor, target_sequences: torch.Tensor
+        self,
+        input_sequences: torch.Tensor,
+        target_sequences: torch.Tensor,
+        batch_size: int,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        raise NotImplementedError("Create train batches is not implemented yet")
+
+        # Get tensors and create batches for RNN (format: (num_batches, batch_size, sequence_len, num_features))
+
+        # Create input batches
+        input_bacthes = self.create_batches(
+            sequences=input_sequences, batch_size=batch_size
+        )
+        target_bacthes = self.create_batches(
+            sequences=target_sequences, batch_size=batch_size
+        )
+
+        return input_bacthes, target_bacthes
 
 
 if __name__ == "__main__":

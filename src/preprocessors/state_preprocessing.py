@@ -80,7 +80,7 @@ class StateDataLoader:
         target_sequences: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Groups sequences to batches.
+        Groups sequences to batches. (Format: (num_batches, batch_size, sequence_len, num_features) ).
 
         :param batch_size: int: the number of samples processed in one forward/backward pass (how many samples the network sees before it updates itself)
         :param input_sequences: torch.Tensor: sequences to create a input batches
