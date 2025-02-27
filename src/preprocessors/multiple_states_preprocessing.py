@@ -1,6 +1,8 @@
 import pandas as pd
 import logging
-from pydantic import BaseModel
+import torch
+
+# from pydantic import BaseModel
 from typing import Dict, List, Tuple, Optional
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
@@ -194,6 +196,54 @@ class StatesDataLoader:
 
         return scaled_states, scaler
 
+    # TODO: maybe add features parameter in here
+    def create_train_sequences(
+        self,
+        states_data: Dict[str, pd.DataFrame],
+        sequence_len: int,
+        features: List[str] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+
+        # For each state create train and target sequences
+        train_sequences = []
+        target_sequences = []
+
+        # Add variable for enabling or disabling
+        get_auto_features: bool = features is None
+
+        for state, df in states_data.items():
+
+            # Get numerical columns
+
+            if get_auto_features:
+                features = list(df.select_dtypes(include=["number"]).columns)
+
+            # Get input and target sequences for the states
+            input_seq, target_seq = self.__state_loaders[
+                state
+            ].preprocess_training_data(
+                data=df, sequence_len=sequence_len, features=features
+            )
+
+            # Append input and train sequences
+            train_sequences.append(input_seq)
+            target_sequences.append(target_seq)
+
+        # Merge train and target sequences
+        train_tensor = torch.cat(train_sequences)
+        target_tensor = torch.cat(target_sequences)
+
+        # Print shape
+        logger.debug(
+            f"Train tensor shape: {train_tensor.shape}, Target tensor shape: {target_tensor.shape}"
+        )
+        return train_tensor, target_tensor
+
+    def create_train_batches(
+        self, input_sequences: torch.Tensor, target_sequences: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        raise NotImplementedError("Create train batches is not implemented yet")
+
 
 if __name__ == "__main__":
     # Setup logging
@@ -253,3 +303,8 @@ if __name__ == "__main__":
     )
 
     logger.info(f"Train data: \n {scaled_train_data['Czechia'].head()}")
+
+    # Create train and test sequences
+    train_sequences, target_sequences = states_loader.create_train_sequences(
+        scaled_train_data, sequence_len=5
+    )
