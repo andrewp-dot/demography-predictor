@@ -251,17 +251,51 @@ class StatesDataLoader:
         return train_tensor, target_tensor
 
     # TODO: TRY THIS FUNCTIONS
-    def create_batches(self, sequences: torch.Tensor, batch_size: int) -> torch.Tensor:
-
-        if len(sequences.shape) != 3:
+    def create_target_batches(
+        self, target_sequences: torch.Tensor, batch_size: int
+    ) -> torch.Tensor:
+        if len(target_sequences.shape) != 2:
             raise ValueError(
-                "Sequences must have shape (num_samples, sequence_len, feature_num)"
+                "Target sequences must have shape (num_samples, num_features)"
             )
 
         if batch_size <= 0:
             raise ValueError("batch_size must be a positive integer")
 
-        num_samples, sequence_len, feature_num = sequences.shape
+        num_samples, num_features = (
+            target_sequences.shape
+        )  # In shape (batch_size, num_features)
+
+        if batch_size > num_samples:
+            raise ValueError(
+                "batch_size cannot be larger than the number of available samples"
+            )
+
+        # Calculate the number of batches and use trimming for correct reshaping
+        num_batches = num_samples // batch_size
+        trimmed_size = num_batches * batch_size  # Only keep full batches
+
+        # Trim tensor to match full batches
+        trimmed_sequences = target_sequences[:trimmed_size]
+
+        # Reshape to (num_batches, batch_size, num_features)
+        batches = trimmed_sequences.reshape(num_batches, batch_size, num_features)
+
+        return batches
+
+    def create_input_batches(
+        self, input_sequences: torch.Tensor, batch_size: int
+    ) -> torch.Tensor:
+
+        if len(input_sequences.shape) != 3:
+            raise ValueError(
+                "Input sequences must have shape (num_samples, sequence_len, feature_num)"
+            )
+
+        if batch_size <= 0:
+            raise ValueError("batch_size must be a positive integer")
+
+        num_samples, sequence_len, feature_num = input_sequences.shape
 
         if batch_size > num_samples:
             raise ValueError(
@@ -273,7 +307,7 @@ class StatesDataLoader:
         trimmed_size = num_batches * batch_size  # Only keep full batches
 
         # Get only sequences which can craete full batch
-        trimmed_sequences = sequences[:trimmed_size]
+        trimmed_sequences = input_sequences[:trimmed_size]
 
         # Reshape to (num_batches, batch_size, sequence_len, feature_num)
         # Use view for effiecency
@@ -291,16 +325,15 @@ class StatesDataLoader:
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         # Get tensors and create batches for RNN (format: (num_batches, batch_size, sequence_len, num_features))
-
-        # Create input batches
-        input_bacthes = self.create_batches(
-            sequences=input_sequences, batch_size=batch_size
-        )
-        target_bacthes = self.create_batches(
-            sequences=target_sequences, batch_size=batch_size
+        input_batches = self.create_input_batches(
+            input_sequences=input_sequences, batch_size=batch_size
         )
 
-        return input_bacthes, target_bacthes
+        target_batches = self.create_target_batches(
+            target_sequences=target_sequences, batch_size=batch_size
+        )
+
+        return input_batches, target_batches
 
 
 if __name__ == "__main__":
@@ -365,4 +398,19 @@ if __name__ == "__main__":
     # Create train and test sequences
     train_sequences, target_sequences = states_loader.create_train_sequences(
         scaled_train_data, sequence_len=5
+    )
+
+    logger.info(
+        f"Training sequences shape: {train_sequences.shape}, Target sequences shape: {target_sequences.shape}"
+    )
+
+    # Create batches
+    train_batches, target_batches = states_loader.create_train_batches(
+        input_sequences=train_sequences,
+        target_sequences=target_sequences,
+        batch_size=32,
+    )
+
+    logger.info(
+        f"Training batches shape: {train_batches.shape}, Target batches shape: {target_batches.shape}"
     )

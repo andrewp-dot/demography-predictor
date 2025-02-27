@@ -149,10 +149,15 @@ class StateDataLoader:
             )
 
         # Return
-        for input, target in zip(input_sequences, target_sequences):
-            logger.debug(f"Input: {input.shape}, Target: {target.shape}")
+        input_sequences, target_sequences = torch.stack(input_sequences), torch.stack(
+            target_sequences
+        )
 
-        return torch.stack(input_sequences), torch.stack(target_sequences)
+        logger.debug(
+            f"[Preprocessing train data]: input sequences shape: {input_sequences.shape}, target sequences shape: {target_sequences.shape}"
+        )
+
+        return input_sequences, target_sequences
 
     def preprocess_data(
         self,
