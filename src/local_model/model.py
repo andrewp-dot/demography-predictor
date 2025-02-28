@@ -301,15 +301,15 @@ class LocalModel(nn.Module):
                     0
                 )  # Add batch dimension: (1, sequence_length, input_size)
 
-                print("-" * 100)
-                print("Input:")
-                pprint.pprint(window)
+                # print("-" * 100)
+                # print("Input:")
+                # pprint.pprint(window)
 
                 pred = self(window)  # Forward pass
 
-                print("Output:")
-                pprint.pprint(pred.cpu())
-                print("-" * 100)
+                # print("Output:")
+                # pprint.pprint(pred.cpu())
+                # print("-" * 100)
 
                 predictions.append(pred.cpu())
 
@@ -498,19 +498,6 @@ class EvaluateLSTM:
             [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
             axis=0,
         )
-
-    # TODO: Do the evaluation for whole dataset
-    def eval_by_state(
-        self,
-        features: list[str],
-        scaler: Union[MinMaxScaler | RobustScaler | StandardScaler],
-    ):
-
-        # Eval for each state, by feature, overall
-
-        # Save it to dataframe
-
-        raise NotImplementedError()
 
 
 if __name__ == "__main__":
