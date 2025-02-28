@@ -9,7 +9,8 @@ from config import setup_logging
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
-from preprocessors.state_preprocessing import StateDataLoader
+from src.preprocessors.state_preprocessing import StateDataLoader
+from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateLSTM
 
 logger = logging.getLogger("benchmark")
@@ -42,7 +43,7 @@ def single_state_data_experiment() -> None:
         sequence_length=10,
         learning_rate=0.0001,
         epochs=10,
-        batch_size=1,
+        batch_size=1,  # Edit this for faster training
         num_layers=3,
     )
     single_state_rnn = LocalModel(single_state_params)
@@ -99,12 +100,78 @@ def single_state_data_experiment() -> None:
 ## 2. Use data for all states (whole dataset)
 def whole_dataset_experiment() -> None:
     # Load whole dataset
+    states_loader = StatesDataLoader()
 
-    # Split data, create train and target sequences
+    all_states = states_loader.load_all_states()
+
+    # Get only numerical features
+    FEATURES = [
+        col.lower()  # Lower to ensure key compatibility
+        for col in all_states["Czechia"].select_dtypes(include="number").columns
+    ]
+
+    # Get hyperparameters for training
+    all_state_state_params = LSTMHyperparameters(
+        input_size=len(FEATURES),
+        hidden_size=128,
+        sequence_length=10,
+        learning_rate=0.0001,
+        epochs=10,
+        batch_size=1,
+        num_layers=3,
+    )
+
+    # TODO: Maybe you an write this to all in one function
+
+    # Split data
+    states_train_data, states_test_data = states_loader.split_data(
+        states_dict=all_states, sequence_len=all_state_state_params.sequence_length
+    )
+
+    # Scale data
+    scaled_train_data, all_states_scaler = states_loader.scale_data(
+        states_train_data, scaler=MinMaxScaler()
+    )
+
+    # Create input and target sequences
+    train_input_sequences, train_target_sequences = (
+        states_loader.create_train_sequences(
+            states_data=scaled_train_data,
+            sequence_len=all_state_state_params.sequence_length,
+            features=FEATURES,
+        )
+    )
+
+    # Create input and target batches for faster training
+    train_input_batches, train_target_batches = states_loader.create_train_batches(
+        input_sequences=train_input_sequences,
+        target_sequences=train_target_sequences,
+        batch_size=all_state_state_params.batch_size,
+    )
 
     # Train rnn
+    all_states_rnn = LocalModel(all_state_state_params)
 
-    raise NotImplementedError("")
+    all_states_rnn.train_model(
+        batch_inputs=train_input_batches, batch_targets=train_target_batches
+    )
+
+    # Get stats
+    stats = all_states_rnn.training_stats
+    fig = stats.create_plot()
+
+    # Save training stats or plot it
+
+    # Evaluate model
+    # unscaled_eval_input, unscaled_eval_output = state_loader.split_data(state_df)
+
+    single_state_rnn_evaluation = EvaluateLSTM(all_states_rnn)
+    single_state_rnn_evaluation.eval(
+        states_train_data,
+        states_test_data,
+        features=FEATURES,
+        scaler=all_states_scaler,
+    )
 
 
 if __name__ == "__main__":
@@ -112,7 +179,8 @@ if __name__ == "__main__":
     setup_logging()
 
     # Run experiment
-    single_state_data_experiment()
+    # single_state_data_experiment()
+    whole_dataset_experiment()
 
 
 ## 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)

@@ -93,7 +93,7 @@ class StatesDataLoader:
         states_dict: Dict[str, pd.DataFrame],
         sequence_len: int,
         split_rate: float = 0.8,
-    ) -> Dict[str, Tuple[pd.DataFrame, pd.DataFrame]]:
+    ) -> Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
         """
         Splits each dataframe to train and and test set. States with records * (1 - test_size) is lower then sequence len + 1 (length of the target sequence) are excluded.
 
@@ -105,11 +105,12 @@ class StatesDataLoader:
             split_rate (float, optional): Percentage value of the training data.. Defaults to 0.8.
 
         Returns:
-            out (Dict[str, Tuple[pd.DataFrame, pd.DataFrame]]): The 'state_name' is the key. Dict[state_name] = (train_data, test_data)
+            out (Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]): States train data dict, states test data dict. The 'state_name' is the key for both dicts.
         """
 
         # Initialize state split dict
-        state_split_dict: Dict[str, Tuple[pd.DataFrame, pd.DataFrame]] = {}
+        state_split_train_dict: Dict[str, pd.DataFrame] = {}
+        state_split_test_dict: Dict[str, pd.DataFrame] = {}
 
         # Split each state
         for state_name, loader in self.__state_loaders.items():
@@ -127,9 +128,10 @@ class StatesDataLoader:
                 continue
 
             # Save the state train and test data
-            state_split_dict[state_name] = tuple([state_train_df, state_test_df])
+            state_split_train_dict[state_name] = state_train_df
+            state_split_test_dict[state_name] = state_test_df
 
-        return state_split_dict
+        return state_split_train_dict, state_split_test_dict
 
     # TODO:
     # Test scaling function
@@ -378,13 +380,7 @@ if __name__ == "__main__":
         exit(1)
 
     # Split data function
-    states_train_test_data_dict = states_loader.split_data(
-        all_states_dict, sequence_len=5
-    )
-
-    train_data: Dict[str, pd.DataFrame] = {
-        state: data[0] for state, data in states_train_test_data_dict.items()
-    }
+    train_data, test_data = states_loader.split_data(all_states_dict, sequence_len=5)
 
     logger.info(f"Train data: \n {train_data['Czechia'].head()}")
 

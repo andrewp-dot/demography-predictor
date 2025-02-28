@@ -16,7 +16,7 @@ import logging
 import pprint
 
 # Custom imports
-from preprocessors.state_preprocessing import StateDataLoader
+from src.preprocessors.state_preprocessing import StateDataLoader
 from config import setup_logging
 
 
@@ -451,14 +451,6 @@ class EvaluateLSTM:
         self.reference_values = scaler.inverse_transform(test_y)
 
         logger.debug(f"[Eval]: predictions shape: {predictions.shape}")
-
-        # Get the real value of the predicions
-        # denormalized_predictions = scaler.inverse_transform(predictions)
-
-        # Create dataframe from predictions the real value of the predicions
-        # denormalized_predicions_df = pd.DataFrame(
-        #     denormalized_predictions, columns=test_X.columns
-        # )
 
         # Get MAE
         overall_mae_df, mae_per_target_df = self.__get_metric(
