@@ -1,6 +1,6 @@
 # Standard library imports
 import pandas as pd
-from typing import Tuple, Dict, List, Callable
+from typing import Tuple, Dict, List, Callable, Union
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
@@ -183,13 +183,19 @@ class LocalModel(nn.Module):
         # return out, (h_n, c_n)
         return out
 
-    def train_model(self, batch_inputs: torch.Tensor, batch_targets: torch.Tensor):
+    def train_model(
+        self,
+        batch_inputs: torch.Tensor,
+        batch_targets: torch.Tensor,
+        display_nth_epoch: int = 10,
+    ):
         """
         Trains model using batched input sequences and batched target sequences.
 
 
         :param batch_inputs: torch.Tensor: batches of input sequences
         :param batch_targets: torch.Tensor: batches of target sequences
+        :param display_nth_epoch: int: First and every nth epoch is displayed
         """
         # Put the model to the device
         self.to(device=self.device)
@@ -238,7 +244,7 @@ class LocalModel(nn.Module):
             epoch_loss /= len(batch_inputs)
             self.training_stats.losses.append(epoch_loss)
 
-            if not epoch % 10:
+            if not epoch % display_nth_epoch:
                 logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
 
     def predict(
@@ -401,20 +407,29 @@ class EvaluateLSTM:
 
         return overall_metric_df, separate_target_metric_values_df
 
+    # TODO: edit this
     def eval(
         self,
-        test_X: pd.DataFrame,
-        test_y: pd.DataFrame,
+        test_X: Union[pd.DataFrame, Dict[str, pd.DataFrame]],
+        test_y: Union[pd.DataFrame, Dict[str, pd.DataFrame]],
         features: list[str],
-        scaler: MinMaxScaler | RobustScaler | StandardScaler,
+        scaler: Union[MinMaxScaler | RobustScaler | StandardScaler],
     ) -> None:
         """Evaluates model perforemance based on known and unknown sequences.
 
-        :param test_X: pd.DataFrame: unscaled validation input data (known sequences)
-        :param test_y: pd.DataFrame: unscaled validation target data (unknown sequences)
+        :param test_X: Union[pd.DataFrame, Dict[str, pd.DataFrame]]: unscaled validation input data (known sequences)
+        :param test_y: Union[pd.DataFrame, Dict[str, pd.DataFrame]]: unscaled validation target data (unknown sequences)
         :param features: list[str]: input features list
-        :param scaler: (MinMaxScaler | RobustScaler | StandardScaler): scaler to scale data
+        :param scaler: (Union[MinMaxScaler | RobustScaler | StandardScaler]): scaler to scale data
         """
+
+        if type(test_X) != type(test_y):
+            raise ValueError(
+                f"Test_X and test_y are not the same type! type(test_X) {type(test_X)} != type(test_y) {type(test_y)}"
+            )
+
+        if isinstance(test_X, Dict) and isinstance(test_y, Dict):
+            raise NotImplementedError("")
 
         # Set features as a constant
         FEATURES = features
@@ -483,6 +498,19 @@ class EvaluateLSTM:
             [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
             axis=0,
         )
+
+    # TODO: Do the evaluation for whole dataset
+    def eval_by_state(
+        self,
+        features: list[str],
+        scaler: Union[MinMaxScaler | RobustScaler | StandardScaler],
+    ):
+
+        # Eval for each state, by feature, overall
+
+        # Save it to dataframe
+
+        raise NotImplementedError()
 
 
 if __name__ == "__main__":

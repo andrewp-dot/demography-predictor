@@ -69,7 +69,7 @@ def single_state_data_experiment() -> None:
 
     # Train model
     single_state_rnn.train_model(
-        batch_inputs=train_batches, batch_targets=target_batches
+        batch_inputs=train_batches, batch_targets=target_batches, display_nth_epoch=1
     )
 
     # Get stats
@@ -117,20 +117,20 @@ def whole_dataset_experiment() -> None:
         sequence_length=10,
         learning_rate=0.0001,
         epochs=10,
-        batch_size=1,
+        batch_size=32,
         num_layers=3,
     )
 
     # TODO: Maybe you an write this to all in one function
 
     # Split data
-    states_train_data, states_test_data = states_loader.split_data(
+    states_train_data_dict, states_test_data_dict = states_loader.split_data(
         states_dict=all_states, sequence_len=all_state_state_params.sequence_length
     )
 
     # Scale data
     scaled_train_data, all_states_scaler = states_loader.scale_data(
-        states_train_data, scaler=MinMaxScaler()
+        states_train_data_dict, scaler=MinMaxScaler()
     )
 
     # Create input and target sequences
@@ -153,7 +153,9 @@ def whole_dataset_experiment() -> None:
     all_states_rnn = LocalModel(all_state_state_params)
 
     all_states_rnn.train_model(
-        batch_inputs=train_input_batches, batch_targets=train_target_batches
+        batch_inputs=train_input_batches,
+        batch_targets=train_target_batches,
+        display_nth_epoch=1,
     )
 
     # Get stats
@@ -165,10 +167,11 @@ def whole_dataset_experiment() -> None:
     # Evaluate model
     # unscaled_eval_input, unscaled_eval_output = state_loader.split_data(state_df)
 
-    single_state_rnn_evaluation = EvaluateLSTM(all_states_rnn)
-    single_state_rnn_evaluation.eval(
-        states_train_data,
-        states_test_data,
+    all_states_rnn_evaluation = EvaluateLSTM(all_states_rnn)
+
+    all_states_rnn_evaluation.eval(
+        states_train_data_dict,
+        states_test_data_dict,
         features=FEATURES,
         scaler=all_states_scaler,
     )
