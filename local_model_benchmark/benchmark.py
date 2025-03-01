@@ -14,7 +14,14 @@ from typing import List, Tuple, Union
 from config import setup_logging, Config
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 
+from statsmodels.tsa.arima.model import ARIMA
+
 # Custom imports
+from local_model_benchmark.data_experiments import (
+    whole_dataset_experiment,
+    single_state_data_experiment,
+    only_stationary_data_experiment,
+)
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateLSTM
@@ -31,357 +38,15 @@ logger = logging.getLogger("benchmark")
 ## Maybe here define base experiment function
 
 
-# TODO: use this as data preprocessing function
-def preprocess_single_state_data(
-    train_data_df: pd.DataFrame,
-    state_loader: StateDataLoader,
-    hyperparameters: LSTMHyperparameters,
-    features: List[str],
-    scaler: Union[MinMaxScaler, RobustScaler, StandardScaler],
-) -> Tuple[
-    torch.Tensor, torch.Tensor, Union[MinMaxScaler, RobustScaler, StandardScaler]
-]:
-    """
-    Converts training data to format for training. From the
-
-    Args:
-        train_data_df (pd.DataFrame): Unscaled training data.
-        state_loader (StateDataLoader): Loader for the state.
-        hyperparameters (LSTMHyperparameters): Hyperparameters used for training the model.
-        features (List[str]): Features used in model.
-
-    Returns:
-        out: Tuple[torch.Tensor, torch.Tensor, Union[MinMaxScaler, RobustScaler, StandardScaler]]: train input batches, train target batches,
-        fitted scaler used for training data scaling.
-    """
-
-    # Get features
-    FEATURES = features
-
-    # Scale data
-    scaled_train_data, state_scaler = state_loader.scale_data(
-        train_data_df, scaler=scaler
-    )
-
-    # Create input and target sequences
-    train_input_sequences, train_target_sequences = (
-        state_loader.preprocess_training_data(
-            data=scaled_train_data,
-            sequence_len=hyperparameters.sequence_length,
-            features=FEATURES,
-        )
-    )
-
-    # Create input and target batches for faster training
-    train_input_batches, train_target_batches = state_loader.create_batches(
-        batch_size=hyperparameters.batch_size,
-        input_sequences=train_input_sequences,
-        target_sequences=train_target_sequences,
-    )
-
-    # Return training batches, target batches and fitted scaler
-    return train_input_batches, train_target_batches, state_scaler
-
-
-def write_experiment_results(
-    experiment_name: str,
-    state: str,
-    per_target_metrics: pd.DataFrame,
-    overall_metrics: pd.DataFrame,
-) -> None:
-    """
-    Writes experiment model evaluation to file
-
-    Args:
-        experiment_name (str): Name of the experiment. This is the folder name of
-        state (str): Experiments evaluation results for state (state name)
-        per_target_metrics (pd.Dataframe): Metrics dataframe per target.
-        overall_metrics (pd.DataFrame): Overall evaluation metrics for prediction.
-    """
-
-    experiment_results_dir: str = settings.benchmark_results_dir
-
-    # Create folder if not created
-    if not os.path.isdir(experiment_results_dir):
-        os.makedirs(experiment_results_dir)
-
-    # Create folder for experiment results
-    experiment_dir: str = os.path.join(experiment_results_dir, experiment_name)
-    if not os.path.isdir(experiment_dir):
-        os.makedirs(experiment_dir)
-
-    # Save the results
-    per_target_metrics.to_csv(
-        os.path.join(experiment_dir, f"per_target_metrics_{state}.csv"), index=False
-    )
-    overall_metrics.to_csv(
-        os.path.join(experiment_dir, f"overall_metrics_{state}.csv"), index=False
-    )
-
-
-# Data based experiments
-
-
-## 1. Use data for just a single state
-def single_state_data_experiment(state: str, split_rate: float) -> None:
-    # Define experiment name
-    EXPERIMENT_NAME = single_state_data_experiment.__name__
-
-    # Define experiment settings
-    STATE = state
-    state_loader = StateDataLoader(STATE)
-
-    # Single state dataframe
-    state_df = state_loader.load_data()
-
-    # Exclude country name
-    state_df = state_df.drop(columns=["country name"])
-
-    # Get features
-    FEATURES = [col.lower() for col in state_df.columns]
-
-    single_state_params = LSTMHyperparameters(
-        input_size=len(FEATURES),
-        hidden_size=128,
-        sequence_length=10,
-        learning_rate=0.0001,
-        epochs=10,
-        batch_size=1,  # Edit this for faster training
-        num_layers=3,
-    )
-    single_state_rnn = LocalModel(single_state_params)
-
-    # Split data
-    state_train, state_test = state_loader.split_data(state_df, split_rate=split_rate)
-
-    # Preproces data
-    train_batches, target_batches, state_scaler = preprocess_single_state_data(
-        train_data_df=state_train,
-        state_loader=state_loader,
-        hyperparameters=single_state_params,
-        features=FEATURES,
-        scaler=MinMaxScaler(),
-    )
-
-    # Train model
-    single_state_rnn.train_model(
-        batch_inputs=train_batches, batch_targets=target_batches, display_nth_epoch=1
-    )
-
-    # Get stats
-    stats = single_state_rnn.training_stats
-    fig = stats.create_plot()
-
-    # Save training stats or plot it
-
-    # Evaluate model
-    single_state_rnn_evaluation = EvaluateLSTM(single_state_rnn)
-    single_state_rnn_evaluation.eval(
-        state_train,
-        state_test,
-        features=FEATURES,
-        scaler=state_scaler,
-    )
-
-    # Get evaluation metrics
-    write_experiment_results(
-        EXPERIMENT_NAME,
-        state=STATE,
-        per_target_metrics=single_state_rnn_evaluation.per_target_metrics,
-        overall_metrics=single_state_rnn_evaluation.overall_metrics,
-    )
-
-
-## 2. Use data for all states (whole dataset)
-def whole_dataset_experiment() -> None:
-
-    # Define experiment name
-    EXPERIMENT_NAME = whole_dataset_experiment.__name__
-
-    # Load whole dataset
-    states_loader = StatesDataLoader()
-
-    all_states = states_loader.load_all_states()
-
-    # Get only numerical features
-    FEATURES = [
-        col.lower()  # Lower to ensure key compatibility
-        for col in all_states["Czechia"].select_dtypes(include="number").columns
-    ]
-
-    # Get hyperparameters for training
-    all_state_state_params = LSTMHyperparameters(
-        input_size=len(FEATURES),
-        hidden_size=128,
-        sequence_length=10,
-        learning_rate=0.0001,
-        epochs=10,
-        batch_size=1,
-        num_layers=3,
-    )
-
-    # TODO: Maybe you an write this to all in one function
-
-    # Split data
-    states_train_data_dict, states_test_data_dict = states_loader.split_data(
-        states_dict=all_states, sequence_len=all_state_state_params.sequence_length
-    )
-
-    # Scale data
-    scaled_train_data, all_states_scaler = states_loader.scale_data(
-        states_train_data_dict, scaler=MinMaxScaler()
-    )
-
-    # Create input and target sequences
-    train_input_sequences, train_target_sequences = (
-        states_loader.create_train_sequences(
-            states_data=scaled_train_data,
-            sequence_len=all_state_state_params.sequence_length,
-            features=FEATURES,
-        )
-    )
-
-    # Create input and target batches for faster training
-    train_input_batches, train_target_batches = states_loader.create_train_batches(
-        input_sequences=train_input_sequences,
-        target_sequences=train_target_sequences,
-        batch_size=all_state_state_params.batch_size,
-    )
-
-    # Train rnn
-    all_states_rnn = LocalModel(all_state_state_params)
-
-    all_states_rnn.train_model(
-        batch_inputs=train_input_batches,
-        batch_targets=train_target_batches,
-        display_nth_epoch=1,
-    )
-
-    # Get stats
-    stats = all_states_rnn.training_stats
-    fig = stats.create_plot()
-
-    # Save training stats or plot it
-
-    # Evaluate model
-    all_states_rnn_evaluation = EvaluateLSTM(all_states_rnn)
-
-    EVAL_STATE = "Czechia"
-    all_states_rnn_evaluation.eval(
-        states_train_data_dict[EVAL_STATE][FEATURES],
-        states_test_data_dict[EVAL_STATE][FEATURES],
-        features=FEATURES,
-        scaler=all_states_scaler,
-    )
-
-    # Save the results
-    write_experiment_results(
-        EXPERIMENT_NAME,
-        state=EVAL_STATE,
-        per_target_metrics=all_states_rnn_evaluation.per_target_metrics,
-        overall_metrics=all_states_rnn_evaluation.overall_metrics,
-    )
-
-
-## 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)
-
-
-## 4. Devide data for aligned sequences (% values - 0 - 100) and for absolute values, which can rise (population, total, ...)
-def only_stationary_data(state: str, split_rate: float) -> None:
-
-    # Define experiment name
-    EXPERIMENT_NAME = only_stationary_data.__name__
-
-    # Load the state
-    STATE = state
-    state_loader = StateDataLoader(STATE)
-    state_data_df = state_loader.load_data()
-
-    # Get only numerical features
-    FEATURES = [
-        # Need to run columns
-        "year",
-        # Stationary columns
-        "Fertility rate, total",
-        "Arable land",
-        "Birth rate, crude",
-        "GDP growth",
-        "Death rate, crude",
-        "Population ages 15-64",
-        "Population ages 0-14",
-        "Agricultural land",
-        "Population ages 65 and above",
-        "Rural population",
-        "Rural population growth",
-        # "Age dependency ratio",
-        "Urban population",
-        "Population growth",
-    ]
-
-    # Adjust feature names to lower
-    FEATURES = [col.lower() for col in FEATURES]
-
-    # Get only data with features
-    state_data_df = state_data_df[FEATURES]
-
-    # Get hyperparameters for training
-    only_staionary_data_params = LSTMHyperparameters(
-        input_size=len(FEATURES),
-        hidden_size=128,
-        sequence_length=10,
-        learning_rate=0.0001,
-        epochs=40,
-        batch_size=1,
-        num_layers=3,
-    )
-
-    # Split data
-    train_data_df, test_data_df = state_loader.split_data(
-        data=state_data_df, split_rate=split_rate
-    )
-
-    # Preprocess data
-    train_input_batches, train_target_batches, state_scaler = (
-        preprocess_single_state_data(
-            train_data_df=train_data_df,
-            state_loader=state_loader,
-            hyperparameters=only_staionary_data_params,
-            features=FEATURES,
-            scaler=MinMaxScaler(),
-        )
-    )
-
-    # Train rnn
-    only_stationary_rnn = LocalModel(only_staionary_data_params)
-
-    only_stationary_rnn.train_model(
-        batch_inputs=train_input_batches,
-        batch_targets=train_target_batches,
-    )
-
-    # Get stats
-    stats = only_stationary_rnn.training_stats
-    fig = stats.create_plot()
-
-    # Save training stats or plot it
-
-    # Evaluate model
-    only_stationary_rnn_evaluation = EvaluateLSTM(only_stationary_rnn)
-
-    only_stationary_rnn_evaluation.eval(
-        train_data_df,
-        test_data_df,
-        features=FEATURES,
-        scaler=state_scaler,
-    )
-
-    # Save the results
-    write_experiment_results(
-        EXPERIMENT_NAME,
-        state=STATE,
-        per_target_metrics=only_stationary_rnn_evaluation.per_target_metrics,
-        overall_metrics=only_stationary_rnn_evaluation.overall_metrics,
-    )
+def run_data_experiments() -> None:
+    # Data experiments
+    single_state_data_experiment(state="Czechia", split_rate=0.8)
+    # whole_dataset_experiment()
+    # only_stationary_data_experiment(state="Czechia", split_rate=0.8)
+
+
+def run_model_experiments() -> None:
+    raise NotImplementedError()
 
 
 if __name__ == "__main__":
@@ -389,11 +54,9 @@ if __name__ == "__main__":
     setup_logging()
 
     # Run experiments
+    run_data_experiments()
 
-    # Data experiments
-    # single_state_data_experiment(state="Czechia", split_rate=0.8)
-    # whole_dataset_experiment()
-    only_stationary_data(state="Czechia", split_rate=0.8)
+    # run_model_experiments()
 
 
 # Model input based eperiments:
@@ -425,3 +88,7 @@ def compare_with_statistical_models(state: str, split_rate: float) -> None:
 # TODO: try different loss functions
 
 #  criterion = nn.HuberLoss(delta=1.0)
+
+# Interesting to try:
+# Feature engineering -> correlations, stationary features, non-stationary features
+# Maybe delete the COVID years in order to known it's influence on model accuracy?
