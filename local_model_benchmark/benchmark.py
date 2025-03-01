@@ -7,8 +7,12 @@ import os
 import pandas as pd
 import pprint
 import logging
+import torch
+from typing import List, Tuple, Union
+
+
 from config import setup_logging, Config
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 
 # Custom imports
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -20,8 +24,63 @@ settings = Config()
 logger = logging.getLogger("benchmark")
 
 # TODO: Define experiments
+# TODO: Data preprocessing functions -> split-> scaling -> sequences -> batches
+# TODO: doc comments
+
 
 ## Maybe here define base experiment function
+
+
+# TODO: use this as data preprocessing function
+def preprocess_single_state_data(
+    train_data_df: pd.DataFrame,
+    state_loader: StateDataLoader,
+    hyperparameters: LSTMHyperparameters,
+    features: List[str],
+    scaler: Union[MinMaxScaler, RobustScaler, StandardScaler],
+) -> Tuple[
+    torch.Tensor, torch.Tensor, Union[MinMaxScaler, RobustScaler, StandardScaler]
+]:
+    """
+    Converts training data to format for training. From the
+
+    Args:
+        train_data_df (pd.DataFrame): Unscaled training data.
+        state_loader (StateDataLoader): Loader for the state.
+        hyperparameters (LSTMHyperparameters): Hyperparameters used for training the model.
+        features (List[str]): Features used in model.
+
+    Returns:
+        out: Tuple[torch.Tensor, torch.Tensor, Union[MinMaxScaler, RobustScaler, StandardScaler]]: train input batches, train target batches,
+        fitted scaler used for training data scaling.
+    """
+
+    # Get features
+    FEATURES = features
+
+    # Scale data
+    scaled_train_data, state_scaler = state_loader.scale_data(
+        train_data_df, scaler=scaler
+    )
+
+    # Create input and target sequences
+    train_input_sequences, train_target_sequences = (
+        state_loader.preprocess_training_data(
+            data=scaled_train_data,
+            sequence_len=hyperparameters.sequence_length,
+            features=FEATURES,
+        )
+    )
+
+    # Create input and target batches for faster training
+    train_input_batches, train_target_batches = state_loader.create_batches(
+        batch_size=hyperparameters.batch_size,
+        input_sequences=train_input_sequences,
+        target_sequences=train_target_sequences,
+    )
+
+    # Return training batches, target batches and fitted scaler
+    return train_input_batches, train_target_batches, state_scaler
 
 
 def write_experiment_results(
@@ -64,12 +123,12 @@ def write_experiment_results(
 
 
 ## 1. Use data for just a single state
-def single_state_data_experiment() -> None:
+def single_state_data_experiment(state: str, split_rate: float) -> None:
     # Define experiment name
     EXPERIMENT_NAME = single_state_data_experiment.__name__
 
     # Define experiment settings
-    STATE = "Czechia"
+    STATE = state
     state_loader = StateDataLoader(STATE)
 
     # Single state dataframe
@@ -92,23 +151,16 @@ def single_state_data_experiment() -> None:
     )
     single_state_rnn = LocalModel(single_state_params)
 
-    # Preprocess data
-    scaled_state_df, state_scaler = state_loader.scale_data(
-        data=state_df, scaler=MinMaxScaler()
-    )
-    state_train, state_test = state_loader.split_data(scaled_state_df)
+    # Split data
+    state_train, state_test = state_loader.split_data(state_df, split_rate=split_rate)
 
-    # Get the training input and target sequences
-    train_in_seqs, train_target_seqs = state_loader.preprocess_training_data(
-        data=state_train,
-        sequence_len=single_state_params.sequence_length,
+    # Preproces data
+    train_batches, target_batches, state_scaler = preprocess_single_state_data(
+        train_data_df=state_train,
+        state_loader=state_loader,
+        hyperparameters=single_state_params,
         features=FEATURES,
-    )
-
-    train_batches, target_batches = state_loader.create_batches(
-        batch_size=single_state_params.batch_size,
-        input_sequences=train_in_seqs,
-        target_sequences=train_target_seqs,
+        scaler=MinMaxScaler(),
     )
 
     # Train model
@@ -123,19 +175,15 @@ def single_state_data_experiment() -> None:
     # Save training stats or plot it
 
     # Evaluate model
-    unscaled_eval_input, unscaled_eval_output = state_loader.split_data(state_df)
-
     single_state_rnn_evaluation = EvaluateLSTM(single_state_rnn)
     single_state_rnn_evaluation.eval(
-        unscaled_eval_input,
-        unscaled_eval_output,
+        state_train,
+        state_test,
         features=FEATURES,
         scaler=state_scaler,
     )
 
     # Get evaluation metrics
-    # formated_metrics = pprint.pformat(single_state_rnn_evaluation.metrics)
-
     write_experiment_results(
         EXPERIMENT_NAME,
         state=STATE,
@@ -265,7 +313,7 @@ def only_stationary_data(state: str, split_rate: float) -> None:
         "Population ages 65 and above",
         "Rural population",
         "Rural population growth",
-        "Age dependency ratio",
+        # "Age dependency ratio",
         "Urban population",
         "Population growth",
     ]
@@ -292,25 +340,15 @@ def only_stationary_data(state: str, split_rate: float) -> None:
         data=state_data_df, split_rate=split_rate
     )
 
-    # Scale data
-    scaled_train_data, state_scaler = state_loader.scale_data(
-        train_data_df, scaler=MinMaxScaler()
-    )
-
-    # Create input and target sequences
-    train_input_sequences, train_target_sequences = (
-        state_loader.preprocess_training_data(
-            data=scaled_train_data,
-            sequence_len=only_staionary_data_params.sequence_length,
+    # Preprocess data
+    train_input_batches, train_target_batches, state_scaler = (
+        preprocess_single_state_data(
+            train_data_df=train_data_df,
+            state_loader=state_loader,
+            hyperparameters=only_staionary_data_params,
             features=FEATURES,
+            scaler=MinMaxScaler(),
         )
-    )
-
-    # Create input and target batches for faster training
-    train_input_batches, train_target_batches = state_loader.create_batches(
-        batch_size=only_staionary_data_params.batch_size,
-        input_sequences=train_input_sequences,
-        target_sequences=train_target_sequences,
     )
 
     # Train rnn
@@ -353,16 +391,25 @@ if __name__ == "__main__":
     # Run experiments
 
     # Data experiments
-    # single_state_data_experiment()
+    # single_state_data_experiment(state="Czechia", split_rate=0.8)
     # whole_dataset_experiment()
     only_stationary_data(state="Czechia", split_rate=0.8)
 
 
 # Model input based eperiments:
-# 1. Compare performance of LSTM networks with different neurons in layers, try to find optimal
+# 1. Compare performance of LSTM networks with different neurons in layers, try to find optimal (optimization algorithm?)
 # 2. Compare prediction using whole state data and the last few records of data
 # 3. Predict parameters for different years (e.g. to 2030, 2040, ... )
 # 4. Compare model with statistical methods (ARIMA, GM)
+
+
+def compare_with_statistical_models(state: str, split_rate: float) -> None:
+
+    # TODO: implement ARIMA
+    # TODO: implement grey model
+    # TODO: train rnn
+    # TODO: compare them
+    raise NotImplementedError("")
 
 
 # Use different scaler(s)
