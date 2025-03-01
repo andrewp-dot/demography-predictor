@@ -359,6 +359,7 @@ class EvaluateLSTM:
         self.model: LocalModel = model
         self.predicted: pd.DataFrame | None = None
         self.reference_values: pd.DataFrame | None = None
+        self.predicted_years: List[int] | None = None
 
         # Define metric dataframes
         self.per_target_metrics: pd.DataFrame | None = None
@@ -417,7 +418,6 @@ class EvaluateLSTM:
 
         return overall_metric_df, separate_target_metric_values_df
 
-    # TODO: edit this
     def eval(
         self,
         test_X: Union[pd.DataFrame, Dict[str, pd.DataFrame]],
@@ -425,21 +425,13 @@ class EvaluateLSTM:
         features: list[str],
         scaler: Union[MinMaxScaler | RobustScaler | StandardScaler],
     ) -> None:
-        """Evaluates model perforemance based on known and unknown sequences.
+        """Evaluates model perforemance based on known and unknown sequences of 1 state data.
 
         :param test_X: Union[pd.DataFrame, Dict[str, pd.DataFrame]]: unscaled validation input data (known sequences)
         :param test_y: Union[pd.DataFrame, Dict[str, pd.DataFrame]]: unscaled validation target data (unknown sequences)
         :param features: list[str]: input features list
         :param scaler: (Union[MinMaxScaler | RobustScaler | StandardScaler]): scaler to scale data
         """
-
-        if type(test_X) != type(test_y):
-            raise ValueError(
-                f"Test_X and test_y are not the same type! type(test_X) {type(test_X)} != type(test_y) {type(test_y)}"
-            )
-
-        if isinstance(test_X, Dict) and isinstance(test_y, Dict):
-            raise NotImplementedError("")
 
         # Set features as a constant
         FEATURES = features
@@ -461,7 +453,11 @@ class EvaluateLSTM:
         test_y = pd.DataFrame(test_y, columns=FEATURES)
 
         # Generate predictions
+        self.predicted_years = list(
+            range(last_year + 1, target_year + 1)
+        )  # values are predicted from next year after last year and for the target year (+ 1 to include target year)
         logger.debug(f"[Eval]: predicting values from {last_year} to {target_year}...")
+
         predictions = self.model.predict(
             input_data=test_X[FEATURES],
             last_year=last_year,
@@ -470,10 +466,14 @@ class EvaluateLSTM:
 
         # Save predictions
         predictions_df = pd.DataFrame(predictions, columns=test_y.columns)
-        self.predicted = scaler.inverse_transform(predictions_df)
+        self.predicted = pd.DataFrame(
+            scaler.inverse_transform(predictions_df), columns=test_y.columns
+        )
 
         # Save true values
-        self.reference_values = scaler.inverse_transform(test_y)
+        self.reference_values = pd.DataFrame(
+            scaler.inverse_transform(test_y), columns=test_y.columns
+        )
 
         logger.debug(f"[Eval]: predictions shape: {predictions.shape}")
 
@@ -508,6 +508,48 @@ class EvaluateLSTM:
             [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
             axis=0,
         )
+
+    def plot_predictions(self) -> Figure:
+
+        # Get years
+        YEARS = self.predicted_years
+
+        # Get the feature data to create plots
+        FEATURES = list(self.predicted.columns)
+        N_FEATURES = len(FEATURES)
+
+        # Create a figure with N rows and 1 column
+        fig, axes = plt.subplots(N_FEATURES, 1, figsize=(8, 2 * N_FEATURES))
+
+        # Plotting in each subplot
+        for index, feature in zip(range(N_FEATURES), FEATURES):
+
+            # Plot reference values
+            axes[index].plot(
+                YEARS,
+                self.reference_values[feature],
+                label=f"Reference values",
+                color="b",
+            )
+
+            # Plot predicted values
+            axes[index].plot(
+                YEARS,
+                self.predicted[feature],
+                label=f"Predicted",
+                color="r",
+            )
+            axes[index].set_title(f"Subplot {feature}")
+            axes[index].set_xlabel("X Axis")
+            axes[index].set_ylabel("Y Axis")
+            axes[index].legend()
+
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
+        plt.grid()
+        plt.legend()
+
+        return fig
 
 
 if __name__ == "__main__":

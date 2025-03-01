@@ -53,12 +53,12 @@ def single_state_data_experiment(state: str, split_rate: float) -> None:
 
     single_state_params = LSTMHyperparameters(
         input_size=len(FEATURES),
-        hidden_size=256,
-        sequence_length=15,
-        learning_rate=0.00123,
-        epochs=20,
+        hidden_size=32,
+        sequence_length=10,
+        learning_rate=0.001,
+        epochs=10,
         batch_size=1,  # Edit this for faster training
-        num_layers=5,
+        num_layers=4,
     )
     single_state_rnn = LocalModel(single_state_params)
 
@@ -93,6 +93,11 @@ def single_state_data_experiment(state: str, split_rate: float) -> None:
         features=FEATURES,
         scaler=state_scaler,
     )
+
+    import matplotlib.pyplot as plt
+
+    prediction_plot = single_state_rnn_evaluation.plot_predictions()
+    prediction_plot.savefig("./test_plot")
 
     # Get evaluation metrics
     write_experiment_results(
@@ -192,6 +197,7 @@ def whole_dataset_experiment() -> None:
         state=EVAL_STATE,
         per_target_metrics=all_states_rnn_evaluation.per_target_metrics,
         overall_metrics=all_states_rnn_evaluation.overall_metrics,
+        fig=fig,
     )
 
 
@@ -293,6 +299,7 @@ def only_stationary_data_experiment(state: str, split_rate: float) -> None:
         state=STATE,
         per_target_metrics=only_stationary_rnn_evaluation.per_target_metrics,
         overall_metrics=only_stationary_rnn_evaluation.overall_metrics,
+        fig=fig,
     )
 
 
