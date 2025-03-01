@@ -7,6 +7,7 @@ from typing import List, Tuple, Union
 
 from config import Config
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
+from matplotlib.figure import Figure
 
 # Custom imports
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -74,6 +75,7 @@ def write_experiment_results(
     state: str,
     per_target_metrics: pd.DataFrame,
     overall_metrics: pd.DataFrame,
+    fig: Figure | None = None,
 ) -> None:
     """
     Writes experiment model evaluation to file
@@ -103,3 +105,7 @@ def write_experiment_results(
     overall_metrics.to_csv(
         os.path.join(experiment_dir, f"overall_metrics_{state}.csv"), index=False
     )
+
+    # Save figure if given
+    if fig is not None:
+        fig.savefig(os.path.join(experiment_dir, f"experiment_figure_{state}.png"))

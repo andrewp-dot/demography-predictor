@@ -35,16 +35,14 @@ logger = logging.getLogger("benchmark")
 # TODO: doc comments
 
 
-## Maybe here define base experiment function
-
-
+# Data based experiments
 def run_data_experiments() -> None:
-    # Data experiments
     single_state_data_experiment(state="Czechia", split_rate=0.8)
     # whole_dataset_experiment()
     # only_stationary_data_experiment(state="Czechia", split_rate=0.8)
 
 
+# Mode settings and comparision experiments
 def run_model_experiments() -> None:
     raise NotImplementedError()
 
@@ -57,22 +55,6 @@ if __name__ == "__main__":
     run_data_experiments()
 
     # run_model_experiments()
-
-
-# Model input based eperiments:
-# 1. Compare performance of LSTM networks with different neurons in layers, try to find optimal (optimization algorithm?)
-# 2. Compare prediction using whole state data and the last few records of data
-# 3. Predict parameters for different years (e.g. to 2030, 2040, ... )
-# 4. Compare model with statistical methods (ARIMA, GM)
-
-
-def compare_with_statistical_models(state: str, split_rate: float) -> None:
-
-    # TODO: implement ARIMA
-    # TODO: implement grey model
-    # TODO: train rnn
-    # TODO: compare them
-    raise NotImplementedError("")
 
 
 # Use different scaler(s)
