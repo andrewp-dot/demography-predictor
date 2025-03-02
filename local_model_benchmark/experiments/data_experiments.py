@@ -16,6 +16,8 @@ from local_model_benchmark.utils import (
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
+from local_model_benchmark.experiments.base_experiment import BaseExperiment
+
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateLSTM
