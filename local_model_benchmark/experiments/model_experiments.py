@@ -55,6 +55,8 @@ class OptimalParamsExperiment(BaseExperiment):
 
         # Init last model score
         last_model_r2_score: float | None = None
+
+        all_r2s: List[float] = []
         for size in possible_sizes:
 
             # Set the size of the desired
@@ -80,8 +82,12 @@ class OptimalParamsExperiment(BaseExperiment):
                 test_X=train_df, test_y=test_df, features=FEATURES, scaler=state_scaler
             )
 
-            # Get overall metrics
-            current_model_r2_score = rnn_evaluation.overall_metrics.loc["r2"].item()
+            # Get r2 scorre from overall metrics
+            current_model_r2_score = rnn_evaluation.overall_metrics.loc[
+                rnn_evaluation.overall_metrics["metric"] == "r2", "value"
+            ].values[0]
+
+            all_r2s.append(current_model_r2_score)
 
             # If there is just one model save the score
             if last_model_r2_score is None:
@@ -90,8 +96,15 @@ class OptimalParamsExperiment(BaseExperiment):
 
             # Compare the model score with last score
             if last_model_r2_score < current_model_r2_score:
+                last_model_r2_score = current_model_r2_score
                 optimal_parameter = size
 
+        logger.info(
+            f"[Optimal hidden size]: Optimal hidden size: {optimal_parameter}, r2: {last_model_r2_score}"
+        )
+
+        all_r2s_dict = {size: r2 for size, r2 in zip(possible_sizes, all_r2s)}
+        logger.info(f"[All r2s of sizes]: {all_r2s_dict}")
         return optimal_parameter
 
     # Find optimal sequence length
@@ -127,7 +140,7 @@ class OptimalParamsExperiment(BaseExperiment):
         # Get features
         FEATURES = [col.lower() for col in state_df.columns]
 
-        BASE_HYPER_PARAMS = LSTMHyperparameters(
+        BASE_HYPERPARAMS = LSTMHyperparameters(
             input_size=len(FEATURES),
             hidden_size=128,
             sequence_length=10,
@@ -144,13 +157,23 @@ class OptimalParamsExperiment(BaseExperiment):
 
         # Find optimal params
         optim_hidden_size = self.find_optimal_hidden_size(
-            possible_sizes=[8, 16, 32, 64, 128, 256, 512]
+            train_df=train_data_df,
+            test_df=test_data_df,
+            state_loader=state_loader,
+            base_params=BASE_HYPERPARAMS,
+            features=FEATURES,
+            possible_sizes=[8, 16, 32, 64, 128, 256, 512],
         )
-        optim_seq_len = self.find_optimal_sequence_len(range=range(15))
-        optim_learning_rate = self.find_optimal_learning_rate(
-            base_learning_rate=BASE_HYPER_PARAMS.learning_rate
-        )
-        optim_layer_num = self.find_optimal_number_of_layers(range=range(3, 7))
+
+        print()
+        print("-" * 100)
+        print(f"Optimal hidden size is: {optim_hidden_size}")
+
+        # optim_seq_len = self.find_optimal_sequence_len(range=range(15))
+        # optim_learning_rate = self.find_optimal_learning_rate(
+        #     base_learning_rate=BASE_HYPERPARAMS.learning_rate
+        # )
+        # optim_layer_num = self.find_optimal_number_of_layers(range=range(3, 7))
 
         # Save the results
 
@@ -159,10 +182,10 @@ class OptimalParamsExperiment(BaseExperiment):
 
 # 2. Compare model with statistical methods (ARIMA, GM)
 # 2.1. VAR, SARIMA, ARIMA * 19?
-class StatisticalModelsExperiment(BaseExperiment):
-    raise NotImplementedError(
-        "Need to implement and compare the experiment with the model!"
-    )
+# class StatisticalModelsExperiment(BaseExperiment):
+#     raise NotImplementedError(
+#         "Need to implement and compare the experiment with the model!"
+#     )
 
 
 # 3. Compare prediction using whole state data and the last few records of data
@@ -174,3 +197,4 @@ if __name__ == "__main__":
     setup_logging()
 
     # Run experiments
+    OptimalParamsExperiment().run(state="Czechia", split_rate=0.8)
