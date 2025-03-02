@@ -53,12 +53,12 @@ def single_state_data_experiment(state: str, split_rate: float) -> None:
 
     single_state_params = LSTMHyperparameters(
         input_size=len(FEATURES),
-        hidden_size=32,
+        hidden_size=128,
         sequence_length=10,
-        learning_rate=0.001,
+        learning_rate=0.0001,
         epochs=10,
-        batch_size=1,  # Edit this for faster training
-        num_layers=4,
+        batch_size=1,
+        num_layers=3,
     )
     single_state_rnn = LocalModel(single_state_params)
 

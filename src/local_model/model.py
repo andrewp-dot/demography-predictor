@@ -105,10 +105,10 @@ class LocalModel(nn.Module):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Feature Interaction Layer (Fully Connected Layer)
-        # self.feature_interaction = nn.Linear(
-        #     in_features=hyperparameters.input_size,  # Original feature count
-        #     out_features=hyperparameters.input_size,  # Mixing features
-        # )
+        self.feature_interaction = nn.Linear(
+            in_features=hyperparameters.input_size,  # Original feature count
+            out_features=hyperparameters.input_size,  # Mixing features
+        )
 
         # 3 layer model:
         self.lstm = nn.LSTM(
@@ -167,7 +167,7 @@ class LocalModel(nn.Module):
     ) -> torch.Tensor:
 
         # Apply feature interaction layer
-        # x = torch.relu(self.feature_interaction(x))  # Introduce feature interaction
+        x = torch.relu(self.feature_interaction(x))  # Introduce feature interaction
 
         # Get the size of the batch
         batch_size = x.size(0)
