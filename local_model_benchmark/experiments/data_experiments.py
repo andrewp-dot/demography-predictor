@@ -27,14 +27,10 @@ settings = Config()
 logger = logging.getLogger("benchmark")
 
 # TODO: Define experiments
-# TODO: Data preprocessing functions -> split-> scaling -> sequences -> batches
 # TODO: doc comments
 
-## Maybe here define base experiment function
 
 # Data based experiments
-
-
 ## 1. Use data for just a single state
 def single_state_data_experiment(state: str, split_rate: float) -> None:
     # Define experiment name

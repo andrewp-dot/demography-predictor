@@ -17,7 +17,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 from statsmodels.tsa.arima.model import ARIMA
 
 # Custom imports
-from local_model_benchmark.data_experiments import (
+from local_model_benchmark.experiments.data_experiments import (
     whole_dataset_experiment,
     single_state_data_experiment,
     only_stationary_data_experiment,
