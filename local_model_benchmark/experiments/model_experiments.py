@@ -6,6 +6,8 @@ import logging
 import torch
 from typing import List, Dict, Literal
 
+import copy
+
 
 from config import setup_logging, Config
 from local_model_benchmark.utils import (
@@ -43,20 +45,29 @@ class OptimalParamsExperiment(BaseExperiment):
     def adjust_hidden_size(
         self, base_parameters: LSTMHyperparameters, hidden_size: int
     ) -> LSTMHyperparameters:
-        base_parameters.hidden_size = hidden_size
-        return base_parameters
+
+        # Create a copy of original parameters
+        new_params = copy.deepcopy(base_parameters)
+        new_params.hidden_size = hidden_size
+        return new_params
 
     def adjust_sequence_len(
         self, base_parameters: LSTMHyperparameters, sequence_length: int
     ) -> LSTMHyperparameters:
-        base_parameters.sequence_length = sequence_length
-        return base_parameters
+
+        # Create a copy of original parameters
+        new_params = copy.deepcopy(base_parameters)
+        new_params.sequence_length = sequence_length
+        return new_params
 
     def adjust_num_layers(
         self, base_parameters: LSTMHyperparameters, num_layers: int
     ) -> LSTMHyperparameters:
-        base_parameters.num_layers = num_layers
-        return base_parameters
+
+        # Create a copy of original parameters
+        new_params = copy.deepcopy(base_parameters)
+        new_params.num_layers = num_layers
+        return new_params
 
     # Find optimal neuron number in layer number (hidden_size)
     def find_optimal_parameter(
@@ -266,15 +277,9 @@ class OptimalParamsExperiment(BaseExperiment):
         # Train and evaluate parametricaly adjusted model
         # Rewrite the parameters to optimal
         OPTIMAL_PAREMETRS: LSTMHyperparameters = BASE_HYPERPARAMS
-        self.adjust_hidden_size(
-            OPTIMAL_PAREMETRS, found_optimal_paremeters["hidden_size"]
-        )
-        self.adjust_sequence_len(
-            OPTIMAL_PAREMETRS, found_optimal_paremeters["sequence_length"]
-        )
-        self.adjust_num_layers(
-            OPTIMAL_PAREMETRS, found_optimal_paremeters["num_layers"]
-        )
+        OPTIMAL_PAREMETRS.hidden_size = found_optimal_paremeters["hidden_size"]
+        OPTIMAL_PAREMETRS.sequence_length = found_optimal_paremeters["sequence_length"]
+        OPTIMAL_PAREMETRS.num_layers = found_optimal_paremeters["num_layers"]
 
         # Preprocess data
         optimal_train_batches, optimal_target_batches, optimal_scaler = (
@@ -325,8 +330,23 @@ class OptimalParamsExperiment(BaseExperiment):
             print(f"Optimal {param_name} is: {value}")
 
         # Save the results
+        formatted_base_model_evaluation: str = pprint.pformat(
+            base_model_evaluation.to_readable_dict()
+        )
+        formatted_optimal_model_evaluation: str = pprint.pformat(
+            optimal_model_evaluation.to_readable_dict()
+        )
+        compare_models_by_metric: str = f"""
+Base model:
+{formatted_base_model_evaluation}
 
-        # Try to train model with optimal parameters
+Optimal model:
+{formatted_optimal_model_evaluation}
+"""
+
+        self.readme_add_section(
+            title="# Compare metric results", text=compare_models_by_metric
+        )
 
 
 # 2. Compare model with statistical methods (ARIMA, GM)
