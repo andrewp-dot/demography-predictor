@@ -113,7 +113,11 @@ class OptimalParamsExperiment(BaseExperiment):
 
             # Train the model
             rnn = LocalModel(current_hyperparams)
-            rnn.train_model(batch_inputs=train_batches, batch_targets=target_batches)
+            rnn.train_model(
+                batch_inputs=train_batches,
+                batch_targets=target_batches,
+                display_nth_epoch=2,
+            )
 
             # Evaluate model
             rnn_evaluation = EvaluateLSTM(rnn)
@@ -140,7 +144,7 @@ class OptimalParamsExperiment(BaseExperiment):
             last_model_evaluation.to_readable_dict()
         )
         logger.info(
-            f"[Optimal hidden size]: Optimal hidden size: {optimal_parameter}, Evaluation:\n{formatted_last_model_evaluation}"
+            f"[Optimal parameter]: Optimal {parameter_name}: {optimal_parameter}, Evaluation:\n{formatted_last_model_evaluation}"
         )
 
         all_evaluations_dict: str = {
@@ -231,7 +235,9 @@ class OptimalParamsExperiment(BaseExperiment):
         base_model = LocalModel(hyperparameters=BASE_HYPERPARAMS)
 
         base_model.train_model(
-            batch_inputs=base_train_batches, batch_targets=base_target_batches
+            batch_inputs=base_train_batches,
+            batch_targets=base_target_batches,
+            display_nth_epoch=2,
         )
 
         base_model_evaluation = EvaluateLSTM(base_model)
@@ -245,9 +251,14 @@ class OptimalParamsExperiment(BaseExperiment):
         # Plot and save base model plot
         base_fig = base_model_evaluation.plot_predictions()
 
+        self.readme_add_section(
+            title="# Base model evaluation",
+            text=f"Hyperparameters:\n```{str(BASE_HYPERPARAMS)}```",
+        )
+
         self.save_plot(fig_name="base_model_eval.png", figure=base_fig)
         self.readme_add_plot(
-            plot_name="Base model evaluation",
+            plot_name="Base model predicted vs reference values",
             plot_description="Displays the performance for every feature predicted of the `Base Model`.",
             fig_name="base_model_eval.png",
         )
@@ -279,7 +290,9 @@ class OptimalParamsExperiment(BaseExperiment):
         optimal_model = LocalModel(hyperparameters=OPTIMAL_PAREMETRS)
 
         optimal_model.train_model(
-            batch_inputs=optimal_train_batches, batch_targets=optimal_target_batches
+            batch_inputs=optimal_train_batches,
+            batch_targets=optimal_target_batches,
+            display_nth_epoch=2,
         )
 
         optimal_model_evaluation = EvaluateLSTM(optimal_model)
@@ -294,8 +307,14 @@ class OptimalParamsExperiment(BaseExperiment):
         optimal_fig = optimal_model_evaluation.plot_predictions()
 
         self.save_plot(fig_name="optimal_model_eval.png", figure=optimal_fig)
+
+        self.readme_add_section(
+            title="# Optimal model evaluation",
+            text=f"Hyperparameters:\n```{str(OPTIMAL_PAREMETRS)}```",
+        )
+
         self.readme_add_plot(
-            plot_name="Optimal model evaluation",
+            plot_name="Optimal model predicted vs reference values",
             plot_description="Displays the performance for every feature predicted of the `Optimal Model`.",
             fig_name="optimal_model_eval.png",
         )
@@ -331,9 +350,6 @@ if __name__ == "__main__":
         name="OptimalParamsExperiment",
         description="The goal is to find the optimal parameters for the given LocalModel model.",
     )
-
-    # Create readme
-    exp.create_readme()
 
     # Run
     exp.run(state="Czechia", split_rate=0.8)

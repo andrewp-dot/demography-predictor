@@ -18,7 +18,7 @@ class BaseExperiment:
 """
 
     README_PLOT: str = """
-# {plot_name}
+## {plot_name}
 {plot_description}
 
 ![{plot_name}]({url})
@@ -106,8 +106,38 @@ class BaseExperiment:
                 readme.write(readme_plot)
 
             return
+
         raise ValueError(
             "Cennot add plot! The readme does not exist! Try to use 'experiment.create_readme()' first."
+        )
+
+    def readme_add_section(self, text: str, title: str | None = None) -> None:
+        """
+        Add custom markdown text to the README.md
+
+        Args:
+            text (str): _description_
+            title (str | None, optional): Title of the section. Please write it with '#' (markdown). Defaults to None.
+
+        Raises:
+            ValueError:  Signal that the README.md for the experiment is not created yet.
+        """
+
+        if self.readme_path is not None:
+
+            with open(self.readme_path, "a") as readme:
+                # Write title it there is some
+                if title is not None:
+                    readme.write(title)
+                    readme.write("\n")
+
+                # Write text
+                readme.write(text)
+
+            return
+
+        raise ValueError(
+            "Cennot add section! The readme does not exist! Try to use 'experiment.create_readme()' first."
         )
 
     @abstractmethod

@@ -56,6 +56,23 @@ class LSTMHyperparameters:
         self.num_layers = num_layers  # Number of LSTM layers
         self.bidirectional = bidirectional
 
+    def __repr__(self) -> str:
+
+        repr_string = f"""
+Input size:         {self.input_size}
+Batch size:         {self.batch_size}
+
+Hidden size:        {self.hidden_size}
+Sequence length:    {self.sequence_length}
+Layers:             {self.num_layers}
+
+Learning rate:      {self.learning_rate}
+Epochs:             {self.epochs}
+
+Bidirectional:      {self.bidirectional}
+"""
+        return repr_string
+
 
 class TrainingStats:
 
