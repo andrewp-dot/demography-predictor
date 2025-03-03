@@ -28,10 +28,14 @@ from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateLSTM
 # Setup logger
 logger = logging.getLogger("benchmark")
 
+# TODO: plot this data and so on...
+
 
 # Model input based eperiments:
 # 1. Compare performance of LSTM networks with different neurons in layers, try to find optimal (optimization algorithm?)
 class OptimalParamsExperiment(BaseExperiment):
+
+    # TODO: evaluation -> use more then r2 score?
 
     # Find optimal neuron number in layer number (hidden_size)
     def find_optimal_hidden_size(
@@ -54,9 +58,9 @@ class OptimalParamsExperiment(BaseExperiment):
         optimal_parameter: int = current_hyperparams.hidden_size
 
         # Init last model score
-        last_model_r2_score: float | None = None
+        last_model_evaluation: EvaluateLSTM | None = None
 
-        all_r2s: List[float] = []
+        all_evaluations: List[EvaluateLSTM] = []
         for size in possible_sizes:
 
             # Set the size of the desired
@@ -83,28 +87,34 @@ class OptimalParamsExperiment(BaseExperiment):
             )
 
             # Get r2 scorre from overall metrics
-            current_model_r2_score = rnn_evaluation.overall_metrics.loc[
-                rnn_evaluation.overall_metrics["metric"] == "r2", "value"
-            ].values[0]
-
-            all_r2s.append(current_model_r2_score)
+            all_evaluations.append(rnn_evaluation)
 
             # If there is just one model save the score
-            if last_model_r2_score is None:
-                last_model_r2_score = current_model_r2_score
+            if last_model_evaluation is None:
+                last_model_evaluation = rnn_evaluation
                 continue
 
             # Compare the model score with last score
-            if last_model_r2_score < current_model_r2_score:
-                last_model_r2_score = current_model_r2_score
+            if last_model_evaluation.is_new_better(new_model_evaluation=rnn_evaluation):
+                last_model_evaluation = rnn_evaluation
                 optimal_parameter = size
 
+        # Get the best model evaluation
+        formatted_last_model_evaluation = pprint.pformat(
+            last_model_evaluation.to_readable_dict()
+        )
         logger.info(
-            f"[Optimal hidden size]: Optimal hidden size: {optimal_parameter}, r2: {last_model_r2_score}"
+            f"[Optimal hidden size]: Optimal hidden size: {optimal_parameter}, Evaluation:\n{formatted_last_model_evaluation}"
         )
 
-        all_r2s_dict = {size: r2 for size, r2 in zip(possible_sizes, all_r2s)}
-        logger.info(f"[All r2s of sizes]: {all_r2s_dict}")
+        all_evaluations_dict: str = {
+            size: evaluation.to_readable_dict()
+            for size, evaluation in zip(possible_sizes, all_evaluations)
+        }
+
+        # Get all models evaluation
+        formatted_all_models_evaluation: str = pprint.pformat(all_evaluations_dict)
+        logger.info(f"[All evaluation of sizes]:\n{formatted_all_models_evaluation}")
         return optimal_parameter
 
     # Find optimal sequence length

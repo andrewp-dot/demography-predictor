@@ -507,6 +507,7 @@ class EvaluateLSTM:
         self.overall_metrics = pd.concat(
             [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
             axis=0,
+            ignore_index=True,
         )
 
     def plot_predictions(self) -> Figure:
@@ -523,7 +524,6 @@ class EvaluateLSTM:
 
         # Plotting in each subplot
         for index, feature in zip(range(N_FEATURES), FEATURES):
-
             # Plot reference values
             axes[index].plot(
                 YEARS,
@@ -539,9 +539,9 @@ class EvaluateLSTM:
                 label=f"Predicted",
                 color="r",
             )
-            axes[index].set_title(f"Subplot {feature}")
-            axes[index].set_xlabel("X Axis")
-            axes[index].set_ylabel("Y Axis")
+            axes[index].set_title(f"{feature}")
+            axes[index].set_xlabel("Years")
+            axes[index].set_ylabel("Value")
             axes[index].legend()
 
         # Adjust layout to prevent overlap
@@ -550,6 +550,70 @@ class EvaluateLSTM:
         plt.legend()
 
         return fig
+
+    # TODO: maybe merge plots?
+    def to_readable_dict(self) -> Dict[str, float]:
+        """
+        Converts the overall metrics dataframe to readable dict.
+
+        Returns:
+            out: Dict[str, float]: Readable dict, the metric names are the keys and the values are the corresponding metric value.
+        """
+
+        # Get the overall metrics
+        df = self.overall_metrics
+
+        # Convert the metrics dataframe
+        result = dict(zip(df["metric"], df["value"]))
+
+        return result
+
+    def is_new_better(self, new_model_evaluation: "EvaluateLSTM") -> bool:
+        """
+        Compares 2 model evaluations.
+
+        Args:
+            new_model_evaluation (EvaluateLSTM): _description_
+
+        Returns:
+            out: bool: True if the new model evaluation is better according to metrics. False, if the old model is better or has same performance as the new one.
+        """
+
+        # Votes sums
+        votes: List[bool] = []
+
+        # Compare by error metrics -> the lower, the better
+        error_metrics: List[str] = ["mae", "mse", "rmse"]
+
+        for metric in error_metrics:
+
+            # Old model metric
+            current_model_metric_value = self.overall_metrics.loc[
+                self.overall_metrics["metric"] == metric, "value"
+            ].values[0]
+
+            # New model metric
+            new_model_metric_value = new_model_evaluation.overall_metrics.loc[
+                new_model_evaluation.overall_metrics["metric"] == metric, "value"
+            ].values[0]
+
+            # Add vote if the new model has lower error metric
+            votes.append(current_model_metric_value > new_model_metric_value)
+
+        # Compare by r2 -> the higher, the better
+        current_model_r2_score = self.overall_metrics.loc[
+            self.overall_metrics["metric"] == "r2", "value"
+        ].values[0]
+
+        new_model_r2_score = new_model_evaluation.overall_metrics.loc[
+            new_model_evaluation.overall_metrics["metric"] == "r2", "value"
+        ].values[0]
+
+        # Add vote if new model has greater r2 score
+        votes.append(current_model_r2_score < new_model_r2_score)
+
+        # The model is better if it outperforms the model in more then half metrics
+        return sum(votes) / len(votes) > 0.5
 
 
 if __name__ == "__main__":
