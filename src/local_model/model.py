@@ -343,7 +343,7 @@ class LocalModel(nn.Module):
                 )
 
         prediction_tensor = torch.cat(predictions, dim=0)  # Combine all predictions
-        logger.info(f"Prediction tensor: {prediction_tensor}")
+        # logger.info(f"Prediction tensor: {prediction_tensor}")
 
         # Combine with years
         for year, pred in zip(range(last_year + 1, target_year + 1), new_predictions):

@@ -28,6 +28,9 @@ from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateLSTM
 # Setup logger
 logger = logging.getLogger("benchmark")
 
+# Get settings
+settings = Config()
+
 # TODO: plot this data and so on...
 
 
@@ -159,6 +162,9 @@ class OptimalParamsExperiment(BaseExperiment):
         raise NotImplementedError()
 
     def run(self, state: str, split_rate: float) -> None:
+        # Create readme
+        self.create_readme()
+
         # Load data
         STATE = state
         state_loader = StateDataLoader(STATE)
@@ -209,10 +215,92 @@ class OptimalParamsExperiment(BaseExperiment):
 
             found_optimal_paremeters[param_name] = optimal_param
 
-        # Print found parameters
-        print()
-        print("-" * 100)
+        # Compare basic model and model with found parameters:
 
+        # Train and evaluate base model
+        base_train_batches, base_target_batches, base_scaler = (
+            preprocess_single_state_data(
+                train_data_df=train_data_df,
+                state_loader=state_loader,
+                hyperparameters=BASE_HYPERPARAMS,
+                features=FEATURES,
+                scaler=MinMaxScaler(),
+            )
+        )
+
+        base_model = LocalModel(hyperparameters=BASE_HYPERPARAMS)
+
+        base_model.train_model(
+            batch_inputs=base_train_batches, batch_targets=base_target_batches
+        )
+
+        base_model_evaluation = EvaluateLSTM(base_model)
+        base_model_evaluation.eval(
+            test_X=train_data_df,
+            test_y=test_data_df,
+            features=FEATURES,
+            scaler=base_scaler,
+        )
+
+        # Plot and save base model plot
+        base_fig = base_model_evaluation.plot_predictions()
+
+        self.save_plot(fig_name="base_model_eval.png", figure=base_fig)
+        self.readme_add_plot(
+            plot_name="Base model evaluation",
+            plot_description="Displays the performance for every feature predicted of the `Base Model`.",
+            fig_name="base_model_eval.png",
+        )
+
+        # Train and evaluate parametricaly adjusted model
+        # Rewrite the parameters to optimal
+        OPTIMAL_PAREMETRS: LSTMHyperparameters = BASE_HYPERPARAMS
+        self.adjust_hidden_size(
+            OPTIMAL_PAREMETRS, found_optimal_paremeters["hidden_size"]
+        )
+        self.adjust_sequence_len(
+            OPTIMAL_PAREMETRS, found_optimal_paremeters["sequence_length"]
+        )
+        self.adjust_num_layers(
+            OPTIMAL_PAREMETRS, found_optimal_paremeters["num_layers"]
+        )
+
+        # Preprocess data
+        optimal_train_batches, optimal_target_batches, optimal_scaler = (
+            preprocess_single_state_data(
+                train_data_df=train_data_df,
+                state_loader=state_loader,
+                hyperparameters=OPTIMAL_PAREMETRS,
+                features=FEATURES,
+                scaler=MinMaxScaler(),
+            )
+        )
+
+        optimal_model = LocalModel(hyperparameters=OPTIMAL_PAREMETRS)
+
+        optimal_model.train_model(
+            batch_inputs=optimal_train_batches, batch_targets=optimal_target_batches
+        )
+
+        optimal_model_evaluation = EvaluateLSTM(optimal_model)
+        optimal_model_evaluation.eval(
+            test_X=train_data_df,
+            test_y=test_data_df,
+            features=FEATURES,
+            scaler=optimal_scaler,
+        )
+
+        # Plot and save base model plot
+        optimal_fig = optimal_model_evaluation.plot_predictions()
+
+        self.save_plot(fig_name="optimal_model_eval.png", figure=optimal_fig)
+        self.readme_add_plot(
+            plot_name="Optimal model evaluation",
+            plot_description="Displays the performance for every feature predicted of the `Optimal Model`.",
+            fig_name="optimal_model_eval.png",
+        )
+
+        # Train and evaluate the adjusted parameters model
         for param_name, value in found_optimal_paremeters.items():
 
             print(f"Optimal {param_name} is: {value}")
@@ -239,4 +327,13 @@ if __name__ == "__main__":
     setup_logging()
 
     # Run experiments
-    OptimalParamsExperiment().run(state="Czechia", split_rate=0.8)
+    exp = OptimalParamsExperiment(
+        name="OptimalParamsExperiment",
+        description="The goal is to find the optimal parameters for the given LocalModel model.",
+    )
+
+    # Create readme
+    exp.create_readme()
+
+    # Run
+    exp.run(state="Czechia", split_rate=0.8)
