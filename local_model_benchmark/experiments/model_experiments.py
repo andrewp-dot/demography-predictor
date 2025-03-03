@@ -4,7 +4,7 @@ import pandas as pd
 import pprint
 import logging
 import torch
-from typing import List, Tuple, Union
+from typing import List, Dict, Literal
 
 
 from config import setup_logging, Config
@@ -37,15 +37,34 @@ class OptimalParamsExperiment(BaseExperiment):
 
     # TODO: evaluation -> use more then r2 score?
 
+    def adjust_hidden_size(
+        self, base_parameters: LSTMHyperparameters, hidden_size: int
+    ) -> LSTMHyperparameters:
+        base_parameters.hidden_size = hidden_size
+        return base_parameters
+
+    def adjust_sequence_len(
+        self, base_parameters: LSTMHyperparameters, sequence_length: int
+    ) -> LSTMHyperparameters:
+        base_parameters.sequence_length = sequence_length
+        return base_parameters
+
+    def adjust_num_layers(
+        self, base_parameters: LSTMHyperparameters, num_layers: int
+    ) -> LSTMHyperparameters:
+        base_parameters.num_layers = num_layers
+        return base_parameters
+
     # Find optimal neuron number in layer number (hidden_size)
-    def find_optimal_hidden_size(
+    def find_optimal_parameter(
         self,
         train_df: pd.DataFrame,
         test_df: pd.DataFrame,
         state_loader: StateDataLoader,
         base_params: LSTMHyperparameters,
         features: List[str],
-        possible_sizes: List[int],
+        parameter_name: Literal["hidden_size", "sequence_length", "num_layers"],
+        parameter_options: List[int],
     ) -> int:
 
         # Set features as constant
@@ -54,17 +73,31 @@ class OptimalParamsExperiment(BaseExperiment):
         # Current hyperparameters
         current_hyperparams = base_params
 
-        # Init the optimal parameter
-        optimal_parameter: int = current_hyperparams.hidden_size
+        # Init the optimal parameter and parameter setting function
+        # optimal_parameter: int | float | None = None
+
+        if parameter_name == "hidden_size":
+            optimal_parameter = current_hyperparams.hidden_size
+            set_parameter = self.adjust_hidden_size
+        elif parameter_name == "sequence_length":
+            optimal_parameter = current_hyperparams.sequence_length
+            set_parameter = self.adjust_sequence_len
+        elif parameter_name == "num_layers":
+            optimal_parameter = current_hyperparams.num_layers
+            set_parameter = self.adjust_num_layers
+        else:
+            raise ValueError(
+                f"Cannot find the optimal parameter for parameter '{parameter_name}'. This parameter is not supported!"
+            )
 
         # Init last model score
         last_model_evaluation: EvaluateLSTM | None = None
 
         all_evaluations: List[EvaluateLSTM] = []
-        for size in possible_sizes:
+        for parameter_option in parameter_options:
 
-            # Set the size of the desired
-            current_hyperparams.hidden_size = size
+            # Update the parameter to the next option
+            base_params = set_parameter(base_params, parameter_option)
 
             # Preprocess data for the desired neural network
             train_batches, target_batches, state_scaler = preprocess_single_state_data(
@@ -97,7 +130,7 @@ class OptimalParamsExperiment(BaseExperiment):
             # Compare the model score with last score
             if last_model_evaluation.is_new_better(new_model_evaluation=rnn_evaluation):
                 last_model_evaluation = rnn_evaluation
-                optimal_parameter = size
+                optimal_parameter = parameter_option
 
         # Get the best model evaluation
         formatted_last_model_evaluation = pprint.pformat(
@@ -109,7 +142,7 @@ class OptimalParamsExperiment(BaseExperiment):
 
         all_evaluations_dict: str = {
             size: evaluation.to_readable_dict()
-            for size, evaluation in zip(possible_sizes, all_evaluations)
+            for size, evaluation in zip(parameter_options, all_evaluations)
         }
 
         # Get all models evaluation
@@ -117,24 +150,12 @@ class OptimalParamsExperiment(BaseExperiment):
         logger.info(f"[All evaluation of sizes]:\n{formatted_all_models_evaluation}")
         return optimal_parameter
 
-    # Find optimal sequence length
-    def find_optimal_sequence_len(
-        self, train_df: pd.DataFrame, base_params: LSTMHyperparameters, range: range
-    ) -> int:
-        raise NotImplementedError()
-
     # Find optimal learning rate
     def find_optimal_learning_rate(
         self,
         train_df: pd.DataFrame,
         base_params: LSTMHyperparameters,
     ) -> float:
-        raise NotImplementedError()
-
-    # Find optimal number of layers
-    def find_optimal_number_of_layers(
-        self, train_df: pd.DataFrame, base_params: LSTMHyperparameters, range: range
-    ) -> int:
         raise NotImplementedError()
 
     def run(self, state: str, split_rate: float) -> None:
@@ -166,24 +187,37 @@ class OptimalParamsExperiment(BaseExperiment):
         )
 
         # Find optimal params
-        optim_hidden_size = self.find_optimal_hidden_size(
-            train_df=train_data_df,
-            test_df=test_data_df,
-            state_loader=state_loader,
-            base_params=BASE_HYPERPARAMS,
-            features=FEATURES,
-            possible_sizes=[8, 16, 32, 64, 128, 256, 512],
-        )
+        PARAM_NAME = "hidden_size"
 
+        optimal_parameters_settings: Dict[str, List[int | float]] = {
+            "hidden_size": [8, 16, 32, 64, 128, 256, 512],
+            "sequence_length": list(range(3, 12)),
+            "num_layers": list(range(3, 7)),
+        }
+
+        # Save the found optimal parameters
+        found_optimal_paremeters: Dict[str, int | float] = {}
+
+        for param_name, param_options in optimal_parameters_settings.items():
+            optimal_param = self.find_optimal_parameter(
+                train_df=train_data_df,
+                test_df=test_data_df,
+                state_loader=state_loader,
+                base_params=BASE_HYPERPARAMS,
+                features=FEATURES,
+                parameter_name=param_name,
+                parameter_options=param_options,
+            )
+
+            found_optimal_paremeters[param_name] = optimal_param
+
+        # Print found parameters
         print()
         print("-" * 100)
-        print(f"Optimal hidden size is: {optim_hidden_size}")
 
-        # optim_seq_len = self.find_optimal_sequence_len(range=range(15))
-        # optim_learning_rate = self.find_optimal_learning_rate(
-        #     base_learning_rate=BASE_HYPERPARAMS.learning_rate
-        # )
-        # optim_layer_num = self.find_optimal_number_of_layers(range=range(3, 7))
+        for param_name, value in found_optimal_paremeters.items():
+
+            print(f"Optimal {param_name} is: {value}")
 
         # Save the results
 
