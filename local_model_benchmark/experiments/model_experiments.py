@@ -187,8 +187,6 @@ class OptimalParamsExperiment(BaseExperiment):
         )
 
         # Find optimal params
-        PARAM_NAME = "hidden_size"
-
         optimal_parameters_settings: Dict[str, List[int | float]] = {
             "hidden_size": [8, 16, 32, 64, 128, 256, 512],
             "sequence_length": list(range(3, 12)),
