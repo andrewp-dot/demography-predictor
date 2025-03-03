@@ -9,11 +9,11 @@ Hyperparameters:
 Input size:         19
 Batch size:         1
 
-Hidden size:        128
+Hidden size:        231
 Sequence length:    10
-Layers:             3
+Layers:             5
 
-Learning rate:      0.0001
+Learning rate:      0.008718063369524982
 Epochs:             10
 
 Bidirectional:      False
@@ -29,11 +29,11 @@ Hyperparameters:
 Input size:         19
 Batch size:         1
 
-Hidden size:        512
-Sequence length:    4
-Layers:             3
+Hidden size:        277
+Sequence length:    14
+Layers:             4
 
-Learning rate:      0.0001
+Learning rate:      0.008718063369524982
 Epochs:             10
 
 Bidirectional:      False
@@ -46,13 +46,13 @@ Displays the performance for every feature predicted of the `Optimal Model`.
 # Compare metric results
 
 Base model:
-{'mae': 12079.820915318696,
- 'mse': 2604285059.360079,
- 'r2': -33.558703393503315,
- 'rmse': 12590.539022166504}
+{'mae': 12172.931254521078,
+ 'mse': 2638474189.728765,
+ 'r2': -31.176810774180474,
+ 'rmse': 12677.22373346006}
 
 Optimal model:
-{'mae': 13079.038928012296,
- 'mse': 3067017069.3189445,
- 'r2': -96.77961744184172,
- 'rmse': 13542.745215822733}
+{'mae': 6521.000963137108,
+ 'mse': 882496245.760047,
+ 'r2': -12.048249423368086,
+ 'rmse': 7435.632998746361}

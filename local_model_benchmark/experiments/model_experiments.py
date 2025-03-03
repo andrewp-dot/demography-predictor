@@ -7,6 +7,7 @@ import torch
 from typing import List, Dict, Literal
 
 import copy
+import optuna
 
 
 from config import setup_logging, Config
@@ -70,6 +71,8 @@ class OptimalParamsExperiment(BaseExperiment):
         return new_params
 
     # Find optimal neuron number in layer number (hidden_size)
+
+    # TODO: change this, maybe using optuna
     def find_optimal_parameter(
         self,
         train_df: pd.DataFrame,
@@ -210,8 +213,8 @@ class OptimalParamsExperiment(BaseExperiment):
         # Find optimal params
         optimal_parameters_settings: Dict[str, List[int | float]] = {
             "hidden_size": [8, 16, 32, 64, 128, 256, 512],
-            "sequence_length": list(range(3, 12)),
-            "num_layers": list(range(3, 7)),
+            "sequence_length": list(range(2, 15)),
+            "num_layers": list(range(1, 7)),
         }
 
         # Save the found optimal parameters
@@ -348,17 +351,221 @@ Optimal model:
             title="# Compare metric results", text=compare_models_by_metric
         )
 
+    # 2. Compare model with statistical methods (ARIMA, GM)
+    # 2.1. VAR, SARIMA, ARIMA * 19?
+    # class StatisticalModelsExperiment(BaseExperiment):
+    #     raise NotImplementedError(
+    #         "Need to implement and compare the experiment with the model!"
+    #     )
 
-# 2. Compare model with statistical methods (ARIMA, GM)
-# 2.1. VAR, SARIMA, ARIMA * 19?
-# class StatisticalModelsExperiment(BaseExperiment):
-#     raise NotImplementedError(
-#         "Need to implement and compare the experiment with the model!"
-#     )
+    # 3. Compare prediction using whole state data and the last few records of data
+    # 4. Predict parameters for different years (e.g. to 2030, 2040, ... )
 
+    def test_find_optimal_hyperparams(
+        self,
+        train_df: pd.DataFrame,
+        test_df: pd.DataFrame,
+        base_params: LSTMHyperparameters,
+        state_loader: StateDataLoader,
+        features: List[str],
+    ):
 
-# 3. Compare prediction using whole state data and the last few records of data
-# 4. Predict parameters for different years (e.g. to 2030, 2040, ... )
+        def objective(trial: optuna.Trial):
+            hidden_size = trial.suggest_int("hidden_size", 16, 512)
+            sequence_length = trial.suggest_int("sequence_length", 10, 15)
+            num_layers = trial.suggest_int("num_layers", 1, 5)
+            learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-2)
+
+            # Set hyperparameters
+            base_params.hidden_size = hidden_size
+            base_params.sequence_length = sequence_length
+            base_params.num_layers = num_layers
+            base_params.learning_rate = learning_rate
+
+            # Preprocess data
+            train_batches, target_batches, state_scaler = preprocess_single_state_data(
+                train_data_df=train_df,
+                state_loader=state_loader,
+                hyperparameters=base_params,
+                features=features,
+                scaler=MinMaxScaler(),
+            )
+
+            # Train model
+            rnn = LocalModel(base_params)
+            rnn.train_model(batch_inputs=train_batches, batch_targets=target_batches)
+
+            # Evaluate model
+            rnn_evaluation = EvaluateLSTM(rnn)
+            rnn_evaluation.eval(
+                test_X=train_df, test_y=test_df, features=features, scaler=state_scaler
+            )
+
+            # Return a score (maximize R²)
+            return rnn_evaluation.overall_metrics.loc[
+                rnn_evaluation.overall_metrics["metric"] == "r2", "value"
+            ].values[0]
+
+        # Run Bayesian Optimization
+        study = optuna.create_study(direction="maximize")  # Maximize R² score
+        study.optimize(objective, n_trials=20)
+
+        # Best parameters
+        print("Best parameters:", study.best_params)
+
+        return study.best_params
+
+    def test(self, state: str, split_rate: float):
+
+        self.create_readme()
+
+        # Load data
+        STATE = state
+        state_loader = StateDataLoader(STATE)
+
+        state_df = state_loader.load_data()
+
+        # Drop country name
+        state_df.drop(columns=["country name"], inplace=True)
+
+        # Get features
+        FEATURES = [col.lower() for col in state_df.columns]
+
+        BASE_HYPERPARAMS = LSTMHyperparameters(
+            input_size=len(FEATURES),
+            hidden_size=128,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=10,
+            batch_size=1,
+            num_layers=3,
+        )
+
+        # Split data
+        train_data_df, test_data_df = state_loader.split_data(
+            state_df, split_rate=split_rate
+        )
+
+        best_params_dict = self.test_find_optimal_hyperparams(
+            train_df=train_data_df,
+            test_df=test_data_df,
+            base_params=BASE_HYPERPARAMS,
+            state_loader=state_loader,
+            features=FEATURES,
+        )
+
+        # Train and evaluate base model
+        base_train_batches, base_target_batches, base_scaler = (
+            preprocess_single_state_data(
+                train_data_df=train_data_df,
+                state_loader=state_loader,
+                hyperparameters=BASE_HYPERPARAMS,
+                features=FEATURES,
+                scaler=MinMaxScaler(),
+            )
+        )
+
+        base_model = LocalModel(hyperparameters=BASE_HYPERPARAMS)
+
+        base_model.train_model(
+            batch_inputs=base_train_batches,
+            batch_targets=base_target_batches,
+            display_nth_epoch=2,
+        )
+
+        base_model_evaluation = EvaluateLSTM(base_model)
+        base_model_evaluation.eval(
+            test_X=train_data_df,
+            test_y=test_data_df,
+            features=FEATURES,
+            scaler=base_scaler,
+        )
+
+        # Plot and save base model plot
+        base_fig = base_model_evaluation.plot_predictions()
+
+        self.readme_add_section(
+            title="# Base model evaluation",
+            text=f"Hyperparameters:\n```{str(BASE_HYPERPARAMS)}```",
+        )
+
+        self.save_plot(fig_name="base_model_eval.png", figure=base_fig)
+        self.readme_add_plot(
+            plot_name="Base model predicted vs reference values",
+            plot_description="Displays the performance for every feature predicted of the `Base Model`.",
+            fig_name="base_model_eval.png",
+        )
+
+        # Train and evaluate parametricaly adjusted model
+        # Rewrite the parameters to optimal
+        OPTIMAL_PAREMETRS: LSTMHyperparameters = BASE_HYPERPARAMS
+        OPTIMAL_PAREMETRS.hidden_size = best_params_dict["hidden_size"]
+        OPTIMAL_PAREMETRS.sequence_length = best_params_dict["sequence_length"]
+        OPTIMAL_PAREMETRS.num_layers = best_params_dict["num_layers"]
+
+        # Preprocess data
+        optimal_train_batches, optimal_target_batches, optimal_scaler = (
+            preprocess_single_state_data(
+                train_data_df=train_data_df,
+                state_loader=state_loader,
+                hyperparameters=OPTIMAL_PAREMETRS,
+                features=FEATURES,
+                scaler=MinMaxScaler(),
+            )
+        )
+
+        optimal_model = LocalModel(hyperparameters=OPTIMAL_PAREMETRS)
+
+        optimal_model.train_model(
+            batch_inputs=optimal_train_batches,
+            batch_targets=optimal_target_batches,
+            display_nth_epoch=2,
+        )
+
+        optimal_model_evaluation = EvaluateLSTM(optimal_model)
+        optimal_model_evaluation.eval(
+            test_X=train_data_df,
+            test_y=test_data_df,
+            features=FEATURES,
+            scaler=optimal_scaler,
+        )
+
+        # Plot and save base model plot
+        optimal_fig = optimal_model_evaluation.plot_predictions()
+
+        self.save_plot(fig_name="optimal_model_eval.png", figure=optimal_fig)
+
+        self.readme_add_section(
+            title="# Optimal model evaluation",
+            text=f"Hyperparameters:\n```{str(OPTIMAL_PAREMETRS)}```",
+        )
+
+        self.readme_add_plot(
+            plot_name="Optimal model predicted vs reference values",
+            plot_description="Displays the performance for every feature predicted of the `Optimal Model`.",
+            fig_name="optimal_model_eval.png",
+        )
+
+        # Train and evaluate the adjusted parameters model
+
+        # Save the results
+        formatted_base_model_evaluation: str = pprint.pformat(
+            base_model_evaluation.to_readable_dict()
+        )
+        formatted_optimal_model_evaluation: str = pprint.pformat(
+            optimal_model_evaluation.to_readable_dict()
+        )
+        compare_models_by_metric: str = f"""
+Base model:
+{formatted_base_model_evaluation}
+
+Optimal model:
+{formatted_optimal_model_evaluation}
+"""
+
+        self.readme_add_section(
+            title="# Compare metric results", text=compare_models_by_metric
+        )
 
 
 if __name__ == "__main__":
@@ -370,6 +577,7 @@ if __name__ == "__main__":
         name="OptimalParamsExperiment",
         description="The goal is to find the optimal parameters for the given LocalModel model.",
     )
+    exp.test(state="Czechia", split_rate=0.8)
 
     # Run
-    exp.run(state="Czechia", split_rate=0.8)
+    # exp.run(state="Czechia", split_rate=0.8)
