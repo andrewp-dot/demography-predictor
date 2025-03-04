@@ -1,5 +1,6 @@
 # Standard library imports
 import pandas as pd
+from abc import abstractmethod
 from typing import Tuple, Dict, List, Callable, Union
 import torch
 from torch import nn
@@ -25,6 +26,31 @@ logger = logging.getLogger("local_model")
 
 # Set the seed for reproducibility
 torch.manual_seed(42)
+
+
+class CustomModelBase(nn.Module):
+
+    @abstractmethod
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError("Forward method for your model is not implemented!")
+
+    @abstractmethod
+    def train_model(
+        self,
+        batch_inputs: torch.Tensor,
+        batch_targets: torch.Tensor,
+        display_nth_epoch: int = 10,
+    ) -> None:
+        raise NotImplementedError("Train function for your model is not implemented!")
+
+    @abstractmethod
+    def predict(
+        self,
+        input_data: pd.DataFrame,
+        last_year: int,
+        target_year: int,
+    ) -> torch.Tensor:
+        raise NotImplementedError("Predict function for your model is not implemented!")
 
 
 class LSTMHyperparameters:
@@ -111,7 +137,7 @@ class TrainingStats:
 class EvaluateModel:
 
     def __init__(self, model: nn.Module):
-        self.model: nn.Module = model
+        self.model: CustomModelBase = model
         self.predicted: pd.DataFrame | None = None
         self.reference_values: pd.DataFrame | None = None
         self.predicted_years: List[int] | None = None
@@ -129,12 +155,14 @@ class EvaluateModel:
         """
         Computes and saves given metric.
 
+        Args:
+            metric (Callable): Function for metric computation.
+            features (List[str]): Key of the metric which can be accasible in `EvaluateModel.metrics` dict (`{metric_key}`, `{metric_key}_per_target` if per target is available).
+                If not given, the name of the function is used. Defaults to "".
+            metric_key (str, optional): _description_. Defaults to "".
 
-        :param metric: callable: Function for metric computation.
-        :param metric_key: (str, optional): Key of the metric which can be accasible in `EvaluateModel.metrics` dict (`{metric_key}`, `{metric_key}_per_target` if per target is available).
-            If not given, the name of the function is used. Defaults to "".
-
-        :returns: Tuple[pd.DataFrame, pd.DataFrame | None]: metric value for all targets, metric values for each target separately.
+        Returns:
+            out: Tuple[pd.DataFrame, pd.DataFrame | None]: metric value for all targets, metric values for each target separately.
         """
 
         # Adjust metric key if not given
@@ -179,13 +207,19 @@ class EvaluateModel:
         test_y: Union[pd.DataFrame, Dict[str, pd.DataFrame]],
         features: list[str],
         scaler: Union[MinMaxScaler | RobustScaler | StandardScaler],
+        # from_year: int,
+        # to_year: int,
     ) -> None:
-        """Evaluates model perforemance based on known and unknown sequences of 1 state data.
+        """
+        Evaluates model perforemance based on known and unknown sequences of 1 state data. Needs the year column in order to compute number of prediction iterations.
 
-        :param test_X: Union[pd.DataFrame, Dict[str, pd.DataFrame]]: unscaled validation input data (known sequences)
-        :param test_y: Union[pd.DataFrame, Dict[str, pd.DataFrame]]: unscaled validation target data (unknown sequences)
-        :param features: list[str]: input features list
-        :param scaler: (Union[MinMaxScaler | RobustScaler | StandardScaler]): scaler to scale data
+        Args:
+            test_X (Union[pd.DataFrame, Dict[str, pd.DataFrame]]): Unscaled validation input data (known sequences)
+            test_y (Union[pd.DataFrame, Dict[str, pd.DataFrame]]): Unscaled validation target data (unknown sequences)
+            features (list[str]): _description_
+            scaler (Union[MinMaxScaler  |  RobustScaler  |  StandardScaler]): Scaler to scale data
+            from_year (int): Last record's year in test_X data.
+            to_year (int): Last record's of the 'test_y' data.
         """
 
         # Set features as a constant
@@ -195,9 +229,13 @@ class EvaluateModel:
         X_years = test_X[["year"]]
         last_year = int(X_years.iloc[-1].item())
 
-        # Get the prediction year
+        # # Get the prediction year
         y_target_years = test_y[["year"]]
         target_year = int(y_target_years.iloc[-1].item())
+
+        # Exctract the features seen in fit time
+        test_X = test_X[FEATURES]
+        test_y = test_y[FEATURES]
 
         # Scale data
         test_X = scaler.transform(test_X)
@@ -214,7 +252,7 @@ class EvaluateModel:
         logger.debug(f"[Eval]: predicting values from {last_year} to {target_year}...")
 
         predictions = self.model.predict(
-            input_data=test_X[FEATURES],
+            input_data=test_X,
             last_year=last_year,
             target_year=target_year,
         )
@@ -276,6 +314,10 @@ class EvaluateModel:
 
         # Create a figure with N rows and 1 column
         fig, axes = plt.subplots(N_FEATURES, 1, figsize=(8, 2 * N_FEATURES))
+
+        # Ensure axes is always iterable
+        if N_FEATURES == 1:
+            axes = [axes]  # Convert to list for consistent indexing
 
         # Plotting in each subplot
         for index, feature in zip(range(N_FEATURES), FEATURES):

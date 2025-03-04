@@ -9,7 +9,12 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 # Custom imports
-from src.local_model.base import LSTMHyperparameters, EvaluateModel, TrainingStats
+from src.local_model.base import (
+    CustomModelBase,
+    LSTMHyperparameters,
+    EvaluateModel,
+    TrainingStats,
+)
 from src.preprocessors.state_preprocessing import StateDataLoader
 from config import setup_logging
 
@@ -17,7 +22,7 @@ from config import setup_logging
 logger = logging.getLogger("local_model")
 
 
-class LocalModel(nn.Module):
+class LocalModel(CustomModelBase):
 
     def __init__(self, hyperparameters: LSTMHyperparameters):
         super(LocalModel, self).__init__()
@@ -226,23 +231,13 @@ class LocalModel(nn.Module):
             for i in range(num_timesteps - sequence_length + 1):
 
                 # Slide over the sequence
-                # logger.debug(
-                #     f"Input sequence: {input_sequence[i : i + sequence_length]}"
-                # )
                 window = input_sequence[i : i + sequence_length]  # Extract window
                 window = window.unsqueeze(
                     0
                 )  # Add batch dimension: (1, sequence_length, input_size)
 
-                # print("-" * 100)
-                # print("Input:")
-                # pprint.pprint(window)
-
-                pred = self(window)  # Forward pass
-
-                # print("Output:")
-                # pprint.pprint(pred.cpu())
-                # print("-" * 100)
+                # Forward pass
+                pred = self(window)
 
                 predictions.append(pred.cpu())
 
@@ -286,7 +281,7 @@ if __name__ == "__main__":
     setup_logging()
 
     FEATURES = [
-        "year",
+        # "year",
         # "Fertility rate, total",
         "Population, total",
         # "Net migration",
@@ -308,8 +303,8 @@ if __name__ == "__main__":
 
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
-        hidden_size=128,
-        sequence_length=10,
+        hidden_size=512,
+        sequence_length=15,
         learning_rate=0.0001,
         epochs=30,
         batch_size=1,
@@ -318,7 +313,7 @@ if __name__ == "__main__":
     rnn = LocalModel(hyperparameters)
 
     # Load data
-    czech_loader = StateDataLoader("Czechia")
+    czech_loader = StateDataLoader("United States")
 
     czech_data = czech_loader.load_data()
 
@@ -329,7 +324,7 @@ if __name__ == "__main__":
 
     # Scale data
     scaled_cz_data, cz_scaler = czech_loader.scale_data(
-        czech_data[FEATURES], scaler=MinMaxScaler()
+        czech_data, features=FEATURES, scaler=MinMaxScaler()
     )
 
     print(scaled_cz_data.head())
@@ -338,7 +333,9 @@ if __name__ == "__main__":
 
     # Get input/output sequences from train data
     input_sequences, target_sequences = czech_loader.preprocess_training_data(
-        train, hyperparameters.sequence_length, features=FEATURES
+        train,
+        hyperparameters.sequence_length,
+        features=FEATURES,
     )
 
     # Get input/output batches of sequences
@@ -359,10 +356,13 @@ if __name__ == "__main__":
     model_evaluation = EvaluateModel(rnn)
 
     # Split the raw data
-    val_X, val_y = czech_loader.split_data(czech_data[FEATURES])
+    val_X, val_y = czech_loader.split_data(czech_data)
 
     model_evaluation.eval(
-        test_X=val_X, test_y=val_y, features=FEATURES, scaler=cz_scaler
+        test_X=val_X,
+        test_y=val_y,
+        features=FEATURES,
+        scaler=cz_scaler,
     )
 
     logger.info(
@@ -372,6 +372,11 @@ if __name__ == "__main__":
         f"Model evaluation by overall metrics: \n{model_evaluation.overall_metrics}"
     )
 
+    fig = model_evaluation.plot_predictions()
+
+    import matplotlib.pyplot as plt
+
+    plt.show()
     exit(1)
 
     # Get the last year and get the number of years

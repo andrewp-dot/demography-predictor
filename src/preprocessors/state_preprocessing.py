@@ -33,6 +33,7 @@ class StateDataLoader:
     def scale_data(
         self,
         data: pd.DataFrame,
+        features: List[str],
         scaler: Union[RobustScaler, StandardScaler, MinMaxScaler],
     ) -> Tuple[pd.DataFrame, Union[RobustScaler, StandardScaler, MinMaxScaler]]:
         """
@@ -44,14 +45,17 @@ class StateDataLoader:
         :return: Tuple[pd.DataFrame, Union[RobustScaler, StandardScaler, MinMaxScaler]]: scaled dataframe and fitted scaler for data unscaling
         """
 
+        # Set features constant
+        FEATURES = features
+
         # Copy data to avoid inplace edits
         to_scale_data = data.copy()
 
         # Scale data
-        scaled_data = scaler.fit_transform(to_scale_data)
+        scaled_data = scaler.fit_transform(to_scale_data[FEATURES])
 
         # Create dataframe from scaled data
-        scaled_data_df = pd.DataFrame(scaled_data, columns=to_scale_data.columns)
+        scaled_data_df = pd.DataFrame(scaled_data, columns=FEATURES)
         return scaled_data_df, scaler
 
     def split_data(
@@ -102,6 +106,26 @@ class StateDataLoader:
             return input_batches, target_batches
 
         return input_batches, None
+
+    def get_last_year(self, data: pd.DataFrame) -> int:
+        """
+        Get the last record in the dataframme.
+
+        Args:
+            data (pd.DataFrame): Dataframe which should contain the year.
+
+        Returns:
+            int: Last year of the record.
+        """
+
+        # Verify if the 'year' is in the columns
+        if "year" not in data.columns:
+            raise ValueError("The given dataframe does not contain the 'year' column!")
+
+        # Retrieve the last year from data
+        last_year = int(data["year"].sort_values(ascending=True).iloc[-1])
+
+        return last_year
 
     def preprocess_training_data(
         self,

@@ -137,7 +137,10 @@ class OptimalParamsExperiment(BaseExperiment):
             rnn_evaluation = EvaluateModel(rnn)
 
             rnn_evaluation.eval(
-                test_X=train_df, test_y=test_df, features=FEATURES, scaler=state_scaler
+                test_X=train_df,
+                test_y=test_df,
+                features=FEATURES,
+                scaler=state_scaler,
             )
 
             # Get r2 scorre from overall metrics

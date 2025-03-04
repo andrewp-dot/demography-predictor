@@ -47,7 +47,7 @@ def preprocess_single_state_data(
 
     # Scale data
     scaled_train_data, state_scaler = state_loader.scale_data(
-        train_data_df, scaler=scaler
+        train_data_df, features=FEATURES, scaler=scaler
     )
 
     # Create input and target sequences
