@@ -38,7 +38,7 @@ population growth
 ## Evaluation of the model
 
 
-![Evaluation of the model](./plots/evluation.png)
+![Evaluation of the model](./plots/evaluation.png)
 
 # Compare metric results
 {'mae': 1.3972495304132817,

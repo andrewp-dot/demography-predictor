@@ -49,7 +49,7 @@ life expectancy at birth, total
 ## Evaluation of the model
 
 
-![Evaluation of the model](./plots/evluation.png)
+![Evaluation of the model](./plots/evaluation.png)
 
 # Metric result
 {'mae': 1367861.523275283,

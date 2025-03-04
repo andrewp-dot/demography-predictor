@@ -250,11 +250,13 @@ class AllStatesDataExperiments(BaseExperiment):
             scaler=all_states_scaler,
         )
 
+        fig = all_states_rnn_evaluation.plot_predictions()
+
         self.save_plot(fig_name="evaluation.png", figure=fig)
         self.readme_add_plot(
             plot_name=f"Evaluation of the model",
             plot_description="",
-            fig_name="evluation.png",
+            fig_name="evaluation.png",
         )
 
         # Save the results
@@ -382,7 +384,7 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
         self.readme_add_plot(
             plot_name=f"Evaluation of the model",
             plot_description="",
-            fig_name="evluation.png",
+            fig_name="evaluation.png",
         )
 
         # Save the results
