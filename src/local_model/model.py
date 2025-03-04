@@ -159,8 +159,6 @@ class LocalModel(CustomModelBase):
             epoch_loss = 0
 
             for batch_input, batch_target in zip(batch_inputs, batch_targets):
-                # logger.debug(f"[Training loop] input: {batch_input.shape}")
-                # logger.debug(f"[Training loop] target: {batch_target.shape}")
 
                 # Put the targets to the device
                 batch_input, batch_target = batch_input.to(
@@ -283,8 +281,8 @@ if __name__ == "__main__":
     FEATURES = [
         # "year",
         # "Fertility rate, total",
-        "Population, total",
-        # "Net migration",
+        # "Population, total",
+        "Net migration",
         # "Arable land",
         # "Birth rate, crude",
         # "GDP growth",
@@ -303,7 +301,7 @@ if __name__ == "__main__":
 
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
-        hidden_size=512,
+        hidden_size=2048,
         sequence_length=15,
         learning_rate=0.0001,
         epochs=30,
@@ -313,7 +311,7 @@ if __name__ == "__main__":
     rnn = LocalModel(hyperparameters)
 
     # Load data
-    czech_loader = StateDataLoader("United States")
+    czech_loader = StateDataLoader("Czechia")
 
     czech_data = czech_loader.load_data()
 
@@ -350,7 +348,9 @@ if __name__ == "__main__":
     logger.info(f"Batch targets shape: {batch_targets.shape}")
 
     # Train model
-    rnn.train_model(batch_inputs=batch_inputs, batch_targets=batch_targets)
+    rnn.train_model(
+        batch_inputs=batch_inputs, batch_targets=batch_targets, display_nth_epoch=1
+    )
 
     # Evaluate model
     model_evaluation = EvaluateModel(rnn)
@@ -377,42 +377,3 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     plt.show()
-    exit(1)
-
-    # Get the last year and get the number of years
-    years = czech_data[["year"]]
-    last_year = int(years.iloc[-1].item())
-    target_year = 2100
-
-    predictions = rnn.predict(
-        input_data=scaled_cz_data[FEATURES],
-        last_year=last_year,
-        target_year=target_year,
-    )
-
-    predictions_df = pd.DataFrame(predictions, columns=FEATURES)
-    denormalized_predicions = cz_scaler.inverse_transform(predictions)
-
-    denormalized_predicions_df = pd.DataFrame(denormalized_predicions, columns=FEATURES)
-
-    if FEATURES == ["year"]:
-        print("-" * 100)
-        print("Predictions:")
-
-        # Just print predictions in fancier way
-        first_predicted_year = int(
-            years.iloc[0 + hyperparameters.sequence_length].item()
-        )
-        for index, year in enumerate(
-            range(first_predicted_year, target_year + 1)
-        ):  # + 1 in order to include also the target year
-            print(f"{year}: {denormalized_predicions_df.iloc[index,0]}")
-
-    # Get train stats
-    stats = rnn.training_stats
-
-    print("-" * 100)
-    print("Losses:")
-    pprint.pprint(stats.losses)
-
-    stats.plot()
