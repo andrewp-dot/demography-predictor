@@ -76,7 +76,9 @@ class OneStateDataExperiment(BaseExperiment):
         )
 
         # Add list of features
-        self.readme_add_section(title="## Features", text=f"```{'\n'.join(FEATURES)}```")
+        self.readme_add_section(
+            title="## Features", text="```\n" + "\n".join(FEATURES) + "\n```"
+        )
 
         # Split data
         state_train, state_test = state_loader.split_data(
@@ -104,7 +106,9 @@ class OneStateDataExperiment(BaseExperiment):
         fig = stats.create_plot()
 
         self.save_plot(fig_name="loss.png", figure=fig)
-        self.readme_add_plot(plot_name=f"Loss graph", fig_name="loss.png")
+        self.readme_add_plot(
+            plot_name=f"Loss graph", plot_description="", fig_name="loss.png"
+        )
 
         # Evaluate model
         single_state_rnn_evaluation = EvaluateModel(single_state_rnn)
@@ -121,6 +125,7 @@ class OneStateDataExperiment(BaseExperiment):
         self.save_plot(fig_name="evaluation.png", figure=fig)
         self.readme_add_plot(
             plot_name=f"Prediction of {state} by the training data",
+            plot_description="",
             fig_name="evaluation.png",
         )
 
@@ -135,6 +140,7 @@ class OneStateDataExperiment(BaseExperiment):
 
 
 ## 2. Use data for all states (whole dataset)
+
 
 class AllStatesDataExperiments(BaseExperiment):
 
@@ -178,7 +184,9 @@ class AllStatesDataExperiments(BaseExperiment):
         )
 
         # Add list of features
-        self.readme_add_section(title="## Features", text=f"```{'\n'.join(FEATURES)}```")
+        self.readme_add_section(
+            title="## Features", text="```\n" + "\n".join(FEATURES) + "\n```"
+        )
 
         # TODO: Maybe you an write this to all in one function
 
@@ -186,7 +194,9 @@ class AllStatesDataExperiments(BaseExperiment):
 
         # Split data
         states_train_data_dict, states_test_data_dict = states_loader.split_data(
-            states_dict=all_states, sequence_len=all_state_state_params.sequence_length, split_rate=split_rate
+            states_dict=all_states,
+            sequence_len=all_state_state_params.sequence_length,
+            split_rate=split_rate,
         )
 
         # Scale data
@@ -225,8 +235,9 @@ class AllStatesDataExperiments(BaseExperiment):
         stats = all_states_rnn.training_stats
         fig = stats.create_plot()
         self.save_plot(fig_name="loss.png", figure=fig)
-        self.readme_add_plot(plot_name=f"Loss graph", fig_name="loss.png")
-
+        self.readme_add_plot(
+            plot_name=f"Loss graph", plot_description="", fig_name="loss.png"
+        )
 
         # Evaluate model
         all_states_rnn_evaluation = EvaluateModel(all_states_rnn)
@@ -240,7 +251,11 @@ class AllStatesDataExperiments(BaseExperiment):
         )
 
         self.save_plot(fig_name="evaluation.png", figure=fig)
-        self.readme_add_plot(plot_name=f"Evaluation of the model", fig_name="evluation.png")
+        self.readme_add_plot(
+            plot_name=f"Evaluation of the model",
+            plot_description="",
+            fig_name="evluation.png",
+        )
 
         # Save the results
         formatted_model_evaluation: str = pprint.pformat(
@@ -252,12 +267,10 @@ class AllStatesDataExperiments(BaseExperiment):
         )
 
 
-
 ## 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)
 
 
 ## 4. Devide data for aligned sequences (% values - 0 - 100) and for absolute values, which can rise (population, total, ...)
-
 class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
 
     def run(self, state: str, split_rate: float) -> None:
@@ -267,6 +280,9 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
             state (str): State which data will be used to train model.
             split_rate (float): Split rate for training and validation data.
         """
+
+        # Create reamde
+        self.create_readme()
 
         # Load the state
         STATE = state
@@ -317,7 +333,9 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
         )
 
         # Add list of features
-        self.readme_add_section(title="## Features", text=f"```{'\n'.join(FEATURES)}```")
+        self.readme_add_section(
+            title="## Features", text="```\n" + "\n".join(FEATURES) + "\n```"
+        )
 
         # Split data
         train_data_df, test_data_df = state_loader.split_data(
@@ -361,7 +379,11 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
 
         fig = only_stationary_rnn_evaluation.plot_predictions()
         self.save_plot(fig_name="evaluation.png", figure=fig)
-        self.readme_add_plot(plot_name=f"Evaluation of the model", fig_name="evluation.png")
+        self.readme_add_plot(
+            plot_name=f"Evaluation of the model",
+            plot_description="",
+            fig_name="evluation.png",
+        )
 
         # Save the results
         formatted_model_evaluation: str = pprint.pformat(
@@ -373,20 +395,33 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
         )
 
 
+# 5. Finetune experiment -> try to use all data from whole dataset and finetune finetunable layers to one state
+
+
 def run_data_experiments() -> None:
     """
     Runs all implemented data experiments
     """
-    
+
     # Setup experiments
-    exp1 = OneStateDataExperiment(name="OneStateDataExperiment", description="Train and evaluate model on single state data.")
-    exp2 = AllStatesDataExperiments(name="AllStatesDataExperiments", description="Train and evaluate model on whole dataset.")
-    exp3 = OnlyStationaryFeaturesDataExperiment(name="OnlyStationaryFeaturesDataExperiment", description="Train and evaluate model on single state data with all features with boundaries (for example % values, features with some mean.) ")
-    
+    exp1 = OneStateDataExperiment(
+        name="OneStateDataExperiment",
+        description="Train and evaluate model on single state data.",
+    )
+    exp2 = AllStatesDataExperiments(
+        name="AllStatesDataExperiments",
+        description="Train and evaluate model on whole dataset.",
+    )
+    exp3 = OnlyStationaryFeaturesDataExperiment(
+        name="OnlyStationaryFeaturesDataExperiment",
+        description="Train and evaluate model on single state data with all features with boundaries (for example % values, features with some mean.) ",
+    )
+
     # Run experiments with parameters
     exp1.run(state="Czechia", split_rate=0.8)
     exp2.run(state="Czechia", split_rate=0.8)
     exp3.run(state="Czechia", split_rate=0.8)
+
 
 if __name__ == "__main__":
     # Setup logging
