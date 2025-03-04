@@ -6,12 +6,12 @@ In this file are experiments with local model.
 import os
 import pandas as pd
 import logging
+import pprint
 
 
 from config import setup_logging, Config
 from local_model_benchmark.utils import (
     preprocess_single_state_data,
-    write_experiment_results,
 )
 from sklearn.preprocessing import MinMaxScaler
 
@@ -26,286 +26,371 @@ from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateModel
 settings = Config()
 logger = logging.getLogger("benchmark")
 
-# TODO: Define experiments
-# TODO: doc comments
+# TODO: make this robust for other architectures -> You need train function, data preprocessing function?
 
 
 # Data based experiments
 ## 1. Use data for just a single state
-def single_state_data_experiment(state: str, split_rate: float) -> None:
-    # Define experiment name
-    EXPERIMENT_NAME = single_state_data_experiment.__name__
 
-    # Define experiment settings
-    STATE = state
-    state_loader = StateDataLoader(STATE)
 
-    # Single state dataframe
-    state_df = state_loader.load_data()
+class OneStateDataExperiment(BaseExperiment):
 
-    # Exclude country name
-    state_df = state_df.drop(columns=["country name"])
+    def run(self, state: str, split_rate: float):
+        """
+        Trains and evaluates model using a single state data.
 
-    # Get features
-    FEATURES = [col.lower() for col in state_df.columns]
+        Args:
+            state (str): State which data will be used to train model.
+            split_rate (float): Split rate for training and validation data.
+        """
+        # Create readme
+        self.create_readme()
 
-    single_state_params = LSTMHyperparameters(
-        input_size=len(FEATURES),
-        hidden_size=128,
-        sequence_length=10,
-        learning_rate=0.0001,
-        epochs=10,
-        batch_size=1,
-        num_layers=3,
-    )
-    single_state_rnn = LocalModel(single_state_params)
+        # Define experiment settings
+        STATE = state
+        state_loader = StateDataLoader(STATE)
 
-    # Split data
-    state_train, state_test = state_loader.split_data(state_df, split_rate=split_rate)
+        # Single state dataframe
+        state_df = state_loader.load_data()
 
-    # Preproces data
-    train_batches, target_batches, state_scaler = preprocess_single_state_data(
-        train_data_df=state_train,
-        state_loader=state_loader,
-        hyperparameters=single_state_params,
-        features=FEATURES,
-        scaler=MinMaxScaler(),
-    )
+        # Exclude country name
+        state_df = state_df.drop(columns=["country name"])
 
-    # Train model
-    single_state_rnn.train_model(
-        batch_inputs=train_batches, batch_targets=target_batches, display_nth_epoch=1
-    )
+        # Get features
+        FEATURES = [col.lower() for col in state_df.columns]
 
-    # Get stats
-    stats = single_state_rnn.training_stats
-    fig = stats.create_plot()
+        single_state_params = LSTMHyperparameters(
+            input_size=len(FEATURES),
+            hidden_size=128,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=10,
+            batch_size=1,
+            num_layers=3,
+        )
+        single_state_rnn = LocalModel(single_state_params)
 
-    # Save training stats or plot it
+        # Add params to readme
+        self.readme_add_section(
+            title="## Hyperparameters", text=f"```{single_state_params}```"
+        )
 
-    # Evaluate model
-    single_state_rnn_evaluation = EvaluateModel(single_state_rnn)
-    single_state_rnn_evaluation.eval(
-        state_train,
-        state_test,
-        features=FEATURES,
-        scaler=state_scaler,
-    )
+        # Add list of features
+        self.readme_add_section(title="## Features", text=f"```{'\n'.join(FEATURES)}```")
 
-    import matplotlib.pyplot as plt
+        # Split data
+        state_train, state_test = state_loader.split_data(
+            state_df, split_rate=split_rate
+        )
 
-    prediction_plot = single_state_rnn_evaluation.plot_predictions()
-    prediction_plot.savefig("./test_plot")
+        # Preproces data
+        train_batches, target_batches, state_scaler = preprocess_single_state_data(
+            train_data_df=state_train,
+            state_loader=state_loader,
+            hyperparameters=single_state_params,
+            features=FEATURES,
+            scaler=MinMaxScaler(),
+        )
 
-    # Get evaluation metrics
-    write_experiment_results(
-        EXPERIMENT_NAME,
-        state=STATE,
-        per_target_metrics=single_state_rnn_evaluation.per_target_metrics,
-        overall_metrics=single_state_rnn_evaluation.overall_metrics,
-        fig=fig,
-    )
+        # Train model
+        single_state_rnn.train_model(
+            batch_inputs=train_batches,
+            batch_targets=target_batches,
+            display_nth_epoch=1,
+        )
+
+        # Get training stats
+        stats = single_state_rnn.training_stats
+        fig = stats.create_plot()
+
+        self.save_plot(fig_name="loss.png", figure=fig)
+        self.readme_add_plot(plot_name=f"Loss graph", fig_name="loss.png")
+
+        # Evaluate model
+        single_state_rnn_evaluation = EvaluateModel(single_state_rnn)
+        single_state_rnn_evaluation.eval(
+            state_train,
+            state_test,
+            features=FEATURES,
+            scaler=state_scaler,
+        )
+
+        # Get figure
+        fig = single_state_rnn_evaluation.plot_predictions()
+
+        self.save_plot(fig_name="evaluation.png", figure=fig)
+        self.readme_add_plot(
+            plot_name=f"Prediction of {state} by the training data",
+            fig_name="evaluation.png",
+        )
+
+        # Save the results
+        formatted_model_evaluation: str = pprint.pformat(
+            single_state_rnn_evaluation.to_readable_dict()
+        )
+
+        self.readme_add_section(
+            title="# Metric result", text=formatted_model_evaluation
+        )
 
 
 ## 2. Use data for all states (whole dataset)
-def whole_dataset_experiment() -> None:
 
-    # Define experiment name
-    EXPERIMENT_NAME = whole_dataset_experiment.__name__
+class AllStatesDataExperiments(BaseExperiment):
 
-    # Load whole dataset
-    states_loader = StatesDataLoader()
+    def run(self, state: str, split_rate: float):
+        """
+        Use whole dataset to train and evaluate model.
 
-    all_states = states_loader.load_all_states()
+        Args:
+            state (str): State used for evaluation of the experiment.
+            split_rate (float): Split rate for training and validation data.
+        """
 
-    # Get only numerical features
-    FEATURES = [
-        col.lower()  # Lower to ensure key compatibility
-        for col in all_states["Czechia"].select_dtypes(include="number").columns
-    ]
+        # Create readme
+        self.create_readme()
 
-    # Get hyperparameters for training
-    all_state_state_params = LSTMHyperparameters(
-        input_size=len(FEATURES),
-        hidden_size=128,
-        sequence_length=10,
-        learning_rate=0.0001,
-        epochs=10,
-        batch_size=1,
-        num_layers=3,
-    )
+        # Load whole dataset
+        states_loader = StatesDataLoader()
 
-    # TODO: Maybe you an write this to all in one function
+        all_states = states_loader.load_all_states()
 
-    # Split data
-    states_train_data_dict, states_test_data_dict = states_loader.split_data(
-        states_dict=all_states, sequence_len=all_state_state_params.sequence_length
-    )
+        # Get only numerical features
+        FEATURES = [
+            col.lower()  # Lower to ensure key compatibility
+            for col in all_states[state].select_dtypes(include="number").columns
+        ]
 
-    # Scale data
-    scaled_train_data, all_states_scaler = states_loader.scale_data(
-        states_train_data_dict, scaler=MinMaxScaler()
-    )
-
-    # Create input and target sequences
-    train_input_sequences, train_target_sequences = (
-        states_loader.create_train_sequences(
-            states_data=scaled_train_data,
-            sequence_len=all_state_state_params.sequence_length,
-            features=FEATURES,
+        # Get hyperparameters for training
+        all_state_state_params = LSTMHyperparameters(
+            input_size=len(FEATURES),
+            hidden_size=128,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=10,
+            batch_size=1,
+            num_layers=3,
         )
-    )
 
-    # Create input and target batches for faster training
-    train_input_batches, train_target_batches = states_loader.create_train_batches(
-        input_sequences=train_input_sequences,
-        target_sequences=train_target_sequences,
-        batch_size=all_state_state_params.batch_size,
-    )
+        # Add params to readme
+        self.readme_add_section(
+            title="## Hyperparameters", text=f"```{all_state_state_params}```"
+        )
 
-    # Train rnn
-    all_states_rnn = LocalModel(all_state_state_params)
+        # Add list of features
+        self.readme_add_section(title="## Features", text=f"```{'\n'.join(FEATURES)}```")
 
-    all_states_rnn.train_model(
-        batch_inputs=train_input_batches,
-        batch_targets=train_target_batches,
-        display_nth_epoch=1,
-    )
+        # TODO: Maybe you an write this to all in one function
 
-    # Get stats
-    stats = all_states_rnn.training_stats
-    fig = stats.create_plot()
+        #### Multiple state preprocessing starts here
 
-    # Save training stats or plot it
+        # Split data
+        states_train_data_dict, states_test_data_dict = states_loader.split_data(
+            states_dict=all_states, sequence_len=all_state_state_params.sequence_length, split_rate=split_rate
+        )
 
-    # Evaluate model
-    all_states_rnn_evaluation = EvaluateModel(all_states_rnn)
+        # Scale data
+        scaled_train_data, all_states_scaler = states_loader.scale_data(
+            states_train_data_dict, scaler=MinMaxScaler()
+        )
 
-    EVAL_STATE = "Czechia"
-    all_states_rnn_evaluation.eval(
-        states_train_data_dict[EVAL_STATE][FEATURES],
-        states_test_data_dict[EVAL_STATE][FEATURES],
-        features=FEATURES,
-        scaler=all_states_scaler,
-    )
+        # Create input and target sequences
+        train_input_sequences, train_target_sequences = (
+            states_loader.create_train_sequences(
+                states_data=scaled_train_data,
+                sequence_len=all_state_state_params.sequence_length,
+                features=FEATURES,
+            )
+        )
 
-    # Save the results
-    write_experiment_results(
-        EXPERIMENT_NAME,
-        state=EVAL_STATE,
-        per_target_metrics=all_states_rnn_evaluation.per_target_metrics,
-        overall_metrics=all_states_rnn_evaluation.overall_metrics,
-        fig=fig,
-    )
+        # Create input and target batches for faster training
+        train_input_batches, train_target_batches = states_loader.create_train_batches(
+            input_sequences=train_input_sequences,
+            target_sequences=train_target_sequences,
+            batch_size=all_state_state_params.batch_size,
+        )
+
+        #### Multiple state preprocessing ends here
+
+        # Train rnn
+        all_states_rnn = LocalModel(all_state_state_params)
+
+        all_states_rnn.train_model(
+            batch_inputs=train_input_batches,
+            batch_targets=train_target_batches,
+            display_nth_epoch=1,
+        )
+
+        # Get stats
+        stats = all_states_rnn.training_stats
+        fig = stats.create_plot()
+        self.save_plot(fig_name="loss.png", figure=fig)
+        self.readme_add_plot(plot_name=f"Loss graph", fig_name="loss.png")
+
+
+        # Evaluate model
+        all_states_rnn_evaluation = EvaluateModel(all_states_rnn)
+
+        EVAL_STATE = state
+        all_states_rnn_evaluation.eval(
+            states_train_data_dict[EVAL_STATE][FEATURES],
+            states_test_data_dict[EVAL_STATE][FEATURES],
+            features=FEATURES,
+            scaler=all_states_scaler,
+        )
+
+        self.save_plot(fig_name="evaluation.png", figure=fig)
+        self.readme_add_plot(plot_name=f"Evaluation of the model", fig_name="evluation.png")
+
+        # Save the results
+        formatted_model_evaluation: str = pprint.pformat(
+            all_states_rnn_evaluation.to_readable_dict()
+        )
+
+        self.readme_add_section(
+            title="# Metric result", text=formatted_model_evaluation
+        )
+
 
 
 ## 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)
 
 
 ## 4. Devide data for aligned sequences (% values - 0 - 100) and for absolute values, which can rise (population, total, ...)
-def only_stationary_data_experiment(state: str, split_rate: float) -> None:
 
-    # Define experiment name
-    EXPERIMENT_NAME = only_stationary_data_experiment.__name__
+class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
 
-    # Load the state
-    STATE = state
-    state_loader = StateDataLoader(STATE)
-    state_data_df = state_loader.load_data()
+    def run(self, state: str, split_rate: float) -> None:
+        """_summary_
 
-    # Get only numerical features
-    FEATURES = [
-        # Need to run columns
-        "year",
-        # Stationary columns
-        "Fertility rate, total",
-        "Arable land",
-        "Birth rate, crude",
-        "GDP growth",
-        "Death rate, crude",
-        "Population ages 15-64",
-        "Population ages 0-14",
-        "Agricultural land",
-        "Population ages 65 and above",
-        "Rural population",
-        "Rural population growth",
-        # "Age dependency ratio",
-        "Urban population",
-        "Population growth",
-    ]
+        Args:
+            state (str): State which data will be used to train model.
+            split_rate (float): Split rate for training and validation data.
+        """
 
-    # Adjust feature names to lower
-    FEATURES = [col.lower() for col in FEATURES]
+        # Load the state
+        STATE = state
+        state_loader = StateDataLoader(STATE)
+        state_data_df = state_loader.load_data()
 
-    # Get only data with features
-    state_data_df = state_data_df[FEATURES]
+        # Get only numerical features
+        FEATURES = [
+            # Need to run columns
+            "year",
+            # Stationary columns
+            "Fertility rate, total",
+            "Arable land",
+            "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Population ages 15-64",
+            "Population ages 0-14",
+            "Agricultural land",
+            "Population ages 65 and above",
+            "Rural population",
+            "Rural population growth",
+            # "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+        ]
 
-    # Get hyperparameters for training
-    only_staionary_data_params = LSTMHyperparameters(
-        input_size=len(FEATURES),
-        hidden_size=128,
-        sequence_length=10,
-        learning_rate=0.0001,
-        epochs=40,
-        batch_size=1,
-        num_layers=3,
-    )
+        # Adjust feature names to lower
+        FEATURES = [col.lower() for col in FEATURES]
 
-    # Split data
-    train_data_df, test_data_df = state_loader.split_data(
-        data=state_data_df, split_rate=split_rate
-    )
+        # Get only data with features
+        state_data_df = state_data_df[FEATURES]
 
-    # Preprocess data
-    train_input_batches, train_target_batches, state_scaler = (
-        preprocess_single_state_data(
-            train_data_df=train_data_df,
-            state_loader=state_loader,
-            hyperparameters=only_staionary_data_params,
-            features=FEATURES,
-            scaler=MinMaxScaler(),
+        # Get hyperparameters for training
+        only_staionary_data_params = LSTMHyperparameters(
+            input_size=len(FEATURES),
+            hidden_size=128,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=40,
+            batch_size=1,
+            num_layers=3,
         )
-    )
 
-    # Train rnn
-    only_stationary_rnn = LocalModel(only_staionary_data_params)
+        # Add params to readme
+        self.readme_add_section(
+            title="## Hyperparameters", text=f"```{only_staionary_data_params}```"
+        )
 
-    only_stationary_rnn.train_model(
-        batch_inputs=train_input_batches,
-        batch_targets=train_target_batches,
-    )
+        # Add list of features
+        self.readme_add_section(title="## Features", text=f"```{'\n'.join(FEATURES)}```")
 
-    # Get stats
-    stats = only_stationary_rnn.training_stats
-    fig = stats.create_plot()
+        # Split data
+        train_data_df, test_data_df = state_loader.split_data(
+            data=state_data_df, split_rate=split_rate
+        )
 
-    # Save training stats or plot it
+        # Preprocess data
+        train_input_batches, train_target_batches, state_scaler = (
+            preprocess_single_state_data(
+                train_data_df=train_data_df,
+                state_loader=state_loader,
+                hyperparameters=only_staionary_data_params,
+                features=FEATURES,
+                scaler=MinMaxScaler(),
+            )
+        )
 
-    # Evaluate model
-    only_stationary_rnn_evaluation = EvaluateModel(only_stationary_rnn)
+        # Train rnn
+        only_stationary_rnn = LocalModel(only_staionary_data_params)
 
-    only_stationary_rnn_evaluation.eval(
-        train_data_df,
-        test_data_df,
-        features=FEATURES,
-        scaler=state_scaler,
-    )
+        only_stationary_rnn.train_model(
+            batch_inputs=train_input_batches,
+            batch_targets=train_target_batches,
+        )
 
-    # Save the results
-    write_experiment_results(
-        EXPERIMENT_NAME,
-        state=STATE,
-        per_target_metrics=only_stationary_rnn_evaluation.per_target_metrics,
-        overall_metrics=only_stationary_rnn_evaluation.overall_metrics,
-        fig=fig,
-    )
+        # Get stats
+        stats = only_stationary_rnn.training_stats
+        fig = stats.create_plot()
 
+        # Save training stats or plot it
+
+        # Evaluate model
+        only_stationary_rnn_evaluation = EvaluateModel(only_stationary_rnn)
+
+        only_stationary_rnn_evaluation.eval(
+            train_data_df,
+            test_data_df,
+            features=FEATURES,
+            scaler=state_scaler,
+        )
+
+        fig = only_stationary_rnn_evaluation.plot_predictions()
+        self.save_plot(fig_name="evaluation.png", figure=fig)
+        self.readme_add_plot(plot_name=f"Evaluation of the model", fig_name="evluation.png")
+
+        # Save the results
+        formatted_model_evaluation: str = pprint.pformat(
+            only_stationary_rnn_evaluation.to_readable_dict()
+        )
+
+        self.readme_add_section(
+            title="# Compare metric results", text=formatted_model_evaluation
+        )
+
+
+def run_data_experiments() -> None:
+    """
+    Runs all implemented data experiments
+    """
+    
+    # Setup experiments
+    exp1 = OneStateDataExperiment(name="OneStateDataExperiment", description="Train and evaluate model on single state data.")
+    exp2 = AllStatesDataExperiments(name="AllStatesDataExperiments", description="Train and evaluate model on whole dataset.")
+    exp3 = OnlyStationaryFeaturesDataExperiment(name="OnlyStationaryFeaturesDataExperiment", description="Train and evaluate model on single state data with all features with boundaries (for example % values, features with some mean.) ")
+    
+    # Run experiments with parameters
+    exp1.run(state="Czechia", split_rate=0.8)
+    exp2.run(state="Czechia", split_rate=0.8)
+    exp3.run(state="Czechia", split_rate=0.8)
 
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
     # Run experiments
-    single_state_data_experiment(state="Czechia", split_rate=0.8)
-    whole_dataset_experiment()
-    only_stationary_data_experiment(state="Czechia", split_rate=0.8)
+    run_data_experiments()

@@ -13,7 +13,6 @@ import optuna
 from config import setup_logging, Config
 from local_model_benchmark.utils import (
     preprocess_single_state_data,
-    write_experiment_results,
 )
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 
