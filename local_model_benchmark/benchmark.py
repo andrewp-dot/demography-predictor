@@ -24,7 +24,7 @@ from local_model_benchmark.experiments.data_experiments import (
 )
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateLSTM
+from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateModel
 
 
 settings = Config()

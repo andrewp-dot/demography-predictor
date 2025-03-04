@@ -20,7 +20,7 @@ from local_model_benchmark.experiments.base_experiment import BaseExperiment
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateLSTM
+from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateModel
 
 
 settings = Config()
@@ -84,7 +84,7 @@ def single_state_data_experiment(state: str, split_rate: float) -> None:
     # Save training stats or plot it
 
     # Evaluate model
-    single_state_rnn_evaluation = EvaluateLSTM(single_state_rnn)
+    single_state_rnn_evaluation = EvaluateModel(single_state_rnn)
     single_state_rnn_evaluation.eval(
         state_train,
         state_test,
@@ -179,7 +179,7 @@ def whole_dataset_experiment() -> None:
     # Save training stats or plot it
 
     # Evaluate model
-    all_states_rnn_evaluation = EvaluateLSTM(all_states_rnn)
+    all_states_rnn_evaluation = EvaluateModel(all_states_rnn)
 
     EVAL_STATE = "Czechia"
     all_states_rnn_evaluation.eval(
@@ -282,7 +282,7 @@ def only_stationary_data_experiment(state: str, split_rate: float) -> None:
     # Save training stats or plot it
 
     # Evaluate model
-    only_stationary_rnn_evaluation = EvaluateLSTM(only_stationary_rnn)
+    only_stationary_rnn_evaluation = EvaluateModel(only_stationary_rnn)
 
     only_stationary_rnn_evaluation.eval(
         train_data_df,

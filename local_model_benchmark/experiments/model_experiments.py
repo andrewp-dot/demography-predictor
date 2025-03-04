@@ -25,7 +25,7 @@ from local_model_benchmark.experiments.base_experiment import BaseExperiment
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateLSTM
+from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateModel
 
 
 # Setup logger
@@ -108,9 +108,9 @@ class OptimalParamsExperiment(BaseExperiment):
             )
 
         # Init last model score
-        last_model_evaluation: EvaluateLSTM | None = None
+        last_model_evaluation: EvaluateModel | None = None
 
-        all_evaluations: List[EvaluateLSTM] = []
+        all_evaluations: List[EvaluateModel] = []
         for parameter_option in parameter_options:
 
             # Update the parameter to the next option
@@ -134,7 +134,7 @@ class OptimalParamsExperiment(BaseExperiment):
             )
 
             # Evaluate model
-            rnn_evaluation = EvaluateLSTM(rnn)
+            rnn_evaluation = EvaluateModel(rnn)
 
             rnn_evaluation.eval(
                 test_X=train_df, test_y=test_df, features=FEATURES, scaler=state_scaler
@@ -254,7 +254,7 @@ class OptimalParamsExperiment(BaseExperiment):
             display_nth_epoch=2,
         )
 
-        base_model_evaluation = EvaluateLSTM(base_model)
+        base_model_evaluation = EvaluateModel(base_model)
         base_model_evaluation.eval(
             test_X=train_data_df,
             test_y=test_data_df,
@@ -303,7 +303,7 @@ class OptimalParamsExperiment(BaseExperiment):
             display_nth_epoch=2,
         )
 
-        optimal_model_evaluation = EvaluateLSTM(optimal_model)
+        optimal_model_evaluation = EvaluateModel(optimal_model)
         optimal_model_evaluation.eval(
             test_X=train_data_df,
             test_y=test_data_df,
@@ -396,7 +396,7 @@ Optimal model:
             rnn.train_model(batch_inputs=train_batches, batch_targets=target_batches)
 
             # Evaluate model
-            rnn_evaluation = EvaluateLSTM(rnn)
+            rnn_evaluation = EvaluateModel(rnn)
             rnn_evaluation.eval(
                 test_X=train_df, test_y=test_df, features=features, scaler=state_scaler
             )
@@ -473,7 +473,7 @@ Optimal model:
             display_nth_epoch=2,
         )
 
-        base_model_evaluation = EvaluateLSTM(base_model)
+        base_model_evaluation = EvaluateModel(base_model)
         base_model_evaluation.eval(
             test_X=train_data_df,
             test_y=test_data_df,
@@ -522,7 +522,7 @@ Optimal model:
             display_nth_epoch=2,
         )
 
-        optimal_model_evaluation = EvaluateLSTM(optimal_model)
+        optimal_model_evaluation = EvaluateModel(optimal_model)
         optimal_model_evaluation.eval(
             test_X=train_data_df,
             test_y=test_data_df,
