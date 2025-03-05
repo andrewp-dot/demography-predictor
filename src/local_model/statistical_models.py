@@ -83,9 +83,7 @@ class EvaluateARIMA(BaseEvaluation):
     ):
 
         # Set features as a constant
-        FEATURES = features
-
-        logger.info(f"X: {len(test_X)} y: {len(test_y)}")
+        # FEATURES = features
 
         # Get the last year and get the number of years
         X_years = test_X[["year"]]
@@ -112,41 +110,8 @@ class EvaluateARIMA(BaseEvaluation):
         # Get predictions
         self.predicted = self.model.predict(data=test_data, steps=steps)
 
-        logger.info(f"Ref: {len(self.reference_values)} Pred: {len(self.predicted)}")
-
-        # Compare true and predictions values
-        # Get MAE
-        overall_mae_df, mae_per_target_df = self.__get_metric(
-            mean_absolute_error, FEATURES, "mae"
-        )
-
-        # Get MSE
-        overall_mse_df, mse_per_target_df = self.__get_metric(
-            mean_squared_error, FEATURES, "mse"
-        )
-
-        # Get RMSE
-        overall_rmse_df, rmse_per_target_df = self.__get_metric(
-            root_mean_squared_error, FEATURES, "rmse"
-        )
-
-        # Get R^2
-        overall_r2_df, _ = self.__get_metric(r2_score, FEATURES, "r2")
-
-        # Create per target dataframe
-        # mae_mse_df = pd.merge(
-        #     left=mae_per_target_df, right=mse_per_target_df, on="feature"
-        # )
-        # self.per_target_metrics = pd.merge(
-        #     left=mae_mse_df, right=rmse_per_target_df, on="feature"
-        # )
-
-        # Get overall dataframe
-        self.overall_metrics = pd.concat(
-            [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
-            axis=0,
-            ignore_index=True,
-        )
+        # Get overall metrtics
+        self.get_overall_metrics()
 
 
 class LocalARIMA:
@@ -274,7 +239,7 @@ def try_arima(state: str, split_rate: float):
     FEATURES: List[str] = []
     TARGET: str = "population, total"
 
-    model = LocalARIMA(1, 1, 1, features=FEATURES, target=TARGET, index="year")
+    model = LocalARIMA(5, 0, 2, features=FEATURES, target=TARGET, index="year")
 
     # Train model
     model.train_model(state_df)
