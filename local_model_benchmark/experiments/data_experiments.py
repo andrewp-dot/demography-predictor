@@ -405,6 +405,8 @@ def run_data_experiments() -> None:
     Runs all implemented data experiments
     """
 
+    # TODO: make experiments robust for trying different base parameters
+
     # Setup experiments
     exp1 = OneStateDataExperiment(
         name="OneStateDataExperiment",
