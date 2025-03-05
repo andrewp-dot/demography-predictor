@@ -288,6 +288,51 @@ class BaseEvaluation:
     ) -> None:
         raise NotImplementedError()
 
+    def plot_predictions(self) -> Figure:
+
+        # Get years
+        YEARS = self.predicted_years
+
+        # Get the feature data to create plots
+        FEATURES = list(self.predicted.columns)
+        N_FEATURES = len(FEATURES)
+
+        # Create a figure with N rows and 1 column
+        fig, axes = plt.subplots(N_FEATURES, 1, figsize=(8, 2 * N_FEATURES))
+
+        # Ensure axes is always iterable
+        if N_FEATURES == 1:
+            axes = [axes]  # Convert to list for consistent indexing
+
+        # Plotting in each subplot
+        for index, feature in zip(range(N_FEATURES), FEATURES):
+            # Plot reference values
+            axes[index].plot(
+                YEARS,
+                self.reference_values[feature],
+                label=f"Reference values",
+                color="b",
+            )
+
+            # Plot predicted values
+            axes[index].plot(
+                YEARS,
+                self.predicted[feature],
+                label=f"Predicted",
+                color="r",
+            )
+            axes[index].set_title(f"{feature}")
+            axes[index].set_xlabel("Years")
+            axes[index].set_ylabel("Value")
+            axes[index].legend()
+
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
+        plt.grid()
+        plt.legend()
+
+        return fig
+
 
 class EvaluateModel(BaseEvaluation):
 
@@ -365,51 +410,6 @@ class EvaluateModel(BaseEvaluation):
         # Get metrics
         self.get_feature_specific_metrics(features=FEATURES)
         self.get_overall_metrics()
-
-    def plot_predictions(self) -> Figure:
-
-        # Get years
-        YEARS = self.predicted_years
-
-        # Get the feature data to create plots
-        FEATURES = list(self.predicted.columns)
-        N_FEATURES = len(FEATURES)
-
-        # Create a figure with N rows and 1 column
-        fig, axes = plt.subplots(N_FEATURES, 1, figsize=(8, 2 * N_FEATURES))
-
-        # Ensure axes is always iterable
-        if N_FEATURES == 1:
-            axes = [axes]  # Convert to list for consistent indexing
-
-        # Plotting in each subplot
-        for index, feature in zip(range(N_FEATURES), FEATURES):
-            # Plot reference values
-            axes[index].plot(
-                YEARS,
-                self.reference_values[feature],
-                label=f"Reference values",
-                color="b",
-            )
-
-            # Plot predicted values
-            axes[index].plot(
-                YEARS,
-                self.predicted[feature],
-                label=f"Predicted",
-                color="r",
-            )
-            axes[index].set_title(f"{feature}")
-            axes[index].set_xlabel("Years")
-            axes[index].set_ylabel("Value")
-            axes[index].legend()
-
-        # Adjust layout to prevent overlap
-        plt.tight_layout()
-        plt.grid()
-        plt.legend()
-
-        return fig
 
     # TODO: maybe merge plots?
     def to_readable_dict(self) -> Dict[str, float]:

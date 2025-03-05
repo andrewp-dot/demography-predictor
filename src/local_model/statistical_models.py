@@ -96,6 +96,9 @@ class EvaluateARIMA(BaseEvaluation):
         # Calculate steps
         steps = target_year - last_year
 
+        # Get predicted years
+        self.predicted_years = range(last_year + 1, target_year + 1)
+
         # Get copies of the data
         train_data = test_X.copy()
         test_data = test_y.copy()
@@ -105,7 +108,7 @@ class EvaluateARIMA(BaseEvaluation):
         test_data.set_index(index, inplace=True)
 
         # Save true values
-        self.reference_values = test_data[target]
+        self.reference_values = test_data[target].to_frame()
 
         # Get predictions
         self.predicted = self.model.predict(data=test_data, steps=steps)
@@ -171,7 +174,7 @@ class LocalARIMA:
         self.model = new_model.fit()
         logger.info(f"ARIMA model fitted!")
 
-    def predict(self, data: pd.DataFrame, steps: int) -> pd.Series:
+    def predict(self, data: pd.DataFrame, steps: int) -> pd.DataFrame:
 
         # Try if the model is trained
         if self.model is None:
@@ -193,7 +196,12 @@ class LocalARIMA:
             start=len(data), end=len(data) + steps - 1, exog=exog_values
         )
 
-        return predictions
+        # Convert prediction series to dataframe
+        predition_df: pd.DataFrame = predictions.to_frame()
+
+        # Rename the predicted mean to target name
+        predition_df.rename(columns={"predicted_mean": self.target}, inplace=True)
+        return predition_df
 
     def eval(
         self,
@@ -215,8 +223,14 @@ class LocalARIMA:
         )
 
         # Compare predictions
-
         print(arima_evaluation.overall_metrics)
+
+        # Get figure
+        import matplotlib.pyplot as plt
+
+        fig = arima_evaluation.plot_predictions()
+
+        plt.show()
 
 
 def try_arima(state: str, split_rate: float):
@@ -236,10 +250,27 @@ def try_arima(state: str, split_rate: float):
     train_df, test_df = state_loader.split_data(state_df, split_rate=split_rate)
 
     # Create ARIMA
-    FEATURES: List[str] = []
-    TARGET: str = "population, total"
+    FEATURES: List[str] = [
+        # "year",
+        # "Fertility rate, total",
+        # "Population, total",
+        # "Net migration",
+        # "Arable land",
+        # "Birth rate, crude",
+        # "GDP growth",
+        # "Death rate, crude",
+        # "Agricultural land",
+        # "Rural population",
+        # "Rural population growth",
+        # "Age dependency ratio",
+        # "Urban population",
+        # "Population growth",
+        # "Adolescent fertility rate",
+        # "Life expectancy at birth, total",
+    ]
+    TARGET: str = "arable land"
 
-    model = LocalARIMA(5, 0, 2, features=FEATURES, target=TARGET, index="year")
+    model = LocalARIMA(1, 0, 1, features=FEATURES, target=TARGET, index="year")
 
     # Train model
     model.train_model(state_df)
