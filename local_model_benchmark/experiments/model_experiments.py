@@ -16,12 +16,11 @@ from local_model_benchmark.utils import (
 )
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 
-from statsmodels.tsa.arima.model import ARIMA
-
 # Custom imports
 from local_model_benchmark.utils import preprocess_single_state_data
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
 
+from src.local_model.statistical_models import LocalARIMA, EvaluateARIMA
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateModel
@@ -33,7 +32,37 @@ logger = logging.getLogger("benchmark")
 # Get settings
 settings = Config()
 
-# TODO: plot this data and so on...
+## Model experiments settings
+# Features
+
+FEATURES = [
+    "year",
+    # "Fertility rate, total",
+    # "Population, total",
+    # "Net migration",
+    # "Arable land",
+    # "Birth rate, crude",
+    # "GDP growth",
+    # "Death rate, crude",
+    # "Agricultural land",
+    # "Rural population",
+    # "Rural population growth",
+    # "Age dependency ratio",
+    # "Urban population",
+    # "Population growth",
+    # "Adolescent fertility rate",
+    # "Life expectancy at birth, total",
+]
+
+BASE_HYPERPARAMS = LSTMHyperparameters(
+    input_size=len(FEATURES),
+    hidden_size=128,
+    sequence_length=10,
+    learning_rate=0.0001,
+    epochs=20,
+    batch_size=1,
+    num_layers=3,
+)
 
 
 # Model input based eperiments:
@@ -211,16 +240,6 @@ class OptimalParamsExperiment(BaseExperiment):
         # Get features
         FEATURES = [col.lower() for col in features]
 
-        BASE_HYPERPARAMS = LSTMHyperparameters(
-            input_size=len(FEATURES),
-            hidden_size=128,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=20,
-            batch_size=1,
-            num_layers=3,
-        )
-
         # Split data
         train_data_df, test_data_df = state_loader.split_data(
             state_df, split_rate=split_rate
@@ -359,11 +378,49 @@ Optimal model:
 # 2. Compare model with statistical methods (ARIMA, GM)
 class CompareStatisticalModelsExperiment(BaseExperiment):
 
-    def run(self, *args, **kwargs) -> None:
+    def run(self, state: str, split_rate: float, target: str) -> None:
         # Create readme
         self.create_readme()
 
-        raise NotImplementedError("")
+        # Load data
+        STATE = state
+        state_loader = StateDataLoader(STATE)
+
+        state_df = state_loader.load_data()
+
+        # Split data
+        train_df, test_df = state_loader.split_data(
+            data=state_df, split_rate=split_rate
+        )
+
+        # Create ARIMA
+        arima = LocalARIMA(1, 1, 1, features=[], target=target)
+        arima.train_model(train_df)
+
+        # Evaluate ARIMA
+        arima_evaluation = EvaluateARIMA(arima=arima)
+        arima_evaluation.eval(
+            test_X=train_df, test_y=test_df, features=[], target=target, index="year"
+        )
+
+        # Save ARIMA evaluation
+        arima_predictions_fig = arima_evaluation.plot_predictions()
+        self.save_plot(fig_name="arima_evaluation.png", fig=arima_predictions_fig)
+        self.readme_add_plot(
+            plot_name="Arima evaluation",
+            plot_description="",
+            fig_name="arima_evaluation.png",
+        )
+
+        # Create RNN
+        # ADJUSTED_PARAMS = copy.deepcopy(BASE_HYPERPARAMS)
+        # ADJUSTED_PARAMS.input_size = len([target])
+        # rnn = LocalModel(hyperparameters=BASE_HYPERPARAMS)
+
+        # Preprocess data
+
+        # Train model
+        # rnn.train_model()
 
 
 # 2.1. VAR, SARIMA, ARIMA * 19?
@@ -380,26 +437,6 @@ if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
-    # Features
-
-    FEATURES = [
-        "year",
-        # "Fertility rate, total",
-        # "Population, total",
-        # "Net migration",
-        # "Arable land",
-        # "Birth rate, crude",
-        # "GDP growth",
-        # "Death rate, crude",
-        # "Agricultural land",
-        # "Rural population",
-        # "Rural population growth",
-        # "Age dependency ratio",
-        # "Urban population",
-        # "Population growth",
-        # "Adolescent fertility rate",
-        # "Life expectancy at birth, total",
-    ]
     # Run experiments
     exp = OptimalParamsExperiment(
         name="OptimalParamsExperiment",

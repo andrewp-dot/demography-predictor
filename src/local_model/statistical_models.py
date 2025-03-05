@@ -6,6 +6,7 @@ import logging
 import pandas as pd
 import numpy as np
 from typing import List, Tuple, Callable
+from matplotlib.figure import Figure
 
 from statsmodels.tsa.arima.model import ARIMA
 
@@ -207,7 +208,7 @@ class LocalARIMA:
         self,
         train_df: pd.DataFrame,
         test_df: pd.DataFrame,
-    ):
+    ) -> Figure:
         """
         Evaluates the model predictions based on train and test data.
         """
@@ -223,14 +224,8 @@ class LocalARIMA:
         )
 
         # Compare predictions
-        print(arima_evaluation.overall_metrics)
-
-        # Get figure
-        import matplotlib.pyplot as plt
 
         fig = arima_evaluation.plot_predictions()
-
-        plt.show()
 
 
 def try_arima(state: str, split_rate: float):
@@ -277,8 +272,6 @@ def try_arima(state: str, split_rate: float):
 
     # Evaluate model
     model.eval(train_df=train_df, test_df=test_df)
-
-    # Get and print the evalutaion
 
 
 if __name__ == "__main__":
