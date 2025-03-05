@@ -134,10 +134,9 @@ class TrainingStats:
         fig.show()
 
 
-class EvaluateModel:
+class BaseEvaluation:
 
-    def __init__(self, model: nn.Module):
-        self.model: CustomModelBase = model
+    def __init__(self, *args, **kwargs):
         self.predicted: pd.DataFrame | None = None
         self.reference_values: pd.DataFrame | None = None
         self.predicted_years: List[int] | None = None
@@ -145,6 +144,83 @@ class EvaluateModel:
         # Define metric dataframes
         self.per_target_metrics: pd.DataFrame | None = None
         self.overall_metrics: pd.DataFrame | None = None
+
+    def get_overall_metric(self):
+        raise NotImplementedError
+
+    def get_overall_metric(
+        self,
+        metric: Callable,
+        metric_key: str = "",
+    ) -> pd.DataFrame:
+        """
+        Computes and saves given metric.
+
+        Args:
+            metric (Callable): Function for metric computation.
+            features (List[str]): Key of the metric which can be accasible in `EvaluateModel.metrics` dict (`{metric_key}`, `{metric_key}_per_target` if per target is available).
+                If not given, the name of the function is used. Defaults to "".
+            metric_key (str, optional): _description_. Defaults to "".
+
+        Returns:
+            out: Tuple[pd.DataFrame, pd.DataFrame | None]: metric value for all targets, metric values for each target separately.
+        """
+
+        # Adjust metric key if not given
+        metric_key = metric_key or metric.__name__
+
+        # Initialize metric values
+        overall_metric_df = None
+
+        # Average MAE across all targets
+        average_metric_value = metric(
+            self.reference_values, self.predicted, multioutput="uniform_average"
+        )
+
+        # Get overall metric dataframe
+        overall_metric_df = pd.DataFrame(
+            {"metric": metric_key, "value": [average_metric_value]}
+        )
+
+        return overall_metric_df
+
+    def get_overall_metrics(self) -> None:
+        # Get MAE
+        overall_mae_df = self.get_overall_metric(mean_absolute_error, "mae")
+
+        # Get MSE
+        overall_mse_df = self.get_overall_metric(mean_squared_error, "mse")
+
+        # Get RMSE
+        overall_rmse_df = self.get_overall_metric(root_mean_squared_error, "rmse")
+
+        # Get R^2
+        overall_r2_df = self.get_overall_metric(r2_score, "r2")
+
+        # Get overall dataframe
+        self.overall_metrics = pd.concat(
+            [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
+            axis=0,
+            ignore_index=True,
+        )
+
+    @abstractmethod
+    def eval(
+        self,
+        test_X: pd.DataFrame,
+        test_y: pd.DataFrame,
+        features: list[str],
+        *args,
+        **kwargs,
+    ) -> None:
+        raise NotImplementedError()
+
+
+class EvaluateModel(BaseEvaluation):
+
+    def __init__(self, model: nn.Module):
+        super().__init__()
+        self.model: CustomModelBase = model
 
     def __get_metric(
         self,
@@ -203,20 +279,18 @@ class EvaluateModel:
 
     def eval(
         self,
-        test_X: Union[pd.DataFrame, Dict[str, pd.DataFrame]],
-        test_y: Union[pd.DataFrame, Dict[str, pd.DataFrame]],
+        test_X: pd.DataFrame,
+        test_y: pd.DataFrame,
         features: list[str],
         scaler: Union[MinMaxScaler | RobustScaler | StandardScaler],
-        # from_year: int,
-        # to_year: int,
     ) -> None:
         """
         Evaluates model perforemance based on known and unknown sequences of 1 state data. Needs the year column in order to compute number of prediction iterations.
 
         Args:
-            test_X (Union[pd.DataFrame, Dict[str, pd.DataFrame]]): Unscaled validation input data (known sequences)
-            test_y (Union[pd.DataFrame, Dict[str, pd.DataFrame]]): Unscaled validation target data (unknown sequences)
-            features (list[str]): _description_
+            test_X (pd.DataFrame,): Unscaled validation input data (known sequences)
+            test_y (pd.DataFrame,): Unscaled validation target data (unknown sequences)
+            features (list[str]): Features names used to predict data.
             scaler (Union[MinMaxScaler  |  RobustScaler  |  StandardScaler]): Scaler to scale data
             from_year (int): Last record's year in test_X data.
             to_year (int): Last record's of the 'test_y' data.

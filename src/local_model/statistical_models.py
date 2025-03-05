@@ -1,14 +1,25 @@
 # Standard library imports
+
+from __future__ import annotations
+
 import logging
 import pandas as pd
 import numpy as np
-from typing import List
+from typing import List, Tuple, Callable
 
 from statsmodels.tsa.arima.model import ARIMA
+
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    root_mean_squared_error,
+    r2_score,
+)
 
 # Custom imports
 from config import Config, setup_logging
 from src.preprocessors.state_preprocessing import StateDataLoader
+from src.local_model.base import BaseEvaluation
 
 # Get logger
 logger = logging.getLogger("local_model")
@@ -17,10 +28,125 @@ logger = logging.getLogger("local_model")
 np.random.seed(42)
 
 
-class LocalARIMAHyperparams:
+class EvaluateARIMA(BaseEvaluation):
 
-    def __init__(self):
-        pass
+    def __init__(self, arima: LocalARIMA):
+
+        super().__init__()
+
+        # Get evaluation data
+        self.model: LocalARIMA = arima
+
+    def __get_metric(
+        self,
+        metric: Callable,
+        metric_key: str = "",
+    ) -> Tuple[pd.DataFrame, pd.DataFrame | None]:
+        """
+        Computes and saves given metric.
+
+        Args:
+            metric (Callable): Function for metric computation.
+            features (List[str]): Key of the metric which can be accasible in `EvaluateModel.metrics` dict (`{metric_key}`, `{metric_key}_per_target` if per target is available).
+                If not given, the name of the function is used. Defaults to "".
+            metric_key (str, optional): _description_. Defaults to "".
+
+        Returns:
+            out: Tuple[pd.DataFrame, pd.DataFrame | None]: metric value for all targets, metric values for each target separately.
+        """
+
+        # Adjust metric key if not given
+        metric_key = metric_key or metric.__name__
+
+        # Initialize metric values
+        overall_metric_df = None
+
+        # Average MAE across all targets
+        average_metric_value = metric(
+            self.reference_values, self.predicted, multioutput="uniform_average"
+        )
+
+        # Get overall metric dataframe
+        overall_metric_df = pd.DataFrame(
+            {"metric": metric_key, "value": [average_metric_value]}
+        )
+
+        return overall_metric_df
+
+    def eval(
+        self,
+        test_X: pd.DataFrame,
+        test_y: pd.DataFrame,
+        features: list[str],
+        target: str,
+        index: str,
+    ):
+
+        # Set features as a constant
+        FEATURES = features
+
+        logger.info(f"X: {len(test_X)} y: {len(test_y)}")
+
+        # Get the last year and get the number of years
+        X_years = test_X[["year"]]
+        last_year = int(X_years.iloc[-1].item())
+
+        # # Get the prediction year
+        y_target_years = test_y[["year"]]
+        target_year = int(y_target_years.iloc[-1].item())
+
+        # Calculate steps
+        steps = target_year - last_year
+
+        # Get copies of the data
+        train_data = test_X.copy()
+        test_data = test_y.copy()
+
+        # Set index of the dataframes
+        train_data.set_index(index, inplace=True)
+        test_data.set_index(index, inplace=True)
+
+        # Save true values
+        self.reference_values = test_data[target]
+
+        # Get predictions
+        self.predicted = self.model.predict(data=test_data, steps=steps)
+
+        logger.info(f"Ref: {len(self.reference_values)} Pred: {len(self.predicted)}")
+
+        # Compare true and predictions values
+        # Get MAE
+        overall_mae_df, mae_per_target_df = self.__get_metric(
+            mean_absolute_error, FEATURES, "mae"
+        )
+
+        # Get MSE
+        overall_mse_df, mse_per_target_df = self.__get_metric(
+            mean_squared_error, FEATURES, "mse"
+        )
+
+        # Get RMSE
+        overall_rmse_df, rmse_per_target_df = self.__get_metric(
+            root_mean_squared_error, FEATURES, "rmse"
+        )
+
+        # Get R^2
+        overall_r2_df, _ = self.__get_metric(r2_score, FEATURES, "r2")
+
+        # Create per target dataframe
+        # mae_mse_df = pd.merge(
+        #     left=mae_per_target_df, right=mse_per_target_df, on="feature"
+        # )
+        # self.per_target_metrics = pd.merge(
+        #     left=mae_mse_df, right=rmse_per_target_df, on="feature"
+        # )
+
+        # Get overall dataframe
+        self.overall_metrics = pd.concat(
+            [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
+            axis=0,
+            ignore_index=True,
+        )
 
 
 class LocalARIMA:
@@ -61,7 +187,7 @@ class LocalARIMA:
 
         # Set index of dataframe
         train_data = data.copy()
-        train_data.set_index(self.index, inplace=True, drop=True)
+        train_data.set_index(self.index, inplace=True)
 
         # Get the values of the features
         exog_values = None
@@ -98,37 +224,34 @@ class LocalARIMA:
             raise KeyError(f"The {e} column is not in the dataframe!")
 
         # Predict
-        # Choose the appropriate method for prediction
-        if steps is None:
-            predictions = self.model.predict(exog=exog_values)  # In-sample prediction
-        else:
-            predictions = self.model.predict(
-                start=len(data), end=len(data) + steps - 1, exog=exog_values
-            )
+        predictions = self.model.predict(
+            start=len(data), end=len(data) + steps - 1, exog=exog_values
+        )
 
         return predictions
 
-    def eval(self, train_df: pd.DataFrame, test_df: pd.DataFrame):
+    def eval(
+        self,
+        train_df: pd.DataFrame,
+        test_df: pd.DataFrame,
+    ):
         """
         Evaluates the model predictions based on train and test data.
         """
 
-        # Get copies of the data
-        train_data = train_df.copy()
-        test_data = test_df.copy()
-
-        # Set index of the dataframes
-        train_data.set_index(self.index, inplace=True)
-        test_data.set_index(self.index, inplace=True)
-
         # Setup predictions
-
-        # Predict
-        predictions = self.predict(data=train_data, steps=6)
+        arima_evaluation = EvaluateARIMA(self)
+        arima_evaluation.eval(
+            test_X=train_df,
+            test_y=test_df,
+            features=self.features,
+            target=self.target,
+            index=self.index,
+        )
 
         # Compare predictions
 
-        # TODO: add metrics
+        print(arima_evaluation.overall_metrics)
 
 
 def try_arima(state: str, split_rate: float):
