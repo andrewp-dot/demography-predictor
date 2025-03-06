@@ -228,6 +228,9 @@ class LocalARIMA:
         fig = arima_evaluation.plot_predictions()
 
 
+# TODO: implement GM(1,1)
+
+
 def try_arima(state: str, split_rate: float):
 
     # Print statsmodels version
