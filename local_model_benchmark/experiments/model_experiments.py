@@ -33,8 +33,31 @@ logger = logging.getLogger("benchmark")
 settings = Config()
 
 ## Model experiments settings
-# Features
 
+# Get the list of all available features
+ALL_FEATURES = [
+    "year",
+    "Fertility rate, total",
+    "Population, total",
+    "Net migration",
+    "Arable land",
+    "Birth rate, crude",
+    "GDP growth",
+    "Death rate, crude",
+    "Agricultural land",
+    "Rural population",
+    "Rural population growth",
+    "Age dependency ratio",
+    "Urban population",
+    "Population growth",
+    "Adolescent fertility rate",
+    "Life expectancy at birth, total",
+]
+
+ALL_FEATURES = [col.lower() for col in ALL_FEATURES]
+
+
+# Setup features to use all
 FEATURES = [
     "year",
     # "Fertility rate, total",
@@ -54,9 +77,11 @@ FEATURES = [
     # "Life expectancy at birth, total",
 ]
 
+FEATURES = [col.lower() for col in FEATURES]
+
 BASE_HYPERPARAMS = LSTMHyperparameters(
     input_size=len(FEATURES),
-    hidden_size=128,
+    hidden_size=2048,
     sequence_length=10,
     learning_rate=0.0001,
     epochs=20,
@@ -376,11 +401,23 @@ Optimal model:
 
 
 # 2. Compare model with statistical methods (ARIMA, GM)
-class CompareStatisticalModelsExperiment(BaseExperiment):
+# 2.1. VAR, SARIMA, ARIMA * 19?
+class CompareLSTMARIMAExperiment(BaseExperiment):
 
-    def run(self, state: str, split_rate: float, target: str) -> None:
+    def run(self, state: str, split_rate: float, features: List[str]) -> None:
         # Create readme
         self.create_readme()
+
+        # Adjust parameters for RNN and print them into the README.md
+        ADJUSTED_PARAMS = copy.deepcopy(BASE_HYPERPARAMS)
+        ADJUSTED_PARAMS.input_size = (
+            1  # Set the input size to 1, beacause there is only 1 feature
+        )
+
+        self.readme_add_section(
+            title="# LSTM model parameters",
+            text=f"Hyperparameters:\n```{str(BASE_HYPERPARAMS)}```",
+        )
 
         # Load data
         STATE = state
@@ -393,52 +430,106 @@ class CompareStatisticalModelsExperiment(BaseExperiment):
             data=state_df, split_rate=split_rate
         )
 
-        # Create ARIMA
-        arima = LocalARIMA(1, 1, 1, features=[], target=target)
-        arima.train_model(train_df)
+        # Exclude "year" from features
+        features.remove("year")
 
-        # Evaluate ARIMA
-        arima_evaluation = EvaluateARIMA(arima=arima)
-        arima_evaluation.eval(
-            test_X=train_df, test_y=test_df, features=[], target=target, index="year"
-        )
+        # For every features create ARIMA and LSTM model
+        for feature in features:
 
-        # Save ARIMA evaluation
-        arima_predictions_fig = arima_evaluation.plot_predictions()
-        self.save_plot(fig_name="arima_evaluation.png", fig=arima_predictions_fig)
-        self.readme_add_plot(
-            plot_name="Arima evaluation",
-            plot_description="",
-            fig_name="arima_evaluation.png",
-        )
+            # Set feature as a target
+            target = feature
 
-        # Create RNN
-        # ADJUSTED_PARAMS = copy.deepcopy(BASE_HYPERPARAMS)
-        # ADJUSTED_PARAMS.input_size = len([target])
-        # rnn = LocalModel(hyperparameters=BASE_HYPERPARAMS)
+            # Create new section in README.md
+            self.readme_add_section(
+                title=f"# LSTM & ARIMA Comparision: Feature: {target}",
+                text=f"Comparision of LSTM and ARIMA model of predicting feature {target}. State: {state}",
+            )
 
-        # Preprocess data
+            # Create ARIMA
+            arima = LocalARIMA(1, 1, 1, features=[], target=target, index="year")
+            arima.train_model(train_df)
 
-        # Train model
-        # rnn.train_model()
+            # Evaluate ARIMA
+            arima_evaluation = EvaluateARIMA(arima=arima)
+            arima_evaluation.eval(
+                test_X=train_df,
+                test_y=test_df,
+                features=[],
+                target=target,
+                index="year",
+            )
 
+            # Save ARIMA evaluation
+            arima_predictions_fig = arima_evaluation.plot_predictions()
+            arima_fig_name = f"arima_evaluation_{target}.png".replace(" ", "_")
 
-# 2.1. VAR, SARIMA, ARIMA * 19?
-# class StatisticalModelsExperiment(BaseExperiment):
-#     raise NotImplementedError(
-#         "Need to implement and compare the experiment with the model!"
-#     )
+            self.save_plot(fig_name=arima_fig_name, figure=arima_predictions_fig)
+            self.readme_add_plot(
+                plot_name="Arima evaluation",
+                plot_description="",
+                fig_name=arima_fig_name,
+            )
+
+            # Create RNN
+            rnn = LocalModel(hyperparameters=ADJUSTED_PARAMS)
+
+            # Preprocess data
+            input_batches, target_batches, scaler = preprocess_single_state_data(
+                train_data_df=train_df,
+                state_loader=state_loader,
+                hyperparameters=ADJUSTED_PARAMS,
+                features=[target],
+                scaler=MinMaxScaler(),
+            )
+
+            # Train model
+            rnn.train_model(
+                batch_inputs=input_batches,
+                batch_targets=target_batches,
+                display_nth_epoch=1,
+            )
+
+            # Evaluate model
+            rnn_evaluation = EvaluateModel(model=rnn)
+
+            rnn_evaluation.eval(
+                test_X=train_df, test_y=test_df, features=[target], scaler=scaler
+            )
+
+            # Save LSTM evaluation
+            rnn_fig = rnn_evaluation.plot_predictions()
+            rnn_fig_name = f"lstm_evaluation_{target}.png".replace(" ", "_")
+
+            self.save_plot(fig_name=rnn_fig_name, figure=rnn_fig)
+            self.readme_add_plot(
+                plot_name=f"RNN evaluation - {target}",
+                plot_description="",
+                fig_name=rnn_fig_name,
+            )
+
+            # Print metrics to file
+            formatted_rnn_eval = pprint.pformat(rnn_evaluation.to_readable_dict())
+            formatted_arima_eval = pprint.pformat(arima_evaluation.to_readable_dict())
+
+            self.readme_add_section(
+                title="### Overall metrics (ARIMA)",
+                text=f"```\n{formatted_arima_eval}```\n",
+            )
+            self.readme_add_section(
+                title="### Overall metrics (RNN)",
+                text=f"```\n{formatted_rnn_eval}```\n",
+            )
+
 
 # 3. Compare prediction using whole state data and the last few records of data
 # 4. Predict parameters for different years (e.g. to 2030, 2040, ... )
 
 
-if __name__ == "__main__":
-    # Setup logging
-    setup_logging()
+def run_experiments():
 
-    # Run experiments
-    exp = OptimalParamsExperiment(
+    # Exp1
+    logger.info("Running experiment 1...")
+    exp1 = OptimalParamsExperiment(
         name="OptimalParamsExperiment",
         description="The goal is to find the optimal parameters for the given LocalModel model.",
         hidden_size_range=(128, 2048),
@@ -446,7 +537,23 @@ if __name__ == "__main__":
         num_layers_range=(1, 5),
         learning_rate_range=(1e-5, 1e-2),
     )
-    exp.run(state="Czechia", split_rate=0.8, features=FEATURES)
+    exp1.run(state="Czechia", split_rate=0.8, features=FEATURES)
+
+    # Exp2
+    logger.info("Running experiment 2...")
+    exp2 = CompareLSTMARIMAExperiment(
+        name="CompareLSTMARIMAExperiment",
+        description="Compares the performance of LSTM model with the statistical ARIMA model for all features prediction. Each model is trained just to predict 1 feauture from all features.",
+    )
+    exp2.run(state="Czechia", split_rate=0.8, features=ALL_FEATURES)
+
+
+if __name__ == "__main__":
+    # Setup logging
+    setup_logging()
+
+    # Run experiments
+    run_experiments()
 
     # Run
     # exp.run(state="Czechia", split_rate=0.8)

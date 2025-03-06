@@ -277,6 +277,22 @@ class BaseEvaluation:
             left=mae_mse_df, right=rmse_per_target_df, on="feature"
         )
 
+    def to_readable_dict(self) -> Dict[str, float]:
+        """
+        Converts the overall metrics dataframe to readable dict.
+
+        Returns:
+            out: Dict[str, float]: Readable dict, the metric names are the keys and the values are the corresponding metric value.
+        """
+
+        # Get the overall metrics
+        df = self.overall_metrics
+
+        # Convert the metrics dataframe
+        result = dict(zip(df["metric"], df["value"]))
+
+        return result
+
     @abstractmethod
     def eval(
         self,
@@ -410,23 +426,6 @@ class EvaluateModel(BaseEvaluation):
         # Get metrics
         self.get_feature_specific_metrics(features=FEATURES)
         self.get_overall_metrics()
-
-    # TODO: maybe merge plots?
-    def to_readable_dict(self) -> Dict[str, float]:
-        """
-        Converts the overall metrics dataframe to readable dict.
-
-        Returns:
-            out: Dict[str, float]: Readable dict, the metric names are the keys and the values are the corresponding metric value.
-        """
-
-        # Get the overall metrics
-        df = self.overall_metrics
-
-        # Convert the metrics dataframe
-        result = dict(zip(df["metric"], df["value"]))
-
-        return result
 
     def is_new_better(self, new_model_evaluation: "EvaluateModel") -> bool:
         """
