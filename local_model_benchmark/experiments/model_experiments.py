@@ -530,24 +530,24 @@ class CompareLSTMARIMAExperiment(BaseExperiment):
 def run_experiments():
 
     # Exp1
-    # logger.info("Running experiment 1...")
-    # exp1 = OptimalParamsExperiment(
-    #     name="OptimalParamsExperiment",
-    #     description="The goal is to find the optimal parameters for the given LocalModel model.",
-    #     hidden_size_range=(128, 2048),
-    #     sequence_length_range=(10, 15),
-    #     num_layers_range=(1, 5),
-    #     learning_rate_range=(1e-5, 1e-2),
-    # )
-    # exp1.run(state="Czechia", split_rate=0.8, features=FEATURES)
+    logger.info("Running experiment 1...")
+    exp1 = OptimalParamsExperiment(
+        name="OptimalParamsExperiment",
+        description="The goal is to find the optimal parameters for the given LocalModel model.",
+        hidden_size_range=(128, 2048),
+        sequence_length_range=(10, 15),
+        num_layers_range=(1, 5),
+        learning_rate_range=(1e-5, 1e-2),
+    )
+    exp1.run(state="Czechia", split_rate=0.8, features=FEATURES)
 
     # Exp2
-    logger.info("Running experiment 2...")
-    exp2 = CompareLSTMARIMAExperiment(
-        name="CompareLSTMARIMAExperiment",
-        description="Compares the performance of LSTM model with the statistical ARIMA model for all features prediction. Each model is trained just to predict 1 feauture from all features.",
-    )
-    exp2.run(state="Czechia", split_rate=0.8, features=ALL_FEATURES)
+    # logger.info("Running experiment 2...")
+    # exp2 = CompareLSTMARIMAExperiment(
+    #     name="CompareLSTMARIMAExperiment",
+    #     description="Compares the performance of LSTM model with the statistical ARIMA model for all features prediction. Each model is trained just to predict 1 feauture from all features.",
+    # )
+    # exp2.run(state="Czechia", split_rate=0.8, features=ALL_FEATURES)
 
 
 if __name__ == "__main__":
