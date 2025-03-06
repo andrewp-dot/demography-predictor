@@ -81,7 +81,7 @@ FEATURES = [col.lower() for col in FEATURES]
 
 BASE_HYPERPARAMS = LSTMHyperparameters(
     input_size=len(FEATURES),
-    hidden_size=2048,
+    hidden_size=256,
     sequence_length=10,
     learning_rate=0.0001,
     epochs=20,
@@ -369,7 +369,7 @@ class OptimalParamsExperiment(BaseExperiment):
 
         self.readme_add_section(
             title="# Optimal model evaluation",
-            text=f"Hyperparameters:\n```{str(OPTIMAL_PAREMETRS)}```",
+            text=f"Hyperparameters:\n```{str(OPTIMAL_PAREMETRS)}```\n",
         )
 
         self.readme_add_plot(
@@ -435,6 +435,8 @@ class CompareLSTMARIMAExperiment(BaseExperiment):
 
         # For every features create ARIMA and LSTM model
         for feature in features:
+
+            logger.info(f"[{self.name}]: ### Current target: {feature} ###")
 
             # Set feature as a target
             target = feature
@@ -513,11 +515,11 @@ class CompareLSTMARIMAExperiment(BaseExperiment):
 
             self.readme_add_section(
                 title="### Overall metrics (ARIMA)",
-                text=f"```\n{formatted_arima_eval}```\n",
+                text=f"```\n{formatted_arima_eval}\n```\n",
             )
             self.readme_add_section(
                 title="### Overall metrics (RNN)",
-                text=f"```\n{formatted_rnn_eval}```\n",
+                text=f"```\n{formatted_rnn_eval}\n```\n",
             )
 
 
@@ -528,16 +530,16 @@ class CompareLSTMARIMAExperiment(BaseExperiment):
 def run_experiments():
 
     # Exp1
-    logger.info("Running experiment 1...")
-    exp1 = OptimalParamsExperiment(
-        name="OptimalParamsExperiment",
-        description="The goal is to find the optimal parameters for the given LocalModel model.",
-        hidden_size_range=(128, 2048),
-        sequence_length_range=(10, 15),
-        num_layers_range=(1, 5),
-        learning_rate_range=(1e-5, 1e-2),
-    )
-    exp1.run(state="Czechia", split_rate=0.8, features=FEATURES)
+    # logger.info("Running experiment 1...")
+    # exp1 = OptimalParamsExperiment(
+    #     name="OptimalParamsExperiment",
+    #     description="The goal is to find the optimal parameters for the given LocalModel model.",
+    #     hidden_size_range=(128, 2048),
+    #     sequence_length_range=(10, 15),
+    #     num_layers_range=(1, 5),
+    #     learning_rate_range=(1e-5, 1e-2),
+    # )
+    # exp1.run(state="Czechia", split_rate=0.8, features=FEATURES)
 
     # Exp2
     logger.info("Running experiment 2...")
