@@ -46,10 +46,10 @@ life expectancy at birth, total
 ![Loss graph](./plots/loss.png)
 
 
-## Evaluation of the model
+## Evaluation of the model - state: Czechia
 
 
-![Evaluation of the model](./plots/evaluation.png)
+![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
 
 # Metric result
 {'mae': 1367861.523275283,

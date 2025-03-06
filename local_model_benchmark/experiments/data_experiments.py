@@ -233,8 +233,8 @@ class AllStatesDataExperiments(BaseExperiment):
 
         # Get stats
         stats = all_states_rnn.training_stats
-        fig = stats.create_plot()
-        self.save_plot(fig_name="loss.png", figure=fig)
+        loss_fig = stats.create_plot()
+        self.save_plot(fig_name="loss.png", figure=loss_fig)
         self.readme_add_plot(
             plot_name=f"Loss graph", plot_description="", fig_name="loss.png"
         )
@@ -250,13 +250,15 @@ class AllStatesDataExperiments(BaseExperiment):
             scaler=all_states_scaler,
         )
 
-        fig = all_states_rnn_evaluation.plot_predictions()
+        evaluation_fig = all_states_rnn_evaluation.plot_predictions()
 
-        self.save_plot(fig_name="evaluation.png", figure=fig)
+        evaluation_fig_name = f"evaluation_{EVAL_STATE}.png".lower()
+        self.save_plot(fig_name=evaluation_fig_name, figure=evaluation_fig)
+
         self.readme_add_plot(
-            plot_name=f"Evaluation of the model",
+            plot_name=f"Evaluation of the model - state: {EVAL_STATE}",
             plot_description="",
-            fig_name="evaluation.png",
+            fig_name=evaluation_fig_name,
         )
 
         # Save the results
