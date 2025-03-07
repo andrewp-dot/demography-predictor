@@ -34,3 +34,20 @@ population growth
 adolescent fertility rate
 life expectancy at birth, total
 ```
+
+## Loss graph
+
+
+![Loss graph](./plots/loss.png)
+
+
+## Evaluation of the model - state: Czechia
+
+
+![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
+
+# Metric result
+{'mae': 1.9382964389285,
+ 'mse': 9.101755666637525,
+ 'r2': -38.77979741783487,
+ 'rmse': 2.075272520114283}

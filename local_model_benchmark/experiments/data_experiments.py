@@ -532,7 +532,7 @@ def run_data_experiments() -> None:
 
     # Run experiments with parameters
     # exp1.run(state="Czechia", split_rate=0.8, features=EXP1_FEATURES)
-    exp2.run(state="Czechia", split_rate=0.8, features=EXP2_FEATURES)
+    # exp2.run(state="Czechia", split_rate=0.8, features=EXP2_FEATURES)
     exp2_1.run(state="Czechia", split_rate=0.8, features=EXP2_1_FEATURES)
     # exp3.run(state="Czechia", split_rate=0.8)
 
