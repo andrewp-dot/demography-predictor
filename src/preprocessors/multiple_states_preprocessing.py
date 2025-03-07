@@ -139,6 +139,7 @@ class StatesDataLoader:
         self,
         states_data: Dict[str, pd.DataFrame],
         scaler: MinMaxScaler | RobustScaler | StandardScaler,
+        features: List[str],
     ) -> Tuple[Dict[str, pd.DataFrame], MinMaxScaler | RobustScaler | StandardScaler]:
         """
         Scales data for in the dafarame. Scales only numerical data.
@@ -146,16 +147,23 @@ class StatesDataLoader:
         Args:
             states_data (Dict[str, pd.DataFrame]): States data to scale. The dictionary key should be the name of the state
             scaler (MinMaxScaler | RobustScaler | StandardScaler): Scaler which is used for data scaling.
+            features (List[str]): List of features to be scaled
 
         Returns:
             out (Tuple[Dict[str, pd.DataFrame], MinMaxScaler | RobustScaler | StandardScaler]): Each state data scaled dict, fitted scaler.
         """
+
+        # Set features const
+        FEATURES = features
 
         # Merge data by rows
         states_merged_df = pd.concat(list(states_data.values()), axis=0)
 
         # Get only numerical columns
         numerical_features_df = states_merged_df.select_dtypes(include=["number"])
+
+        # TEMPORARY FIX
+        numerical_features_df = numerical_features_df[FEATURES]
 
         logger.debug(f"Numerical: {numerical_features_df.columns}")
 
@@ -182,7 +190,7 @@ class StatesDataLoader:
             [categorical_features_df, merged_scaled_data_df], axis=1
         )
 
-        logger.critical(
+        logger.debug(
             f"Concatenated merged scaled dataframe: {merged_scaled_data_df.columns} {merged_scaled_data_df.shape}"
         )
 

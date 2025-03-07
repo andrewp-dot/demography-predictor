@@ -8,7 +8,7 @@ import pandas as pd
 import logging
 import pprint
 
-
+from typing import List
 from config import setup_logging, Config
 from local_model_benchmark.utils import (
     preprocess_single_state_data,
@@ -27,6 +27,52 @@ settings = Config()
 logger = logging.getLogger("benchmark")
 
 # TODO: make this robust for other architectures -> You need train function, data preprocessing function?
+# TODO: FIX all TEMPORARY FIX marks
+
+# Get the list of all available features
+ALL_FEATURES = [
+    "year",
+    "Fertility rate, total",
+    "Population, total",
+    "Net migration",
+    "Arable land",
+    "Birth rate, crude",
+    "GDP growth",
+    "Death rate, crude",
+    "Agricultural land",
+    "Rural population",
+    "Rural population growth",
+    "Age dependency ratio",
+    "Urban population",
+    "Population growth",
+    "Adolescent fertility rate",
+    "Life expectancy at birth, total",
+]
+
+ALL_FEATURES = [col.lower() for col in ALL_FEATURES]
+
+
+# Setup features to use all
+FEATURES = [
+    "year",
+    # "Fertility rate, total",
+    # "Population, total",
+    # "Net migration",
+    # "Arable land",
+    # "Birth rate, crude",
+    # "GDP growth",
+    # "Death rate, crude",
+    # "Agricultural land",
+    # "Rural population",
+    # "Rural population growth",
+    # "Age dependency ratio",
+    # "Urban population",
+    # "Population growth",
+    # "Adolescent fertility rate",
+    # "Life expectancy at birth, total",
+]
+
+FEATURES = [col.lower() for col in FEATURES]
 
 
 # Data based experiments
@@ -35,7 +81,7 @@ logger = logging.getLogger("benchmark")
 
 class OneStateDataExperiment(BaseExperiment):
 
-    def run(self, state: str, split_rate: float):
+    def run(self, state: str, split_rate: float, features: List[str]):
         """
         Trains and evaluates model using a single state data.
 
@@ -43,6 +89,10 @@ class OneStateDataExperiment(BaseExperiment):
             state (str): State which data will be used to train model.
             split_rate (float): Split rate for training and validation data.
         """
+
+        # Get features
+        FEATURES = features
+
         # Create readme
         self.create_readme()
 
@@ -55,9 +105,6 @@ class OneStateDataExperiment(BaseExperiment):
 
         # Exclude country name
         state_df = state_df.drop(columns=["country name"])
-
-        # Get features
-        FEATURES = [col.lower() for col in state_df.columns]
 
         single_state_params = LSTMHyperparameters(
             input_size=len(FEATURES),
@@ -140,11 +187,9 @@ class OneStateDataExperiment(BaseExperiment):
 
 
 ## 2. Use data for all states (whole dataset)
-
-
 class AllStatesDataExperiments(BaseExperiment):
 
-    def run(self, state: str, split_rate: float):
+    def run(self, state: str, split_rate: float, features: List[str]):
         """
         Use whole dataset to train and evaluate model.
 
@@ -153,6 +198,9 @@ class AllStatesDataExperiments(BaseExperiment):
             split_rate (float): Split rate for training and validation data.
         """
 
+        # Set features const
+        FEATURES = features
+
         # Create readme
         self.create_readme()
 
@@ -160,12 +208,6 @@ class AllStatesDataExperiments(BaseExperiment):
         states_loader = StatesDataLoader()
 
         all_states = states_loader.load_all_states()
-
-        # Get only numerical features
-        FEATURES = [
-            col.lower()  # Lower to ensure key compatibility
-            for col in all_states[state].select_dtypes(include="number").columns
-        ]
 
         # Get hyperparameters for training
         all_state_state_params = LSTMHyperparameters(
@@ -201,7 +243,7 @@ class AllStatesDataExperiments(BaseExperiment):
 
         # Scale data
         scaled_train_data, all_states_scaler = states_loader.scale_data(
-            states_train_data_dict, scaler=MinMaxScaler()
+            states_train_data_dict, scaler=MinMaxScaler(), features=FEATURES
         )
 
         # Create input and target sequences
@@ -278,7 +320,8 @@ class AllStatesDataExperiments(BaseExperiment):
 class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
 
     def run(self, state: str, split_rate: float) -> None:
-        """_summary_
+        """
+        Trains model using one state data only with stationary features.
 
         Args:
             state (str): State which data will be used to train model.
@@ -414,19 +457,84 @@ def run_data_experiments() -> None:
         name="OneStateDataExperiment",
         description="Train and evaluate model on single state data.",
     )
+    EXP1_FEATURES = [
+        "year",
+        "Fertility rate, total",
+        "Population, total",
+        "Net migration",
+        "Arable land",
+        "Birth rate, crude",
+        "GDP growth",
+        "Death rate, crude",
+        "Agricultural land",
+        "Rural population",
+        "Rural population growth",
+        "Age dependency ratio",
+        "Urban population",
+        "Population growth",
+        "Adolescent fertility rate",
+        "Life expectancy at birth, total",
+    ]
+    EXP1_FEATURES = [col.lower() for col in EXP1_FEATURES]
+
     exp2 = AllStatesDataExperiments(
         name="AllStatesDataExperiments",
         description="Train and evaluate model on whole dataset.",
     )
+    EXP2_FEATURES = [
+        "year",
+        "Fertility rate, total",
+        "Population, total",
+        "Net migration",
+        "Arable land",
+        "Birth rate, crude",
+        "GDP growth",
+        "Death rate, crude",
+        "Agricultural land",
+        "Rural population",
+        "Rural population growth",
+        "Age dependency ratio",
+        "Urban population",
+        "Population growth",
+        "Adolescent fertility rate",
+        "Life expectancy at birth, total",
+    ]
+    EXP2_FEATURES = [col.lower() for col in EXP2_FEATURES]
+
+    exp2_1 = AllStatesDataExperiments(
+        name="AllStatesDataExperimentsWithoutHighErrorFeatures",
+        description="Train and evaluate model on whole dataset.",
+    )
+    EXP2_1_FEATURES = [
+        "year",
+        "Fertility rate, total",
+        # "Population, total",
+        # "Net migration",
+        "Arable land",
+        "Birth rate, crude",
+        "GDP growth",
+        "Death rate, crude",
+        "Agricultural land",
+        "Rural population",
+        "Rural population growth",
+        "Age dependency ratio",
+        "Urban population",
+        "Population growth",
+        "Adolescent fertility rate",
+        "Life expectancy at birth, total",
+    ]
+    EXP2_1_FEATURES = [col.lower() for col in EXP2_1_FEATURES]
+
     exp3 = OnlyStationaryFeaturesDataExperiment(
         name="OnlyStationaryFeaturesDataExperiment",
         description="Train and evaluate model on single state data with all features with boundaries (for example % values, features with some mean.) ",
     )
 
     # Run experiments with parameters
-    exp1.run(state="Czechia", split_rate=0.8)
-    exp2.run(state="Czechia", split_rate=0.8)
-    exp3.run(state="Czechia", split_rate=0.8)
+    # exp1.run(state="Czechia", split_rate=0.8, features=EXP1_FEATURES)
+    exp2.run(state="Czechia", split_rate=0.8, features=EXP2_FEATURES)
+    exp2_1.run(state="Czechia", split_rate=0.8, features=EXP2_1_FEATURES)
+    # exp3.run(state="Czechia", split_rate=0.8)
 
 
 if __name__ == "__main__":

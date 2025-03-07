@@ -1,11 +1,11 @@
 
-# AllStatesDataExperiments
+# AllStatesDataExperimentsWithoutHighErrorFeatures
 
 **Description:** Train and evaluate model on whole dataset.
 
 ## Hyperparameters
 ```
-Input size:         16
+Input size:         14
 Batch size:         1
 
 Hidden size:        128
@@ -21,8 +21,6 @@ Bidirectional:      False
 ```
 year
 fertility rate, total
-population, total
-net migration
 arable land
 birth rate, crude
 gdp growth
@@ -36,20 +34,3 @@ population growth
 adolescent fertility rate
 life expectancy at birth, total
 ```
-
-## Loss graph
-
-
-![Loss graph](./plots/loss.png)
-
-
-## Evaluation of the model - state: Czechia
-
-
-![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
-
-# Metric result
-{'mae': 4993622.02022286,
- 'mse': 410199188133945.75,
- 'r2': -99292.67308669585,
- 'rmse': 5069322.640311942}
