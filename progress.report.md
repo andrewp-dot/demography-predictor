@@ -32,6 +32,8 @@
     - Different Neural network architectures (not a just a pure LSTM)
     - Finetune experiment -> use all states and finetune layer using the state 
     - (BONUS) LSTM and NN as a global model instead of local 
+3. Write experiment results -> method comparision, advantages, disadvantages
+4. Predictions using the population from Lakmoos AI. –> find a call, data adapter for Clones -> Add to Poli's calendar
 
 ## Bonus
 1. Model inference (`API`)
