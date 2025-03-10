@@ -173,9 +173,9 @@ class LocalModel(CustomModelBase):
                 epoch_loss += loss.item()
 
                 # Backward pass
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                optimizer.zero_grad()  # Reset gradients
+                loss.backward()  # Computes gradients
+                optimizer.step()  # Update weights and biases
 
             epoch_loss /= len(batch_inputs)
             self.training_stats.losses.append(epoch_loss)
@@ -257,9 +257,6 @@ class LocalModel(CustomModelBase):
                 current_window = torch.cat(
                     (current_window[:, 1:, :], pred.unsqueeze(0)), dim=1
                 )
-
-        prediction_tensor = torch.cat(predictions, dim=0)  # Combine all predictions
-        # logger.info(f"Prediction tensor: {prediction_tensor}")
 
         # Combine with years
         for year, pred in zip(range(last_year + 1, target_year + 1), new_predictions):
