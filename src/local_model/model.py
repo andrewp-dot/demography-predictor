@@ -21,6 +21,11 @@ from config import setup_logging
 
 logger = logging.getLogger("local_model")
 
+# TODO: explain detaching?
+# You can detach the hidden state here if you need to avoid backprop through the entire sequence
+# h_n = h_n.detach()
+# c_n = c_n.detach()
+
 
 class LocalModel(CustomModelBase):
 
@@ -31,12 +36,6 @@ class LocalModel(CustomModelBase):
 
         # Set device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        # Feature Interaction Layer (Fully Connected Layer)
-        # self.feature_interaction = nn.Linear(
-        #     in_features=hyperparameters.input_size,  # Original feature count
-        #     out_features=hyperparameters.input_size,  # Mixing features
-        # )
 
         # 3 layer model:
         self.lstm = nn.LSTM(
@@ -94,25 +93,14 @@ class LocalModel(CustomModelBase):
         # hidden_state: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
     ) -> torch.Tensor:
 
-        # Apply feature interaction layer
-        # x = torch.relu(self.feature_interaction(x))  # Introduce feature interaction
-
         # Get the size of the batch
         batch_size = x.size(0)
 
         # If no hidden state is passed, initialize it
-        # if hidden_state is None:
         h_t, c_t = self.__initialize_hidden_states(batch_size)
-        # else:
-        #     # If hidden state is passed, use it
-        #     h_t, c_t = hidden_state
 
         # Forward propagate through LSTM
         out, (h_n, c_n) = self.lstm(x, (h_t, c_t))  # In here 'out' is a tensor
-
-        # You can detach the hidden state here if you need to avoid backprop through the entire sequence
-        # h_n = h_n.detach()
-        # c_n = c_n.detach()
 
         # Use the output from the last time step
         out = self.linear(out[:, -1, :])  # Using the last time step's output

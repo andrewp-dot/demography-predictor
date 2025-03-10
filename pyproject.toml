@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Adnrew <ado.ponechal@gmail.com>"]
 readme = "README.md"
+packages = [{ include = "src" }, { include = "local_model_benchmark" }, { include = "model_selection" }]
 package-mode = false
 
 [tool.poetry.dependencies]
@@ -23,6 +24,8 @@ lightgbm = "^4.6.0"
 xgboost = "^2.1.4"
 optuna = "^4.2.1"
 
+[tool.poetry.scripts]
+l-benchmark = "local_model_benchmark.benchmark:experiments"
 
 [build-system]
 requires = ["poetry-core"]

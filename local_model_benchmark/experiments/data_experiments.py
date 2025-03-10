@@ -10,9 +10,6 @@ import pprint
 
 from typing import List
 from config import setup_logging, Config
-from local_model_benchmark.utils import (
-    preprocess_single_state_data,
-)
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
@@ -133,12 +130,13 @@ class OneStateDataExperiment(BaseExperiment):
         )
 
         # Preproces data
-        train_batches, target_batches, state_scaler = preprocess_single_state_data(
-            train_data_df=state_train,
-            state_loader=state_loader,
-            hyperparameters=single_state_params,
-            features=FEATURES,
-            scaler=MinMaxScaler(),
+        train_batches, target_batches, state_scaler = (
+            state_loader.preprocess_training_data_batches(
+                train_data_df=state_train,
+                hyperparameters=single_state_params,
+                features=FEATURES,
+                scaler=MinMaxScaler(),
+            )
         )
 
         # Train model
@@ -391,9 +389,8 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
 
         # Preprocess data
         train_input_batches, train_target_batches, state_scaler = (
-            preprocess_single_state_data(
+            state_loader.preprocess_training_data_batches(
                 train_data_df=train_data_df,
-                state_loader=state_loader,
                 hyperparameters=only_staionary_data_params,
                 features=FEATURES,
                 scaler=MinMaxScaler(),

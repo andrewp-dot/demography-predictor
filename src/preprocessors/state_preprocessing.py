@@ -7,6 +7,7 @@ import logging
 
 # Custom libraries imports
 from config import Config, setup_logging
+from src.local_model.base import LSTMHyperparameters
 
 logger = logging.getLogger("data_preprocessing")
 
@@ -115,7 +116,7 @@ class StateDataLoader:
             data (pd.DataFrame): Dataframe which should contain the year.
 
         Returns:
-            int: Last year of the record.
+            out: int: Last year of the record.
         """
 
         # Verify if the 'year' is in the columns
@@ -138,10 +139,13 @@ class StateDataLoader:
         - time_steps or sequence_length: number of time steps
         - input_features: number of input features
 
-        :param data: pd.DataFrame: input data
-        :param sequence_len: int: sequence length of the input/target sequences
-        :param features: List[str]: list of features to use
-        :return: Tuple[torch.Tensor, torch.Tensor]: input_sequences, target_sequences
+        Args:
+            data (pd.DataFrame): Scaled input data.
+            sequence_len (int): Sequence length of the input/target sequences.
+            features (List[str]): List of features to use.
+
+        Returns:
+            out: Tuple[torch.Tensor, torch.Tensor]: input_sequences, target_sequences.
         """
 
         # Copy data to avoid modifying the original data
@@ -196,11 +200,15 @@ class StateDataLoader:
 
         **Note: creates only input sequences from the provided data.**
 
-        :param data: pd.DataFrame: input data
-        :param sequence_len: int: sequence length of the input/target sequences
-        :param freatures: List[str]: list of features to use
-        :return: Tuple[torch.Tensor, torch.Tensor]: input_sequences
+        Args:
+            data (pd.DataFrame): Scaled input data.
+            sequence_len (int): Sequence length of the input sequences.
+            features (List[str]): List of features to use.
+
+        Returns:
+            out: torch.Tensor: Stacked input sequences.
         """
+
         # Copy data to avoid modifying the original data
         current_data = data.copy()
 
@@ -223,6 +231,82 @@ class StateDataLoader:
             )
 
         return torch.stack(input_sequences)
+
+    def preprocess_data_batches(
+        self,
+        data: pd.DataFrame,
+        hyperparameters: LSTMHyperparameters,
+        features: List[str],
+        scaler: Union[MinMaxScaler, RobustScaler, StandardScaler],
+    ) -> torch.Tensor:
+
+        # Get features
+        FEATURES = features
+
+        # Scale data
+        scaled_data, _ = self.scale_data(data, features=FEATURES, scaler=scaler)
+
+        # Create input sequences
+        input_sequences = self.preprocess_data(
+            data=scaled_data,
+            sequence_len=hyperparameters.sequence_length,
+            features=FEATURES,
+        )
+
+        # Create batches
+        input_batches, _ = self.create_batches(
+            batch_size=hyperparameters.batch_size, input_sequences=input_sequences
+        )
+
+        return input_batches
+
+    def preprocess_training_data_batches(
+        self,
+        train_data_df: pd.DataFrame,
+        hyperparameters: LSTMHyperparameters,
+        features: List[str],
+        scaler: Union[MinMaxScaler, RobustScaler, StandardScaler],
+    ) -> Tuple[
+        torch.Tensor, torch.Tensor, Union[MinMaxScaler, RobustScaler, StandardScaler]
+    ]:
+        """
+        Converts training data to format for training. From the unscaled training data to batches.
+
+        Args:
+            train_data_df (pd.DataFrame): Unscaled training data.
+            state_loader (StateDataLoader): Loader for the state.
+            hyperparameters (LSTMHyperparameters): Hyperparameters used for training the model.
+            features (List[str]): Features used in model.
+
+        Returns:
+            out: Tuple[torch.Tensor, torch.Tensor, Union[MinMaxScaler, RobustScaler, StandardScaler]]: train input batches, train target batches,
+            fitted scaler used for training data scaling.
+        """
+
+        # Get features
+        FEATURES = features
+
+        # Scale data
+        scaled_train_data, state_scaler = self.scale_data(
+            train_data_df, features=FEATURES, scaler=scaler
+        )
+
+        # Create input and target sequences
+        train_input_sequences, train_target_sequences = self.preprocess_training_data(
+            data=scaled_train_data,
+            sequence_len=hyperparameters.sequence_length,
+            features=FEATURES,
+        )
+
+        # Create input and target batches for faster training
+        train_input_batches, train_target_batches = self.create_batches(
+            batch_size=hyperparameters.batch_size,
+            input_sequences=train_input_sequences,
+            target_sequences=train_target_sequences,
+        )
+
+        # Return training batches, target batches and fitted scaler
+        return train_input_batches, train_target_batches, state_scaler
 
 
 if __name__ == "__main__":

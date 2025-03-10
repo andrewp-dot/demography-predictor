@@ -17,11 +17,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 from statsmodels.tsa.arima.model import ARIMA
 
 # Custom imports
-from local_model_benchmark.experiments.data_experiments import (
-    whole_dataset_experiment,
-    single_state_data_experiment,
-    only_stationary_data_experiment,
-)
+# from local_model_benchmark.experiments.data_experiments import
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateModel
@@ -37,24 +33,30 @@ logger = logging.getLogger("benchmark")
 
 # Data based experiments
 def run_data_experiments() -> None:
-    single_state_data_experiment(state="Czechia", split_rate=0.8)
+    # single_state_data_experiment(state="Czechia", split_rate=0.8)
     # whole_dataset_experiment()
     # only_stationary_data_experiment(state="Czechia", split_rate=0.8)
+    raise NotImplementedError("Benchmark edata xperiments are not implemented yet.")
 
 
 # Mode settings and comparision experiments
 def run_model_experiments() -> None:
-    raise NotImplementedError()
+    raise NotImplementedError("Benchmark model experiments are not implemented yet.")
 
 
-if __name__ == "__main__":
+def experiments():
     # Setup logging
     setup_logging()
 
     # Run experiments
-    run_data_experiments()
-
+    # run_data_experiments()
     # run_model_experiments()
+
+    raise NotImplementedError("Benchmark experiments are not implemented yet.")
+
+
+if __name__ == "__main__":
+    experiments()
 
 
 # Use different scaler(s)

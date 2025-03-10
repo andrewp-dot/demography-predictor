@@ -11,13 +11,9 @@ import optuna
 
 
 from config import setup_logging, Config
-from local_model_benchmark.utils import (
-    preprocess_single_state_data,
-)
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
+from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
-from local_model_benchmark.utils import preprocess_single_state_data
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
 
 from src.local_model.statistical_models import LocalARIMA, EvaluateARIMA
@@ -217,12 +213,13 @@ class OptimalParamsExperiment(BaseExperiment):
             )
 
             # Preprocess data
-            train_batches, target_batches, state_scaler = preprocess_single_state_data(
-                train_data_df=train_df,
-                state_loader=state_loader,
-                hyperparameters=NEW_HYPERPARAMS,
-                features=features,
-                scaler=MinMaxScaler(),
+            train_batches, target_batches, state_scaler = (
+                state_loader.preprocess_training_data_batches(
+                    train_data_df=train_df,
+                    hyperparameters=NEW_HYPERPARAMS,
+                    features=features,
+                    scaler=MinMaxScaler(),
+                )
             )
 
             # Train model
@@ -280,9 +277,8 @@ class OptimalParamsExperiment(BaseExperiment):
 
         # Train and evaluate base model
         base_train_batches, base_target_batches, base_scaler = (
-            preprocess_single_state_data(
+            state_loader.preprocess_training_data_batches(
                 train_data_df=train_data_df,
-                state_loader=state_loader,
                 hyperparameters=BASE_HYPERPARAMS,
                 features=FEATURES,
                 scaler=MinMaxScaler(),
@@ -337,9 +333,8 @@ class OptimalParamsExperiment(BaseExperiment):
 
         # Preprocess data
         optimal_train_batches, optimal_target_batches, optimal_scaler = (
-            preprocess_single_state_data(
+            state_loader.preprocess_training_data_batches(
                 train_data_df=train_data_df,
-                state_loader=state_loader,
                 hyperparameters=OPTIMAL_PAREMETRS,
                 features=FEATURES,
                 scaler=MinMaxScaler(),
@@ -476,12 +471,13 @@ class CompareLSTMARIMAExperiment(BaseExperiment):
             rnn = LocalModel(hyperparameters=ADJUSTED_PARAMS)
 
             # Preprocess data
-            input_batches, target_batches, scaler = preprocess_single_state_data(
-                train_data_df=train_df,
-                state_loader=state_loader,
-                hyperparameters=ADJUSTED_PARAMS,
-                features=[target],
-                scaler=MinMaxScaler(),
+            input_batches, target_batches, scaler = (
+                state_loader.preprocess_training_data_batches(
+                    train_data_df=train_df,
+                    hyperparameters=ADJUSTED_PARAMS,
+                    features=[target],
+                    scaler=MinMaxScaler(),
+                )
             )
 
             # Train model
