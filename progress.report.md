@@ -25,6 +25,9 @@
 
 
 ## TODO:
+
+0. !!!! FIX THE INTERFACE FOR THE EXPERIMENTS TO BE COMPATIBLE WITH EVERY MODEL YOU CREATE, OR DESIGN THE EXPERIMENTS IN THAT WAY, THAT YOU CAN COMPARE LOCAL MODELS !!! (objective: find a way how to compare different LSTM models).
+
 1. Statistical model implementation (Grey model)
 2. Experiments
     - experiment with exclusion of covid years

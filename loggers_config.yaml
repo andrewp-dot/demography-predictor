@@ -23,6 +23,12 @@ handlers:
     # level: INFO
     filename: logs/local_model.log
 
+  finetuneable_local_model:
+    class: logging.FileHandler
+    formatter: default
+    # level: INFO
+    filename: logs/finetunable_local_model.log
+
   data_preprocessing: 
     class: logging.FileHandler
     formatter: default
@@ -40,6 +46,11 @@ loggers:
   local_model:
     level: INFO
     handlers: [console, local_model]
+    propagate: no
+
+  finetuneable_local_model:
+    level: INFO
+    handlers: [console, finetuneable_local_model]
     propagate: no
 
   data_preprocessing:
