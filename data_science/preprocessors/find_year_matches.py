@@ -2,10 +2,10 @@ import os
 import pandas as pd
 import numpy as np
 
-from config import Settings
+from config import DatasetCreatorSettings
 from dataset_preprocessor import DatasetPreprocessor
 
-settings = Settings()
+settings = DatasetCreatorSettings()
 
 NAN_THRESHOLD = 5
 

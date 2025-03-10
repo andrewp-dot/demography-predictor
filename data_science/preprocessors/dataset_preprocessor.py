@@ -9,10 +9,10 @@ from typing import List, Dict, Tuple, Union
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
-from config import Settings
+from config import DatasetCreatorSettings
 from base import BasePreprocessor
 
-settings = Settings()
+settings = DatasetCreatorSettings()
 
 
 MAX_NAN_VALUES = 0

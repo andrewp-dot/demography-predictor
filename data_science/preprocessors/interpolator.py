@@ -2,9 +2,9 @@ import os
 import pandas as pd
 from dataset_preprocessor import country_sequences_info
 
-from config import Settings
+from config import DatasetCreatorSettings
 
-settings = Settings()
+settings = DatasetCreatorSettings()
 
 
 class Interpolator:
