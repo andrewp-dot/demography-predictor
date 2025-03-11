@@ -3,25 +3,17 @@ import logging
 import torch
 
 # from pydantic import BaseModel
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Union
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 from config import Config, setup_logging
 from src.preprocessors.state_preprocessing import StateDataLoader
+from src.local_model.base import LSTMHyperparameters
 
 
 settings = Config()
 
 logger = logging.getLogger("data_preprocessing")
-
-
-# TODO: maybe you can use generators from load functions
-# TODO: maybe use this instead of Dict
-# class SingleStateData(BaseModel):
-#     name: str
-#     data_df: pd.DataFrame
-#     train_data_df: Optional[pd.DataFrame] = None  # Set the default to None
-#     test_data_df: Optional[pd.DataFrame] = None  # Set the default to None
 
 
 class StatesDataLoader:
@@ -86,8 +78,6 @@ class StatesDataLoader:
         # Return loaded states
         return state_dfs
 
-    # TODO:
-    # TEST THIS
     def split_data(
         self,
         states_dict: Dict[str, pd.DataFrame],
@@ -133,8 +123,6 @@ class StatesDataLoader:
 
         return state_split_train_dict, state_split_test_dict
 
-    # TODO:
-    # Test scaling function
     def scale_data(
         self,
         states_data: Dict[str, pd.DataFrame],
@@ -163,7 +151,10 @@ class StatesDataLoader:
         numerical_features_df = states_merged_df.select_dtypes(include=["number"])
 
         # TEMPORARY FIX
-        numerical_features_df = numerical_features_df[FEATURES]
+        try:
+            numerical_features_df = numerical_features_df[FEATURES]
+        except KeyError as e:
+            raise KeyError(f"Cannot scale non-numerical features! Exception: {e}")
 
         logger.debug(f"Numerical: {numerical_features_df.columns}")
 
@@ -206,7 +197,6 @@ class StatesDataLoader:
 
         return scaled_states, scaler
 
-    # TODO: maybe add features parameter in here
     def create_train_sequences(
         self,
         states_data: Dict[str, pd.DataFrame],
@@ -235,7 +225,6 @@ class StatesDataLoader:
         for state, df in states_data.items():
 
             # Get numerical columns
-
             if get_auto_features:
                 features = list(df.select_dtypes(include=["number"]).columns)
 
@@ -260,7 +249,6 @@ class StatesDataLoader:
         )
         return train_tensor, target_tensor
 
-    # TODO: TRY THIS FUNCTIONS
     def create_target_batches(
         self, target_sequences: torch.Tensor, batch_size: int
     ) -> torch.Tensor:
@@ -345,6 +333,56 @@ class StatesDataLoader:
 
         return input_batches, target_batches
 
+    def preprocess_train_data_batches(
+        self,
+        all_states: Dict[str, pd.DataFrame],
+        hyperparameters: LSTMHyperparameters,
+        features: List[str],
+        split_rate: float,
+    ) -> Tuple[
+        torch.Tensor,
+        torch.Tensor,
+        Union[MinMaxScaler, RobustScaler, StandardScaler],
+        Dict[str, pd.DataFrame],
+    ]:
+        # Set features const
+        FEATURES = features
+
+        # Split data
+        states_train_data_dict, states_test_data_dict = states_loader.split_data(
+            states_dict=all_states,
+            sequence_len=hyperparameters.sequence_length,
+            split_rate=split_rate,
+        )
+
+        # Scale data
+        scaled_train_data, all_states_scaler = states_loader.scale_data(
+            states_train_data_dict, scaler=MinMaxScaler(), features=FEATURES
+        )
+
+        # Create input and target sequences
+        train_input_sequences, train_target_sequences = (
+            states_loader.create_train_sequences(
+                states_data=scaled_train_data,
+                sequence_len=hyperparameters.sequence_length,
+                features=FEATURES,
+            )
+        )
+
+        # Create input and target batches for faster training
+        train_input_batches, train_target_batches = states_loader.create_train_batches(
+            input_sequences=train_input_sequences,
+            target_sequences=train_target_sequences,
+            batch_size=hyperparameters.batch_size,
+        )
+
+        return (
+            train_input_batches,
+            train_target_batches,
+            all_states_scaler,
+            states_test_data_dict,
+        )
+
 
 if __name__ == "__main__":
     # Setup logging
@@ -392,16 +430,31 @@ if __name__ == "__main__":
 
     logger.info(f"Train data: \n {train_data['Czechia'].head()}")
 
+    # Get features
+    FEATURES = list(train_data["Czechia"].columns)
+    FEATURES.remove("country name")
+    hyperparameters = LSTMHyperparameters(
+        input_size=len(FEATURES),
+        hidden_size=128,
+        sequence_length=5,
+        num_layers=2,
+        learning_rate=0.0001,
+        epochs=10,
+        batch_size=32,
+    )
+
     # Scale states data
     scaled_train_data, scaler = states_loader.scale_data(
-        train_data, scaler=MinMaxScaler()
+        train_data, scaler=MinMaxScaler(), features=FEATURES
     )
 
     logger.info(f"Train data: \n {scaled_train_data['Czechia'].head()}")
 
     # Create train and test sequences
     train_sequences, target_sequences = states_loader.create_train_sequences(
-        scaled_train_data, sequence_len=5
+        scaled_train_data,
+        sequence_len=hyperparameters.sequence_length,
+        features=FEATURES,
     )
 
     logger.info(
@@ -412,9 +465,30 @@ if __name__ == "__main__":
     train_batches, target_batches = states_loader.create_train_batches(
         input_sequences=train_sequences,
         target_sequences=target_sequences,
-        batch_size=32,
+        batch_size=hyperparameters.batch_size,
     )
 
     logger.info(
         f"Training batches shape: {train_batches.shape}, Target batches shape: {target_batches.shape}"
     )
+
+    # Compare batches from sequences and batches from preprocessing function
+    (
+        preprocessed_train_batches,
+        preprocessed_target_batches,
+        fitted_scaler,
+        validation_data_dict,
+    ) = states_loader.preprocess_train_data_batches(
+        all_states=all_states_dict,
+        hyperparameters=hyperparameters,
+        features=FEATURES,
+        split_rate=0.8,
+    )
+
+    train_batches_equal = torch.equal(train_batches, preprocessed_train_batches)
+    target_batches_equal = torch.equal(target_batches, preprocessed_target_batches)
+
+    logger.info(
+        f"Train batches equal: {train_batches_equal}, Target batches equal: {target_batches_equal}"
+    )
+    assert train_batches_equal and target_batches_equal, "Batches are not equal"
