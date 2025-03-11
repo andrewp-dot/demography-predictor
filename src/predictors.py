@@ -32,7 +32,7 @@ class DemographyPredictor:
         return f"{self.name} ({type(self.local_model).__name__} -> {type(self.global_model.model).__name__})"
 
     def predict(self, input_data: pd.DataFrame):
-        raise NotImplementedError("Cannoct predict")
+        raise NotImplementedError("Cannoct predict -> model is not implemented yet.")
 
 
 def predictor_v1() -> DemographyPredictor:

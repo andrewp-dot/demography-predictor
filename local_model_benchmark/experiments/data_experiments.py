@@ -228,8 +228,6 @@ class AllStatesDataExperiments(BaseExperiment):
             title="## Features", text="```\n" + "\n".join(FEATURES) + "\n```"
         )
 
-        # TODO: Maybe you an write this to all in one function
-
         #### Multiple state preprocessing starts here
 
         # Split data
