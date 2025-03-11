@@ -61,7 +61,7 @@ def get_source_data_dir(
 
 
 # Custom settings
-DATASET_VERSION: Literal["v0", "v1"] = "v0"
+DATASET_VERSION: Literal["v0", "v1"] = "v1"
 
 
 class DatasetCreatorSettings(BaseSettings):

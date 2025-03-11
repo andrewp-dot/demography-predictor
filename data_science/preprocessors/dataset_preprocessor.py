@@ -14,7 +14,8 @@ settings = DatasetCreatorSettings()
 
 # This is main in here
 # TODO:
-# Comments in here -> make code more readable
+# 1. Comments in here -> make code more readable
+# 2. Delete states with low number of records
 
 MAX_NAN_VALUES = 0
 
