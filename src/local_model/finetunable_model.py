@@ -26,7 +26,8 @@ logger = logging.getLogger(name="finetuneable_local_model")
 # 3.    If you dont initiliaze hidden state, pytorch does it automatically
 
 # TODO:
-# Where to put resseting hidden state function?
+# 1. Where to put resseting hidden state function?
+# 2. Add adapter layer for change the size shape of finetunable layer
 
 
 class FineTunableLSTM(BaseLSTM):
@@ -122,7 +123,7 @@ class FineTunableLSTM(BaseLSTM):
         # Note: does not reset hidden states
 
         # Initialize hidden state
-        h_0, c_0 = self.__initialize_hidden_states(
+        self.h_0, self.c_0 = self.__initialize_hidden_states(
             batch_size=x.size(0), h_0=h_0, c_0=c_0
         )
 
@@ -343,7 +344,8 @@ def train_base_model(
     logger.info("Evaluating base model...")
     model_evaluation = EvaluateModel(base_model)
     model_evaluation.eval(
-        test_X=test_data_dict[evaluation_state_name],
+        test_X=train_data_dict[evaluation_state_name],
+        test_y=test_data_dict[evaluation_state_name],
         features=FEATURES,
         scaler=base_fitted_scaler,
     )
@@ -390,11 +392,11 @@ if __name__ == "__main__":
 
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
-        hidden_size=2048,
-        sequence_length=15,
+        hidden_size=256,
+        sequence_length=10,
         learning_rate=0.0001,
         epochs=30,
-        batch_size=1,
+        batch_size=16,
         num_layers=4,
     )
 
@@ -408,11 +410,11 @@ if __name__ == "__main__":
     # Create finetunable model
     finetunable_hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
-        hidden_size=128,
+        hidden_size=hyperparameters.hidden_size,  # Yet the base model hidden size and finetunable layer hidden size has to be the same
         sequence_length=hyperparameters.sequence_length,
         learning_rate=0.0001,
         epochs=30,
-        batch_size=hyperparameters.batch_size,
+        batch_size=1,
         num_layers=1,
     )
 
@@ -424,9 +426,14 @@ if __name__ == "__main__":
     state_loader = StateDataLoader(EVLAUATION_STATE_NAME)
     state_data_df = state_loader.load_data()
 
+    # Split state data
+    train_state_data_df, test_state_data_df = state_loader.split_data(
+        data=state_data_df, split_rate=0.8
+    )
+
     # Use the same scaler as the base model
-    trainig_batches, target_batches = state_loader.preprocess_training_data_batches(
-        train_data_df=state_data_df,
+    trainig_batches, target_batches, _ = state_loader.preprocess_training_data_batches(
+        train_data_df=train_state_data_df,
         hyperparameters=finetunable_hyperparameters,
         features=FEATURES,
         scaler=base_model.scaler,
@@ -436,3 +443,23 @@ if __name__ == "__main__":
     finetunable_local_model.train_model(
         batch_inputs=trainig_batches, batch_targets=target_batches, display_nth_epoch=1
     )
+
+    # Evaluate finetunable model
+    logger.info("Evaluating finetunable model...")
+    finetunable_model_evaluation = EvaluateModel(finetunable_local_model)
+    finetunable_model_evaluation.eval(
+        test_X=train_state_data_df,
+        test_y=test_state_data_df,
+        features=FEATURES,
+        scaler=base_model.scaler,
+    )
+
+    logger.info(
+        f"[FinetunabelModel]: Overall metrics:\n{finetunable_model_evaluation.overall_metrics}\n"
+    )
+    logger.info(
+        f"[FinetunabelModel]: Per feature metrics:\n{finetunable_model_evaluation.per_target_metrics}\n"
+    )
+
+    fig = finetunable_model_evaluation.plot_predictions()
+    fig.show()
