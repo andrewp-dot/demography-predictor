@@ -26,7 +26,13 @@ class DatasetPreprocessor(BasePreprocessor):
         super().__init__(to_save_data_dir)
         self.source_data_dir = source_data_dir
 
-    def get_csv_paths(self):
+    def get_csv_paths(self) -> List[str]:
+        """
+        Get all csv files from the source data directory.
+
+        Returns:
+            out: List[str]: List of path to csv file data sources from data.worldbank.
+        """
         import re
 
         return [
@@ -36,6 +42,15 @@ class DatasetPreprocessor(BasePreprocessor):
         ]
 
     def find_non_unnamend_cols(self, df: pd.DataFrame) -> List[str]:
+        """
+        Get all columns that are not named 'unnamed'.
+
+        Args:
+            df (pd.DataFrame): Data frame to search for non-unnamed columns.
+
+        Returns:
+            out: List[str]: List of non-unnamed columns.
+        """
         non_unnamed_columns = [col for col in df.columns if "unnamed" in col.lower()]
         return non_unnamed_columns
 
@@ -44,6 +59,12 @@ class DatasetPreprocessor(BasePreprocessor):
         df: pd.DataFrame,
         columns_to_keep: List[str],
     ) -> pd.DataFrame:
+        """
+        Convert wide format to long format.
+
+        Returns:
+            out: pd.DataFrame: Dataframe in the long format.
+        """
 
         long_format = pd.melt(
             df,
@@ -61,20 +82,31 @@ class DatasetPreprocessor(BasePreprocessor):
         return long_format
 
     def merge_indicators(self, csv_paths: List[str], skip_rows: int) -> pd.DataFrame:
+        """
+        Merges all indicators from the csv files. One csv files contains one indicator.
+
+        Args:
+            csv_paths (List[str]): _description_
+            skip_rows (int): Skip first n rows in the csv file. (for example in order to skip metadata).
+
+        Returns:
+            out: pd.DataFrame: Merged indicators data frame.
+        """
+
         attribute_dfs = []
 
         for path in csv_paths:
-            print(path)
+            print(f"[Merge indicators]: {path}")
 
             new_df = pd.read_csv(path, skiprows=skip_rows)
 
-            # drop unnamed for all cases
+            # Drop unnamed for all cases
             unnamed_columns = self.find_non_unnamend_cols(new_df)
 
             if unnamed_columns:
                 new_df.drop(columns=unnamed_columns, inplace=True)
 
-            # melt years
+            # Melt years
             new_df = self.melt_single_df(
                 new_df,
                 columns_to_keep=[
@@ -85,11 +117,11 @@ class DatasetPreprocessor(BasePreprocessor):
                 ],
             )
 
-            # drop useless columns
+            # Drop useless columns
             new_df.drop(columns=["Indicator Name", "Indicator Code"], inplace=True)
             attribute_dfs.append(new_df)
 
-        # merge data based on columns
+        # Merge data based on columns
         merged_df = attribute_dfs[0]
 
         for df in attribute_dfs[1:]:
@@ -98,15 +130,26 @@ class DatasetPreprocessor(BasePreprocessor):
                 merged_df,
                 df,
                 on=["Country Name", "Country Code", "Year"],
-                how="inner",  # You can change this to 'left', 'right', or 'outer' depending on requirements
+                how="inner",
             )
 
+        # Get the number of NaN values in each row
         merged_df["NaN_count"] = merged_df.isna().sum(axis=1)
 
         return merged_df
 
     def interpolate_state(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Use data interpolation to fill missing values in the state data frame. Interpolation is done for numeric columns only and for each column separately.
 
+        Args:
+            df (pd.DataFrame): Data frame to interpolate.
+
+        Returns:
+            out: pd.DataFrame: Data frame with interpolated values.
+        """
+
+        # Separate numeric and non-numeric columns
         numeric_cols_df = df.select_dtypes(include=[np.number])  # Only numeric columns
         non_numeric_cols_df = df.select_dtypes(
             exclude=[np.number]
@@ -115,17 +158,18 @@ class DatasetPreprocessor(BasePreprocessor):
         # Interpolate data in columns, where you can interpolate them
         def spline_interpolate_column(series: pd.Series):
 
-            # identify non-missing values
+            # Identify non-missing values
             x = series[series.notna()].index  # Known indices
             y = series[series.notna()].values  # Known values
 
-            missing = series[series.isna()].index  # Indices with missing values
+            # Indices with missing values
+            missing = series[series.isna()].index
             if len(missing) == 0 or len(series) == 0:
                 return series
 
-            # if there are enough points, interpolate
+            # If there are enough known points (more than 70% of values), interpolate
             if (
-                len(x) / len(series) > 0.7 and len(x) > 2
+                len(y) / len(series) > 0.7 and len(x) > 2
             ):  # for cubic interpolation there must by minimum of 2 values
                 spline = interp1d(x, y, kind="cubic", fill_value="extrapolate")
                 series[missing] = spline(missing)
@@ -138,7 +182,7 @@ class DatasetPreprocessor(BasePreprocessor):
             [interpolated_numeric_df, non_numeric_cols_df], axis=1
         )
 
-        # restore the column order
+        # Restore the column order
         interpolated_df = interpolated_df[df.columns]
 
         if interpolated_df.isna().sum().sum() < df.isna().sum().sum():
@@ -152,9 +196,18 @@ class DatasetPreprocessor(BasePreprocessor):
         return interpolated_df
 
     def interpolate(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Interpolate missing data in the data frame. Interpolation is done for each state and each column in the state separately.
+
+        Args:
+            df (pd.DataFrame): Data frame to interpolate.
+
+        Returns:
+            out: pd.DataFrame: Interpolated data.
+        """
 
         # TODO:
-        # 1. extract states
+        # Extract states
         states = df["Country Name"].unique()
 
         print(f"[Interpolate]: {df.shape}")
@@ -164,35 +217,46 @@ class DatasetPreprocessor(BasePreprocessor):
             state_df = df[df["Country Name"] == state]
             state_dfs.append(state_df)
 
-        # 2. for every column in every state interpolate missing values from last known min value to last known max value
+        # For every column in every state interpolate missing values from last known min value to last known max value
         interpolated_states = []
         for state_df in state_dfs:
             interpolated_state = self.interpolate_state(state_df)
             interpolated_states.append(interpolated_state)
 
-        # 3. concat states
+        # Concat states
         interpolated_df = pd.concat(interpolated_states, axis=0)
 
-        # 4. return interpolated
+        # Return interpolated
         return interpolated_df
 
     def clean_data(self, df: pd.DataFrame, min_seq_length: int) -> pd.DataFrame:
+        """_summary_
 
-        # remove population with less than X years of records
+        Args:
+            df (pd.DataFrame): _description_
+            min_seq_length (int): _description_
+
+        Returns:
+            pd.DataFrame: _description_
+        """
+
+        # Rmove population with less than X years of records
         country_info_dict = country_sequences_info(df)
 
         df_copy = df.copy()
 
+        # TODO: fix this down there
         for state, info in country_info_dict.items():
             min_year, max_year, missing_years = info
 
+            # TODO: fix this... (maybe there is wrong way of the state_development_years calculation)
             state_development_years = max_year - min_year
             # if the state does not have a required length of the data
             # or there are more missing years than the actual values
             if state_development_years < min_seq_length or missing_years:
                 df_copy = df_copy[df_copy["Country Name"] != state]
 
-        # drop columns
+        # Drop columns with too many NaN values
         df_copy = df_copy[df_copy["NaN_count"] <= MAX_NAN_VALUES]
         df_copy.drop(columns=["Country Code"], inplace=True)
         df_copy.drop(columns=["NaN_count"], inplace=True)
@@ -235,16 +299,22 @@ class DatasetPreprocessor(BasePreprocessor):
         return merged_df
 
     def save_states_separately(self, df: pd.DataFrame, dir_name: str):
-        # get name without csv
+        """
+        Creates and saves separate csv files for each state from the merged dataset.
 
+        Args:
+            df (pd.DataFrame): Dataset with all states.
+            dir_name (str): Name of the directory where the state files will be saved.
+        """
+        # Get name without csv
         dir_name = dir_name.replace(".csv", "")
         states_dir = os.path.join(self._to_save_data_dir, "states")
 
-        # make dir if not present
+        # Create dir if not present
         if not os.path.isdir(states_dir):
             os.makedirs(states_dir, exist_ok=True)
 
-        # get states and save used states data
+        # Get states and save used states data
         states = df["country name"].unique()
 
         for state in list(states):
@@ -255,6 +325,17 @@ class DatasetPreprocessor(BasePreprocessor):
 
 
 def find_missing_years(df: pd.DataFrame, min_year: int, max_year: int) -> List[int]:
+    """
+    Finds missing years in the data frame.
+
+    Args:
+        df (pd.DataFrame): Dataframe to search for missing years.
+        min_year (int): Minumum year in the data frame.
+        max_year (int): Maximum year in the data frame.
+
+    Returns:
+        out: List[int]: List of missing years.
+    """
 
     missing_years = []
     for y in range(min_year, max_year):
@@ -265,6 +346,15 @@ def find_missing_years(df: pd.DataFrame, min_year: int, max_year: int) -> List[i
 
 
 def country_sequences_info(df: pd.DataFrame) -> dict[str, tuple[int, int, list]]:
+    """
+    Get information about the state sequences.
+
+    Args:
+        df (pd.DataFrame): Dataframe with all states data.
+
+    Returns:
+        out: dict[str, tuple[int, int, list]]: Dictionary with state names as keys and tuple of min year, max year and missing years as values.
+    """
 
     # get all state values
     states = df["Country Name"].unique()
@@ -290,7 +380,10 @@ def country_sequences_info(df: pd.DataFrame) -> dict[str, tuple[int, int, list]]
     return longest_evolution_period_dict
 
 
-def main():
+def main() -> None:
+    """
+    Main function for the dataset preprocessor.
+    """
 
     # Directory where the source data are stored
     source_data_dir = settings.source_data_dir
@@ -323,8 +416,6 @@ def main():
         }
 
         return states_with_missing_years
-
-    # TODO: interpolate populations with years missing, complete sequences
 
     # 1. locate state with incomplete sequence
     states_with_missing_years = get_states_with_incomplete_sequence(merged)
