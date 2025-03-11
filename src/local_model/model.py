@@ -58,6 +58,16 @@ class LocalModel(CustomModelBase):
         # Get stats
         self.training_stats = TrainingStats()
 
+        # Get fitted scaler
+        self.scaler = None
+
+    def set_scaler(self, scaler: MinMaxScaler) -> None:
+        if self.scaler is None:
+            self.scaler = scaler
+            return
+
+        raise ValueError("Scaler is already set")
+
     def __initialize_hidden_states(
         self, batch_size: int
     ) -> Tuple[torch.Tensor, torch.Tensor]:

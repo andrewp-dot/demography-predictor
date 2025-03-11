@@ -3,7 +3,7 @@ import pandas as pd
 import logging
 import torch
 from torch import nn
-from typing import Tuple
+from typing import Tuple, List
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
@@ -295,30 +295,98 @@ class FineTunableLSTM(BaseLSTM):
         return new_predictions_tensor
 
 
+def train_base_model(
+    hyperparameters: LSTMHyperparameters,
+    features: List[str],
+    evaluation_state_name: str,
+) -> LocalModel:
+
+    # Set features const
+    FEATURES = features
+
+    # Load data
+    all_states_loader = StatesDataLoader()
+    all_states_dict = all_states_loader.load_all_states()
+
+    # Get training and test data
+    train_data_dict, test_data_dict = all_states_loader.split_data(
+        states_dict=all_states_dict,
+        sequence_len=hyperparameters.sequence_length,
+        split_rate=0.8,
+    )
+
+    # Preprocess training data
+    trainig_batches, target_batches, base_fitted_scaler = (
+        all_states_loader.preprocess_train_data_batches(
+            states_train_data_dict=train_data_dict,
+            hyperparameters=hyperparameters,
+            features=FEATURES,
+        )
+    )
+
+    # Create model
+    base_model = LocalModel(hyperparameters=hyperparameters)
+    base_model.set_scaler(scaler=base_fitted_scaler)
+
+    # Train model using whole dataset
+    logger.info("Training base model...")
+    base_model.train_model(
+        batch_inputs=trainig_batches,
+        batch_targets=target_batches,
+        display_nth_epoch=1,
+    )
+
+    # Get trainig stats
+    loss_plot_figure = base_model.training_stats.create_plot()
+
+    # Evaluate base model
+    logger.info("Evaluating base model...")
+    model_evaluation = EvaluateModel(base_model)
+    model_evaluation.eval(
+        test_X=test_data_dict[evaluation_state_name],
+        features=FEATURES,
+        scaler=base_fitted_scaler,
+    )
+
+    # Get predictions plot
+    base_predictions_plot = model_evaluation.plot_predictions()
+
+    # Print evaluation metrics
+    logger.info(
+        f"[BaseModel]: Overall evaluation metrics:\n{model_evaluation.overall_metrics}\n"
+    )
+    logger.info(
+        f"[BaseModel]: Per features evaluation metrics:\n{model_evaluation.per_target_metrics}\n"
+    )
+
+    return base_model
+
+
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
     FEATURES = [
         # "year",
-        # "Fertility rate, total",
+        "Fertility rate, total",
         # "Population, total",
-        "Net migration",
-        # "Arable land",
-        # "Birth rate, crude",
-        # "GDP growth",
-        # "Death rate, crude",
-        # "Agricultural land",
-        # "Rural population",
-        # "Rural population growth",
-        # "Age dependency ratio",
-        # "Urban population",
-        # "Population growth",
-        # "Adolescent fertility rate",
-        # "Life expectancy at birth, total",
+        # "Net migration",
+        "Arable land",
+        "Birth rate, crude",
+        "GDP growth",
+        "Death rate, crude",
+        "Agricultural land",
+        "Rural population",
+        "Rural population growth",
+        "Age dependency ratio",
+        "Urban population",
+        "Population growth",
+        "Adolescent fertility rate",
+        "Life expectancy at birth, total",
     ]
 
     FEATURES = [col.lower() for col in FEATURES]
+    EVLAUATION_STATE_NAME = "Croatia"
 
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
@@ -329,72 +397,42 @@ if __name__ == "__main__":
         batch_size=1,
         num_layers=4,
     )
-    rnn = LocalModel(hyperparameters)
+
+    # Create and train base model
+    base_model = train_base_model(
+        hyperparameters=hyperparameters,
+        features=FEATURES,
+        evaluation_state_name=EVLAUATION_STATE_NAME,
+    )
+
+    # Create finetunable model
+    finetunable_hyperparameters = LSTMHyperparameters(
+        input_size=len(FEATURES),
+        hidden_size=128,
+        sequence_length=hyperparameters.sequence_length,
+        learning_rate=0.0001,
+        epochs=30,
+        batch_size=hyperparameters.batch_size,
+        num_layers=1,
+    )
+
+    finetunable_local_model = FineTunableLSTM(
+        base_model=base_model, hyperparameters=finetunable_hyperparameters
+    )
 
     # Load data
-    czech_loader = StateDataLoader("Czechia")
+    state_loader = StateDataLoader(EVLAUATION_STATE_NAME)
+    state_data_df = state_loader.load_data()
 
-    czech_data = czech_loader.load_data()
-
-    # Exclude country name
-    czech_data = czech_data.drop(columns=["country name"])
-
-    print(czech_data[FEATURES])
-
-    # Scale data
-    scaled_cz_data, cz_scaler = czech_loader.scale_data(
-        czech_data, features=FEATURES, scaler=MinMaxScaler()
-    )
-
-    print(scaled_cz_data.head())
-
-    train, test = czech_loader.split_data(scaled_cz_data)
-
-    # Get input/output sequences from train data
-    input_sequences, target_sequences = czech_loader.preprocess_training_data(
-        train,
-        hyperparameters.sequence_length,
+    # Use the same scaler as the base model
+    trainig_batches, target_batches = state_loader.preprocess_training_data_batches(
+        train_data_df=state_data_df,
+        hyperparameters=finetunable_hyperparameters,
         features=FEATURES,
+        scaler=base_model.scaler,
     )
 
-    # Get input/output batches of sequences
-    batch_inputs, batch_targets = czech_loader.create_batches(
-        batch_size=hyperparameters.batch_size,
-        input_sequences=input_sequences,
-        target_sequences=target_sequences,
+    logger.info("Finetuning model...")
+    finetunable_local_model.train_model(
+        batch_inputs=trainig_batches, batch_targets=target_batches, display_nth_epoch=1
     )
-
-    print("-" * 100)
-    logger.info(f"Batch inputs shape: {batch_inputs.shape}")
-    logger.info(f"Batch targets shape: {batch_targets.shape}")
-
-    # Train model
-    rnn.train_model(
-        batch_inputs=batch_inputs, batch_targets=batch_targets, display_nth_epoch=1
-    )
-
-    # Evaluate model
-    model_evaluation = EvaluateModel(rnn)
-
-    # Split the raw data
-    val_X, val_y = czech_loader.split_data(czech_data)
-
-    model_evaluation.eval(
-        test_X=val_X,
-        test_y=val_y,
-        features=FEATURES,
-        scaler=cz_scaler,
-    )
-
-    logger.info(
-        f"Model evaluation by per target metrics: \n{model_evaluation.per_target_metrics}"
-    )
-    logger.info(
-        f"Model evaluation by overall metrics: \n{model_evaluation.overall_metrics}"
-    )
-
-    fig = model_evaluation.plot_predictions()
-
-    import matplotlib.pyplot as plt
-
-    plt.show()
