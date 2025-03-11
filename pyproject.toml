@@ -23,9 +23,11 @@ pyyaml = "^6.0.2"
 lightgbm = "^4.6.0"
 xgboost = "^2.1.4"
 optuna = "^4.2.1"
+click = "^8.1.8"
 
 [tool.poetry.scripts]
 l-benchmark = "local_model_benchmark.benchmark:experiments"
+dataset-create = "data_science.preprocessors.dataset_preprocessor:main"
 
 [build-system]
 requires = ["poetry-core"]

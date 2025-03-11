@@ -6,14 +6,15 @@ import pprint
 from scipy.interpolate import interp1d
 
 from typing import List, Dict, Tuple, Union
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 from config import DatasetCreatorSettings
-from base import BasePreprocessor
+from data_science.preprocessors.base import BasePreprocessor
 
 settings = DatasetCreatorSettings()
 
+# This is main in here
+# TODO:
+# Comments in here -> make code more readable
 
 MAX_NAN_VALUES = 0
 
@@ -23,37 +24,6 @@ class DatasetPreprocessor(BasePreprocessor):
     def __init__(self, source_data_dir: str, to_save_data_dir: str):
         super().__init__(to_save_data_dir)
         self.source_data_dir = source_data_dir
-        self.SCALER: MinMaxScaler | RobustScaler | StandardScaler = StandardScaler()
-
-    def split_training_validation_dataset(
-        self, df: pd.DataFrame, division_rate: float = 0.2
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Loads states data and divides it to training and validation dataset.
-
-        Args:
-            division_rate (float, optional): Rate which selects the division rate of states.
-            For example, rate = 0.2 means is equal to 10 states used for validation dataset from 50. Defaults to 0.2.
-            preprocess (bool, optional): Set if the data should be preprocessed. Defaults to True.
-
-        Returns:
-            Tuple[pd.DataFrame, pd.DataFrame]: training dataset, validation dataset
-        """
-
-        row_count = df.shape[0]
-
-        # secure division rate
-        division_rate = max(0, min(1, division_rate))
-
-        # get the number of dataset files
-        training_number = int(row_count * (1 - division_rate))
-
-        # craft training dataset
-        training_df = df.iloc[:training_number]
-
-        # craft training dataset
-        validation_df = df.iloc[training_number:]
-
-        return training_df, validation_df
 
     def get_csv_paths(self):
         import re
@@ -135,7 +105,6 @@ class DatasetPreprocessor(BasePreprocessor):
         return merged_df
 
     def interpolate_state(self, df: pd.DataFrame) -> pd.DataFrame:
-        # TODO:
 
         numeric_cols_df = df.select_dtypes(include=[np.number])  # Only numeric columns
         non_numeric_cols_df = df.select_dtypes(
@@ -228,49 +197,27 @@ class DatasetPreprocessor(BasePreprocessor):
         df_copy.drop(columns=["NaN_count"], inplace=True)
         return df_copy
 
-    def scale_data(
-        self,
-        df: pd.DataFrame,
-        exlcude_columns: List[str],
-        scaler: MinMaxScaler | StandardScaler | RobustScaler,
-    ) -> pd.DataFrame:
-        current_scaler: MinMaxScaler | StandardScaler | RobustScaler = scaler()
-
-        not_scaled_df: pd.DataFrame = df[exlcude_columns]
-
-        desired_columns: List[str] = [
-            col for col in df.columns if col not in exlcude_columns
-        ]
-
-        scaled_data = current_scaler.fit_transform(df[desired_columns])
-
-        scaled_df = pd.DataFrame(scaled_data, columns=desired_columns, index=df.index)
-
-        # TODO: more description to the scaler
-        self.SCALER = current_scaler
-
-        # concat columns
-        return pd.concat([not_scaled_df, scaled_df], axis=1)
-
     def process(
         self,
     ) -> pd.DataFrame:
-        """Processes states data. This is specified preprocessor just for state data configured in 'config.py' in the root of the project.
+        """
+        Processes states data. This is specified preprocessor just for state data configured in 'config.py' in the root of the project.
 
         Args:
             name (str, optional): Name of the processed dataset file name. Defaults to "preprocessed_states.csv".
 
         Returns:
-            Dataframe: processed dataset
+            out: Dataframe: processed dataset
         """
 
-        # get csv file paths
+        # Get csv file paths
         csv_paths = self.get_csv_paths()
 
+        # Skip header and merge indicators
         skip_rows = 4
         merged_df = self.merge_indicators(csv_paths=csv_paths, skip_rows=skip_rows)
 
-        # TODO: sort values
+        # Sort values by country name and year
         merged_df = merged_df.sort_values(by=["Country Name", "Year"])
 
         print(f"[Process]: {merged_df.shape}")
@@ -297,10 +244,10 @@ class DatasetPreprocessor(BasePreprocessor):
             os.makedirs(states_dir, exist_ok=True)
 
         # get states and save used states data
-        states = df["Country Name"].unique()
+        states = df["country name"].unique()
 
         for state in list(states):
-            state_df = df[df["Country Name"] == state]
+            state_df = df[df["country name"] == state]
 
             state_file_name = os.path.join(states_dir, f"{state}.csv")
             state_df.to_csv(state_file_name, index=False)
@@ -342,19 +289,21 @@ def country_sequences_info(df: pd.DataFrame) -> dict[str, tuple[int, int, list]]
     return longest_evolution_period_dict
 
 
-if __name__ == "__main__":
+def main():
+
+    # Directory where the source data are stored
     source_data_dir = settings.source_data_dir
 
+    # Save created dataset to directory path
     to_save_dir = os.path.join(
-        settings.save_dataset_path, "datasets", f"dataset_{settings.dataset_version}"
+        settings.save_dataset_path, f"dataset_{settings.dataset_version}"
     )
 
+    # Create directory if does not exist
     if not os.path.exists(to_save_dir):
         os.makedirs(to_save_dir)
 
-    # define scaler
-    SCALER = RobustScaler
-
+    # Preprocess raw data
     preprocessor = DatasetPreprocessor(
         to_save_data_dir=to_save_dir, source_data_dir=source_data_dir
     )
@@ -431,12 +380,13 @@ if __name__ == "__main__":
     states_with_missing_years = get_states_with_incomplete_sequence(merged)
     pprint.pprint(states_with_missing_years)
 
-    # rename columns
+    # Rename columns
     import re
 
     original_cols = list(merged.columns)
     mapping_dict = {
-        original: re.sub(r"\(.*?\)", "", original).strip() for original in original_cols
+        original: re.sub(r"\(.*?\)", "", original).strip().lower()
+        for original in original_cols
     }
 
     print(mapping_dict)
@@ -454,11 +404,8 @@ if __name__ == "__main__":
 
     print(merged.describe())
 
-    # scale data
-    # merged = preprocessor.scale_data(
-    #     df=merged,
-    #     exlcude_columns=["Country Name"],
-    #     scaler=SCALER,
-    # )
-
     print(merged.head())
+
+
+if __name__ == "__main__":
+    main()

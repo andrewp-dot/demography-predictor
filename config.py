@@ -32,32 +32,36 @@ class Config(BaseSettings):
 
     # Dataset settings
     selected_dataset: str = "dataset_v1"
-    dataset_dir: str = f"./data_science/datasets/{selected_dataset}"
-    dataset_path: str = f"{dataset_dir}/{selected_dataset}.csv"
-    states_data_dir: str = f"{dataset_dir}/states"
+    dataset_dir: str = os.path.join(".", "data_science", "datasets", selected_dataset)
+    dataset_path: str = os.path.join(dataset_dir, f"{selected_dataset}.csv")
+    states_data_dir: str = os.path.join(dataset_dir, "states")
 
     # Local model benchmark settings
-    benchmark_results_dir: str = "./local_model_benchmark/experiment_results"
+    benchmark_results_dir: str = os.path.join(
+        ".", "local_model_benchmark", "experiment_results"
+    )
 
 
-def get_root_dir() -> DirectoryPath:
-    return os.path.abspath("./")
+def get_data_science_dir() -> DirectoryPath:
+    return os.path.abspath(os.path.join(".", "data_science"))
 
 
-def get_dataset_dir(root: DirectoryPath) -> DirectoryPath:
-    return os.path.join(root, "../")
+def get_dataset_dir(data_science_root: DirectoryPath) -> DirectoryPath:
+    return os.path.join(data_science_root, "datasets")
 
 
-def get_data_dir(root: DirectoryPath) -> DirectoryPath:
-    return os.path.join(root, "../", "data")
+def get_data_dir(data_science_root: DirectoryPath) -> DirectoryPath:
+    return os.path.join(data_science_root, "data")
 
 
-def get_source_data_dir(root: DirectoryPath, dataset_version: str) -> DirectoryPath:
-    return os.path.join(root, "../", "data", f"dataset_{dataset_version}")
+def get_source_data_dir(
+    data_science_root: DirectoryPath, dataset_version: str
+) -> DirectoryPath:
+    return os.path.join(data_science_root, "data", f"dataset_{dataset_version}")
 
 
 # Custom settings
-DATASET_VERSION: Literal["v0", "v1"] = "v1"
+DATASET_VERSION: Literal["v0", "v1"] = "v0"
 
 
 class DatasetCreatorSettings(BaseSettings):
@@ -68,13 +72,15 @@ class DatasetCreatorSettings(BaseSettings):
     # Path configs
     source_data_dir: DirectoryPath = Field(
         ...,
-        default_factory=lambda: get_source_data_dir(get_root_dir(), DATASET_VERSION),
+        default_factory=lambda: get_source_data_dir(
+            get_data_science_dir(), DATASET_VERSION
+        ),
     )
 
     save_dataset_path: DirectoryPath = Field(
-        ..., default_factory=lambda: get_dataset_dir(get_root_dir())
+        ..., default_factory=lambda: get_dataset_dir(get_data_science_dir())
     )
 
     data_dir: DirectoryPath = Field(
-        ..., default_factory=lambda: get_data_dir(get_root_dir())
+        ..., default_factory=lambda: get_data_dir(get_data_science_dir())
     )
