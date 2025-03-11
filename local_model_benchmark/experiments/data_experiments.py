@@ -1,5 +1,5 @@
 """
-In this file are experiments with local model. 
+In this file are experiments with local model.
 """
 
 # Standard libraries
@@ -239,25 +239,14 @@ class AllStatesDataExperiments(BaseExperiment):
             split_rate=split_rate,
         )
 
-        # Scale data
-        scaled_train_data, all_states_scaler = states_loader.scale_data(
-            states_train_data_dict, scaler=MinMaxScaler(), features=FEATURES
-        )
-
-        # Create input and target sequences
-        train_input_sequences, train_target_sequences = (
-            states_loader.create_train_sequences(
-                states_data=scaled_train_data,
-                sequence_len=all_state_state_params.sequence_length,
+        # Get train batches, target batches, and fitted scaler
+        train_input_batches, train_target_batches, all_states_scaler = (
+            states_loader.preprocess_train_data_batches(
+                all_states=states_train_data_dict,
+                hyperparameters=all_state_state_params,
                 features=FEATURES,
+                split_rate=0.8,
             )
-        )
-
-        # Create input and target batches for faster training
-        train_input_batches, train_target_batches = states_loader.create_train_batches(
-            input_sequences=train_input_sequences,
-            target_sequences=train_target_sequences,
-            batch_size=all_state_state_params.batch_size,
         )
 
         #### Multiple state preprocessing ends here

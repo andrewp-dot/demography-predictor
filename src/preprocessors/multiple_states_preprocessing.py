@@ -335,25 +335,16 @@ class StatesDataLoader:
 
     def preprocess_train_data_batches(
         self,
-        all_states: Dict[str, pd.DataFrame],
+        states_train_data_dict: Dict[str, pd.DataFrame],
         hyperparameters: LSTMHyperparameters,
         features: List[str],
-        split_rate: float,
     ) -> Tuple[
         torch.Tensor,
         torch.Tensor,
         Union[MinMaxScaler, RobustScaler, StandardScaler],
-        Dict[str, pd.DataFrame],
     ]:
         # Set features const
         FEATURES = features
-
-        # Split data
-        states_train_data_dict, states_test_data_dict = states_loader.split_data(
-            states_dict=all_states,
-            sequence_len=hyperparameters.sequence_length,
-            split_rate=split_rate,
-        )
 
         # Scale data
         scaled_train_data, all_states_scaler = states_loader.scale_data(
@@ -380,7 +371,6 @@ class StatesDataLoader:
             train_input_batches,
             train_target_batches,
             all_states_scaler,
-            states_test_data_dict,
         )
 
 
@@ -477,12 +467,10 @@ if __name__ == "__main__":
         preprocessed_train_batches,
         preprocessed_target_batches,
         fitted_scaler,
-        validation_data_dict,
     ) = states_loader.preprocess_train_data_batches(
-        all_states=all_states_dict,
+        states_train_data_dict=train_data,
         hyperparameters=hyperparameters,
         features=FEATURES,
-        split_rate=0.8,
     )
 
     train_batches_equal = torch.equal(train_batches, preprocessed_train_batches)
