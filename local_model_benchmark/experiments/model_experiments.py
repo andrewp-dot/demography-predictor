@@ -16,7 +16,7 @@ from local_model_benchmark.experiments.base_experiment import BaseExperiment
 
 from src.local_model.statistical_models import LocalARIMA, EvaluateARIMA
 from src.preprocessors.state_preprocessing import StateDataLoader
-from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateModel
+from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
 
 
 # Setup logger
@@ -220,7 +220,7 @@ class OptimalParamsExperiment(BaseExperiment):
             )
 
             # Train model
-            rnn = LocalModel(base_params)
+            rnn = BaseLSTM(base_params)
             rnn.train_model(batch_inputs=train_batches, batch_targets=target_batches)
 
             # Evaluate model
@@ -282,7 +282,7 @@ class OptimalParamsExperiment(BaseExperiment):
             )
         )
 
-        base_model = LocalModel(hyperparameters=BASE_HYPERPARAMS)
+        base_model = BaseLSTM(hyperparameters=BASE_HYPERPARAMS)
 
         base_model.train_model(
             batch_inputs=base_train_batches,
@@ -338,7 +338,7 @@ class OptimalParamsExperiment(BaseExperiment):
             )
         )
 
-        optimal_model = LocalModel(hyperparameters=OPTIMAL_PAREMETRS)
+        optimal_model = BaseLSTM(hyperparameters=OPTIMAL_PAREMETRS)
 
         optimal_model.train_model(
             batch_inputs=optimal_train_batches,
@@ -465,7 +465,7 @@ class CompareLSTMARIMAExperiment(BaseExperiment):
             )
 
             # Create RNN
-            rnn = LocalModel(hyperparameters=ADJUSTED_PARAMS)
+            rnn = BaseLSTM(hyperparameters=ADJUSTED_PARAMS)
 
             # Preprocess data
             input_batches, target_batches, scaler = (
@@ -526,7 +526,7 @@ def run_experiments():
     logger.info("Running experiment 1...")
     exp1 = OptimalParamsExperiment(
         name="OptimalParamsExperiment",
-        description="The goal is to find the optimal parameters for the given LocalModel model.",
+        description="The goal is to find the optimal parameters for the given BaseLSTM model.",
         hidden_size_range=(128, 2048),
         sequence_length_range=(10, 15),
         num_layers_range=(1, 5),

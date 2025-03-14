@@ -482,6 +482,11 @@ class CustomModelBase(nn.Module):
         NotImplementedError: If predict method is not implemented yet.
     """
 
+    def __init__(self, hyperparameters: LSTMHyperparameters, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.hyperparameters: LSTMHyperparameters = hyperparameters
+
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError("Forward method for your model is not implemented!")

@@ -1,7 +1,7 @@
 
 # OptimalParamsExperiment
 
-**Description:** The goal is to find the optimal parameters for the given LocalModel model.
+**Description:** The goal is to find the optimal parameters for the given BaseLSTM model.
 
 # Base model evaluation
 Hyperparameters:

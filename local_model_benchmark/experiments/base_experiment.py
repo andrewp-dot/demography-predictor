@@ -2,6 +2,7 @@ import os
 from config import Config
 from abc import abstractmethod
 from matplotlib.figure import Figure
+from src.local_model.model import CustomModelBase
 
 
 # Get settings
@@ -27,9 +28,20 @@ class BaseExperiment:
 
     def __init__(
         self,
+        model: CustomModelBase,
         name: str,
         description: str,
     ):
+        """
+        Initializes the base attributes for the experiment.
+
+        Args:
+            model (CustomModelBase): Model used for the experiment.
+            name (str): Name of the experiment.
+            description (str): Brief description of the experiment.
+        """
+        # Model
+        self.model: CustomModelBase = model
 
         # Initiliallize base experiment settings
         self.name: str = name
@@ -45,6 +57,10 @@ class BaseExperiment:
         self.setup_directories()
 
     def setup_directories(self) -> None:
+        """
+        Creates directories for the experiment. (If directories do not exist)
+        """
+
         # Create save directory if it does not exist
         if not os.path.isdir(self.save_dir):
             os.makedirs(self.save_dir)
@@ -58,6 +74,9 @@ class BaseExperiment:
             os.makedirs(self.plot_dir)
 
     def create_readme(self) -> None:
+        """
+        Creates README.md file for the experiment.
+        """
 
         # Create the header using template
         readme_header = self.README_TEMPLATE_HEAD.format(

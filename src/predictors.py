@@ -5,7 +5,7 @@ from xgboost import XGBRegressor
 
 # Custom imports
 from config import setup_logging
-from src.local_model.model import LSTMHyperparameters, LocalModel
+from src.local_model.model import LSTMHyperparameters, BaseLSTM
 from src.global_model.model import GlobalModel
 from src.local_model.statistical_models import LocalARIMA
 
@@ -18,14 +18,14 @@ class DemographyPredictor:
     def __init__(
         self,
         name: str,
-        local_model: Union[LocalModel, LocalARIMA],
+        local_model: Union[BaseLSTM, LocalARIMA],
         global_model: Union[GlobalModel],
     ):
         # Define name of the model -> name is used to versionning etc
         self.name: str = name
 
         # Define architecture: local model -> global model
-        self.local_model: Union[LocalModel, LocalARIMA] = local_model
+        self.local_model: Union[BaseLSTM, LocalARIMA] = local_model
         self.global_model: Union[GlobalModel] = global_model
 
     def __repr__(self) -> str:
@@ -52,7 +52,7 @@ def predictor_v1() -> DemographyPredictor:
         num_layers=4,
     )
 
-    local_model = LocalModel(hyperparameters=hyperparameters)
+    local_model = BaseLSTM(hyperparameters=hyperparameters)
 
     # Define global model
     global_model: GlobalModel = GlobalModel(model=XGBRegressor())

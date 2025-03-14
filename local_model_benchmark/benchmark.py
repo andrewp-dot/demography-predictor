@@ -1,5 +1,5 @@
 """
-In this file are experiments with local model. 
+In this file are experiments with local model.
 """
 
 # Standard libraries
@@ -20,7 +20,7 @@ from statsmodels.tsa.arima.model import ARIMA
 # from local_model_benchmark.experiments.data_experiments import
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateModel
+from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
 
 
 settings = Config()

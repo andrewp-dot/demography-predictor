@@ -27,12 +27,12 @@ logger = logging.getLogger("local_model")
 # c_n = c_n.detach()
 
 
-class LocalModel(CustomModelBase):
+class BaseLSTM(CustomModelBase):
 
     def __init__(self, hyperparameters: LSTMHyperparameters):
-        super(LocalModel, self).__init__()
+        super(BaseLSTM, self).__init__(hyperparameters)
 
-        self.hyperparameters: LSTMHyperparameters = hyperparameters
+        # self.hyperparameters: LSTMHyperparameters = hyperparameters
 
         # Set device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -303,7 +303,7 @@ if __name__ == "__main__":
         batch_size=1,
         num_layers=4,
     )
-    rnn = LocalModel(hyperparameters)
+    rnn = BaseLSTM(hyperparameters)
 
     # Load data
     czech_loader = StateDataLoader("Czechia")

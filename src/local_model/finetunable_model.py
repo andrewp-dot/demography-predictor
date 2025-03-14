@@ -9,8 +9,8 @@ from sklearn.preprocessing import MinMaxScaler
 # Custom imports
 from config import setup_logging
 from src.local_model.base import LSTMHyperparameters, TrainingStats, EvaluateModel
-from src.local_model.model_base import BaseLSTM
-from src.local_model.model import LocalModel
+from src.local_model.base import CustomModelBase
+from src.local_model.model import BaseLSTM
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -30,13 +30,15 @@ logger = logging.getLogger(name="finetuneable_local_model")
 # 2. Add adapter layer for change the size shape of finetunable layer
 
 
-class FineTunableLSTM(BaseLSTM):
+class FineTunableLSTM(CustomModelBase):
 
-    def __init__(self, base_model: BaseLSTM, hyperparameters: LSTMHyperparameters):
+    def __init__(
+        self, base_model: CustomModelBase, hyperparameters: LSTMHyperparameters
+    ):
         super(FineTunableLSTM, self).__init__(hyperparameters)
 
         # Get the hyperparameters and device
-        self.hyperparameters: LSTMHyperparameters = hyperparameters
+        # self.hyperparameters: LSTMHyperparameters = hyperparameters
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Load pretrained LSTM layers
@@ -300,7 +302,7 @@ def train_base_model(
     hyperparameters: LSTMHyperparameters,
     features: List[str],
     evaluation_state_name: str,
-) -> LocalModel:
+) -> BaseLSTM:
 
     # Set features const
     FEATURES = features
@@ -326,7 +328,7 @@ def train_base_model(
     )
 
     # Create model
-    base_model = LocalModel(hyperparameters=hyperparameters)
+    base_model = BaseLSTM(hyperparameters=hyperparameters)
     base_model.set_scaler(scaler=base_fitted_scaler)
 
     # Train model using whole dataset

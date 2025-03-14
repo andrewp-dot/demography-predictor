@@ -17,7 +17,7 @@ from local_model_benchmark.experiments.base_experiment import BaseExperiment
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.local_model.model import LSTMHyperparameters, LocalModel, EvaluateModel
+from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
 
 
 settings = Config()
@@ -112,7 +112,7 @@ class OneStateDataExperiment(BaseExperiment):
             batch_size=1,
             num_layers=3,
         )
-        single_state_rnn = LocalModel(single_state_params)
+        single_state_rnn = BaseLSTM(single_state_params)
 
         # Add params to readme
         self.readme_add_section(
@@ -220,7 +220,7 @@ class AllStatesDataExperiments(BaseExperiment):
 
         # Add params to readme
         self.readme_add_section(
-            title="## Hyperparameters", text=f"```{all_state_state_params}```"
+            title="## Hyperparameters", text=f"```{self.model.hyperparameters}```"
         )
 
         # Add list of features
@@ -250,16 +250,16 @@ class AllStatesDataExperiments(BaseExperiment):
         #### Multiple state preprocessing ends here
 
         # Train rnn
-        all_states_rnn = LocalModel(all_state_state_params)
+        # all_states_rnn = BaseLSTM(all_state_state_params)
 
-        all_states_rnn.train_model(
+        self.model.train_model(
             batch_inputs=train_input_batches,
             batch_targets=train_target_batches,
             display_nth_epoch=1,
         )
 
         # Get stats
-        stats = all_states_rnn.training_stats
+        stats = self.model.training_stats
         loss_fig = stats.create_plot()
         self.save_plot(fig_name="loss.png", figure=loss_fig)
         self.readme_add_plot(
@@ -267,7 +267,7 @@ class AllStatesDataExperiments(BaseExperiment):
         )
 
         # Evaluate model
-        all_states_rnn_evaluation = EvaluateModel(all_states_rnn)
+        all_states_rnn_evaluation = EvaluateModel(self.model)
 
         EVAL_STATE = state
         all_states_rnn_evaluation.eval(
@@ -385,7 +385,7 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
         )
 
         # Train rnn
-        only_stationary_rnn = LocalModel(only_staionary_data_params)
+        only_stationary_rnn = BaseLSTM(only_staionary_data_params)
 
         only_stationary_rnn.train_model(
             batch_inputs=train_input_batches,
