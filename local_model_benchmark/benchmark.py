@@ -11,7 +11,8 @@ import torch
 from typing import List, Tuple, Union
 
 
-from config import setup_logging, Config
+from config import Config
+from src.utils.log import setup_logging
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 
 from statsmodels.tsa.arima.model import ARIMA

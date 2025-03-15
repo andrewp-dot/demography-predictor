@@ -1,30 +1,9 @@
 import os
-import logging
-import logging.config
-import yaml
 from pydantic import Field, DirectoryPath
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 
 
-# TODO:
-# 1. Create cli for dataset creation, run experiments...
-# 2. Delete config.py inside data_science/preprocessors
-
-
-def setup_logging() -> None:
-    # Load YAML config
-    try:
-        with open("loggers_config.yaml", "r") as file:
-            config = yaml.safe_load(file)
-
-        # Apply logging configuration
-        logging.config.dictConfig(config)
-    except Exception as e:
-        print(f"Failed to setup logging: {e}!")
-
-
-# TODO: rewrite this using os module
 class Config(BaseSettings):
 
     # Configure settings config

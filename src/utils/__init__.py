@@ -1,5 +1,5 @@
 # Define * import
 
-__all__ = ["logger"]
+__all__ = ["log"]
 
-from . import logger
+from . import log

@@ -28,26 +28,6 @@ settings = Config()
 ## Model experiments settings
 
 # Get the list of all available features
-ALL_FEATURES = [
-    "year",
-    "Fertility rate, total",
-    "Population, total",
-    "Net migration",
-    "Arable land",
-    "Birth rate, crude",
-    "GDP growth",
-    "Death rate, crude",
-    "Agricultural land",
-    "Rural population",
-    "Rural population growth",
-    "Age dependency ratio",
-    "Urban population",
-    "Population growth",
-    "Adolescent fertility rate",
-    "Life expectancy at birth, total",
-]
-
-ALL_FEATURES = [col.lower() for col in ALL_FEATURES]
 
 
 # Setup features to use all

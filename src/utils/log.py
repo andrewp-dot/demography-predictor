@@ -1,5 +1,19 @@
 import logging
+import logging.config
+import yaml
 from colorama import Fore
+
+
+def setup_logging() -> None:
+    # Load YAML config
+    try:
+        with open("loggers_config.yaml", "r") as file:
+            config = yaml.safe_load(file)
+
+        # Apply logging configuration
+        logging.config.dictConfig(config)
+    except Exception as e:
+        print(f"Failed to setup logging: {e}!")
 
 
 class ColorfulFormatter(logging.Formatter):

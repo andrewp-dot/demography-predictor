@@ -1,12 +1,12 @@
 import os
-from config import Config
+from local_model_benchmark.config import LocalModelBenchmarkSettings
 from abc import abstractmethod
 from matplotlib.figure import Figure
 from src.local_model.model import CustomModelBase
 
 
 # Get settings
-settings = Config()
+settings = LocalModelBenchmarkSettings()
 
 
 class BaseExperiment:

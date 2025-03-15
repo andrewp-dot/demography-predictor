@@ -9,7 +9,8 @@ import logging
 import pprint
 
 from typing import List
-from config import setup_logging, Config
+from src.utils.log import setup_logging
+from local_model_benchmark.config import LocalModelBenchmarkSettings
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
@@ -20,11 +21,12 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
 
 
-settings = Config()
+settings = LocalModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
 
 # TODO: make this robust for other architectures -> You need train function, data preprocessing function?
 # TODO: FIX all TEMPORARY FIX marks
+
 
 # Get the list of all available features
 ALL_FEATURES = [

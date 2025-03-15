@@ -6,7 +6,7 @@ formatters:
     datefmt: '%Y-%m-%d %H:%M:%S'
     format: "%(asctime)s - [%(levelname)s - %(filename)s:%(lineno)d]: %(message)s"
   colorful:
-    (): src.utils.logger.ColorfulFormatter
+    (): src.utils.log.ColorfulFormatter
     datefmt: '%Y-%m-%d %H:%M:%S'
 
 # Handlers configuration
