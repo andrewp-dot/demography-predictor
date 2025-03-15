@@ -47,7 +47,7 @@ life expectancy at birth, total
 ![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
 
 # Metric result
-{'mae': 1.9382964389285,
- 'mse': 9.101755666637525,
- 'r2': -38.77979741783487,
- 'rmse': 2.075272520114283}
+{'mae': 2.7374572915734285,
+ 'mse': 14.786969264730427,
+ 'r2': -59.66384718803192,
+ 'rmse': 2.849581839763809}

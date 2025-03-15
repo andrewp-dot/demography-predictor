@@ -1,7 +1,7 @@
 
-# OnlyStationaryFeaturesDataExperiment
+# OnlyStationaryFeatures
 
-**Description:** Train and evaluate model on single state data with all features with boundaries (for example % values, features with some mean.) 
+**Description:** Train and evaluate model on single state data.
 
 ## Hyperparameters
 ```
@@ -13,7 +13,7 @@ Sequence length:    10
 Layers:             3
 
 Learning rate:      0.0001
-Epochs:             40
+Epochs:             10
 
 Bidirectional:      False
 ```
@@ -35,13 +35,19 @@ urban population
 population growth
 ```
 
-## Evaluation of the model
+## Loss graph
 
 
-![Evaluation of the model](./plots/evaluation.png)
+![Loss graph](./plots/loss.png)
 
-# Compare metric results
-{'mae': 1.3972495304132817,
- 'mse': 5.452824425222187,
- 'r2': -7.039421996235525,
- 'rmse': 1.5681872088704556}
+
+## Prediction of Czechia by the training data
+
+
+![Prediction of Czechia by the training data](./plots/evaluation.png)
+
+# Metric result
+{'mae': 1.9419803076293296,
+ 'mse': 11.279184965320653,
+ 'r2': -29.991132992407394,
+ 'rmse': 2.1629244674230264}

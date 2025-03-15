@@ -54,12 +54,12 @@ loggers:
     propagate: no
 
   data_preprocessing:
-    level: DEBUG
+    level: INFO
     handlers: [console, data_preprocessing]
     propagate: no
 
   method_selection:
-    level: DEBUG
+    level: INFO
     handlers: [console]
     propagate: no
 

@@ -182,10 +182,9 @@ class AllStatesDataExperiments(BaseExperiment):
         # Get train batches, target batches, and fitted scaler
         train_input_batches, train_target_batches, all_states_scaler = (
             states_loader.preprocess_train_data_batches(
-                all_states=states_train_data_dict,
+                states_train_data_dict=states_train_data_dict,
                 hyperparameters=all_state_state_params,
                 features=self.FEATURES,
-                split_rate=0.8,
             )
         )
 
@@ -244,10 +243,15 @@ class AllStatesDataExperiments(BaseExperiment):
 class Experiment:
 
     def __init__(
-        self, model: BaseLSTM, features: List[str], experiment: BaseExperiment
+        self,
+        model: BaseLSTM,
+        features: List[str],
+        hyperparameters: LSTMHyperparameters,
+        experiment: BaseExperiment,
     ):
+        self.model: BaseLSTM = model
+        self.hyperparameters: LSTMHyperparameters = hyperparameters
         self.FEATURES: List[str] = features
-        self.model: BaseLSTM = (model,)
         self.exp = experiment
 
     @abstractmethod
@@ -281,7 +285,7 @@ class Experiment1(Experiment):
                 "Life expectancy at birth, total",
             ]
         ]
-        single_state_params = LSTMHyperparameters(
+        self.hyperparameters = LSTMHyperparameters(
             input_size=len(self.FEATURES),
             hidden_size=128,
             sequence_length=10,
@@ -291,7 +295,7 @@ class Experiment1(Experiment):
             num_layers=3,
         )
 
-        self.model = BaseLSTM(hyperparameters=single_state_params)
+        self.model = BaseLSTM(hyperparameters=self.hyperparameters)
 
         # Define the experiment
         self.exp = OneStateDataExperiment(
@@ -333,7 +337,7 @@ class Experiment2(Experiment):
             ]
         ]
 
-        all_state_params = LSTMHyperparameters(
+        self.hyperparameters = LSTMHyperparameters(
             input_size=len(self.FEATURES),
             hidden_size=128,
             sequence_length=10,
@@ -343,7 +347,7 @@ class Experiment2(Experiment):
             num_layers=3,
         )
 
-        self.model = BaseLSTM(hyperparameters=all_state_params)
+        self.model = BaseLSTM(hyperparameters=self.hyperparameters)
 
         # Define the experiment
         self.exp = AllStatesDataExperiments(
@@ -365,8 +369,6 @@ class Experiment2_1(Experiment):
         # Copy model from Experiment2
         exp2 = Experiment2()
 
-        self.model = exp2.model
-
         exclude_features = [
             "population, total",
             "net migration",
@@ -374,6 +376,21 @@ class Experiment2_1(Experiment):
         self.FEATURES = [
             feature for feature in exp2.FEATURES if feature not in exclude_features
         ]
+
+        # Change the input length from exp2 hyperparameters
+        exp2_hyperparams = exp2.hyperparameters
+
+        self.hyperparameters = LSTMHyperparameters(
+            input_size=len(self.FEATURES),
+            hidden_size=exp2_hyperparams.hidden_size,
+            sequence_length=exp2_hyperparams.sequence_length,
+            learning_rate=exp2_hyperparams.learning_rate,
+            epochs=exp2_hyperparams.epochs,
+            batch_size=exp2_hyperparams.batch_size,
+            num_layers=exp2_hyperparams.num_layers,
+        )
+
+        self.model = BaseLSTM(hyperparameters=self.hyperparameters)
 
         self.exp = AllStatesDataExperiments(
             model=self.model,
@@ -466,6 +483,7 @@ def run_data_experiments(exp_keys: List[float] = None) -> None:
     if exp_keys is not None:
         for key in exp_keys:
             try:
+                logger.info(f"Running experiment {key}...")
                 experiments[key].run()
             except KeyError:
                 logger.error(
@@ -474,7 +492,8 @@ def run_data_experiments(exp_keys: List[float] = None) -> None:
         return
 
     # Else run all experiments
-    for experiment in experiments.values():
+    for key, experiment in experiments.items():
+        logger.info(f"Running experiment {key}...")
         experiment.run()
 
 
@@ -484,4 +503,4 @@ if __name__ == "__main__":
 
     # Run experiments
     # run_data_experiments(exp_keys=[1])
-    run_data_experiments()
+    run_data_experiments(exp_keys=[2.1, 3])
