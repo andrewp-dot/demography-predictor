@@ -8,7 +8,7 @@ import copy
 import optuna
 
 
-from config import setup_logging, Config
+from src.utils.log import setup_logging, Config
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports

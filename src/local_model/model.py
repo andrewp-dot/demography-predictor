@@ -16,7 +16,7 @@ from src.local_model.base import (
     TrainingStats,
 )
 from src.preprocessors.state_preprocessing import StateDataLoader
-from config import setup_logging
+from src.utils.log import setup_logging
 
 
 logger = logging.getLogger("local_model")

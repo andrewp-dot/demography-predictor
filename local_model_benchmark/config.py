@@ -4,11 +4,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Dict
 
 
-from src.local_model.base import LSTMHyperparameters
-
-from local_model_benchmark.experiments.base_experiment import BaseExperiment
-
-
 class LocalModelBenchmarkSettings(BaseSettings):
 
     # Path configs

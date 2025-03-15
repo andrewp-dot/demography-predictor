@@ -6,7 +6,8 @@ import torch
 from typing import Dict, List, Tuple, Union
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
-from config import Config, setup_logging
+from config import Config
+from src.utils.log import setup_logging
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.local_model.base import LSTMHyperparameters
 

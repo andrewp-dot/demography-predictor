@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from pycaret.regression import *
 
 # Custom imports
-from config import setup_logging, Config
+from src.utils.log import setup_logging, Config
 
 
 # Get config

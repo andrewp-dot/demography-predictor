@@ -7,7 +7,7 @@ from typing import Tuple, List
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
-from config import setup_logging
+from src.utils.log import setup_logging
 from src.local_model.base import LSTMHyperparameters, TrainingStats, EvaluateModel
 from src.local_model.base import CustomModelBase
 from src.local_model.model import BaseLSTM

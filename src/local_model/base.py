@@ -17,7 +17,7 @@ import logging
 import pprint
 
 # Custom imports
-from config import setup_logging
+from src.utils.log import setup_logging
 
 
 logger = logging.getLogger("local_model")

@@ -7,8 +7,9 @@ import os
 import pandas as pd
 import logging
 import pprint
+from abc import abstractmethod
 
-from typing import List
+from typing import List, Dict
 from src.utils.log import setup_logging
 from local_model_benchmark.config import LocalModelBenchmarkSettings
 from sklearn.preprocessing import MinMaxScaler
@@ -240,8 +241,22 @@ class AllStatesDataExperiments(BaseExperiment):
 
 
 # Hardcode the experiments
+class Experiment:
+
+    def __init__(
+        self, model: BaseLSTM, features: List[str], experiment: BaseExperiment
+    ):
+        self.FEATURES: List[str] = features
+        self.model: BaseLSTM = (model,)
+        self.exp = experiment
+
+    @abstractmethod
+    def run(self, *args, **kwargs):
+        raise NotImplementedError("No run method is implemented for this experiment!")
+
+
 ## 1. Use data for just a single state
-class Experiment1:
+class Experiment1(Experiment):
     def __init__(self):
 
         # Define features and parameters and model
@@ -280,8 +295,10 @@ class Experiment1:
 
         # Define the experiment
         self.exp = OneStateDataExperiment(
+            model=self.model,
             name="OneStateDataExperiment",
             description="Train and evaluate model on single state data.",
+            features=self.FEATURES,
         )
 
     def run(self):
@@ -289,7 +306,7 @@ class Experiment1:
 
 
 ## 2. Use data for all states (whole dataset)
-class Experiment2:
+class Experiment2(Experiment):
 
     # Define features and parameters and model
     def __init__(self):
@@ -341,7 +358,7 @@ class Experiment2:
 
 
 ## 2. Use data for all states (whole dataset) without high error features
-class Experiment2_1:
+class Experiment2_1(Experiment):
 
     def __init__(self):
 
@@ -371,49 +388,94 @@ class Experiment2_1:
 
 ## 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)
 
-
 ## 4. Devide data for aligned sequences (% values - 0 - 100) and for absolute values, which can rise (population, total, ...)
+
+
+class Experiment3(Experiment):
+
+    def __init__(self):
+
+        # Define features and parameters and model
+        self.FEATURES = [
+            col.lower()
+            for col in [
+                # Need to run columns
+                "year",
+                # Stationary columns
+                "Fertility rate, total",
+                "Arable land",
+                "Birth rate, crude",
+                "GDP growth",
+                "Death rate, crude",
+                "Population ages 15-64",
+                "Population ages 0-14",
+                "Agricultural land",
+                "Population ages 65 and above",
+                "Rural population",
+                "Rural population growth",
+                # "Age dependency ratio",
+                "Urban population",
+                "Population growth",
+            ]
+        ]
+        single_state_params = LSTMHyperparameters(
+            input_size=len(self.FEATURES),
+            hidden_size=128,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=10,
+            batch_size=1,
+            num_layers=3,
+        )
+
+        self.model = BaseLSTM(hyperparameters=single_state_params)
+
+        # Define the experiment
+        self.exp = OneStateDataExperiment(
+            model=self.model,
+            name="OnlyStationaryFeatures",
+            description="Train and evaluate model on single state data.",
+            features=self.FEATURES,
+        )
+
+    def run(self):
+        self.exp.run(state="Czechia", split_rate=0.8)
+
 
 # 5. Finetune experiment -> try to use all data from whole dataset and finetune finetunable layers to one state
 
 
-def run_data_experiments() -> None:
+def run_data_experiments(exp_keys: List[float] = None) -> None:
     """
-    Runs all implemented data experiments
-    """
+    Runs all implemented data experiments if not specified the number of experiment. Experiment starts with 1.0.
 
-    # TODO: make experiments robust for trying different base parameters
+    Args:
+        exp_num (List[int], optional): Number of experiments to run. Defaults to None.
+    """
 
     # Setup experiments
-    exp1 = Experiment1()
-    exp1.run()
 
-    exp2 = Experiment2()
-    exp2.run()
+    experiments: Dict[float, Experiment] = {
+        1: Experiment1(),
+        2: Experiment2(),
+        2.1: Experiment2_1(),
+        3: Experiment3(),
+    }
 
-    exp2_1 = Experiment2_1()
-    exp2_1.run()
+    # If there are defined experiments keys to run
+    if exp_keys is not None:
+        for key in exp_keys:
+            try:
+                experiments[key].run()
+            except KeyError:
+                logger.error(
+                    f"There is no defined experiment with key: {key}. Available experiment keys: {experiments.keys()}"
+                )
+        return
 
-    # TODO: fix this
-    only_stationary_features = [
-        # Need to run columns
-        "year",
-        # Stationary columns
-        "Fertility rate, total",
-        "Arable land",
-        "Birth rate, crude",
-        "GDP growth",
-        "Death rate, crude",
-        "Population ages 15-64",
-        "Population ages 0-14",
-        "Agricultural land",
-        "Population ages 65 and above",
-        "Rural population",
-        "Rural population growth",
-        # "Age dependency ratio",
-        "Urban population",
-        "Population growth",
-    ]
+    # Else run all experiments
+    for experiment in experiments.values():
+        experiment.run()
 
 
 if __name__ == "__main__":
@@ -421,4 +483,5 @@ if __name__ == "__main__":
     setup_logging()
 
     # Run experiments
+    # run_data_experiments(exp_keys=[1])
     run_data_experiments()

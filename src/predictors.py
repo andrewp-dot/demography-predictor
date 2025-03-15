@@ -4,7 +4,7 @@ from typing import Union, List
 from xgboost import XGBRegressor
 
 # Custom imports
-from config import setup_logging
+from src.utils.log import setup_logging
 from src.local_model.model import LSTMHyperparameters, BaseLSTM
 from src.global_model.model import GlobalModel
 from src.local_model.statistical_models import LocalARIMA
