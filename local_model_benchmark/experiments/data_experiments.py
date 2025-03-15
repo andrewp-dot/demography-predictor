@@ -27,60 +27,14 @@ logger = logging.getLogger("benchmark")
 # TODO: make this robust for other architectures -> You need train function, data preprocessing function?
 # TODO: FIX all TEMPORARY FIX marks
 
-
-# Get the list of all available features
-ALL_FEATURES = [
-    "year",
-    "Fertility rate, total",
-    "Population, total",
-    "Net migration",
-    "Arable land",
-    "Birth rate, crude",
-    "GDP growth",
-    "Death rate, crude",
-    "Agricultural land",
-    "Rural population",
-    "Rural population growth",
-    "Age dependency ratio",
-    "Urban population",
-    "Population growth",
-    "Adolescent fertility rate",
-    "Life expectancy at birth, total",
-]
-
-ALL_FEATURES = [col.lower() for col in ALL_FEATURES]
-
-
-# Setup features to use all
-FEATURES = [
-    "year",
-    # "Fertility rate, total",
-    # "Population, total",
-    # "Net migration",
-    # "Arable land",
-    # "Birth rate, crude",
-    # "GDP growth",
-    # "Death rate, crude",
-    # "Agricultural land",
-    # "Rural population",
-    # "Rural population growth",
-    # "Age dependency ratio",
-    # "Urban population",
-    # "Population growth",
-    # "Adolescent fertility rate",
-    # "Life expectancy at birth, total",
-]
-
-FEATURES = [col.lower() for col in FEATURES]
+# Here define experiment types
 
 
 # Data based experiments
 ## 1. Use data for just a single state
-
-
 class OneStateDataExperiment(BaseExperiment):
 
-    def run(self, state: str, split_rate: float, features: List[str]):
+    def run(self, state: str, split_rate: float):
         """
         Trains and evaluates model using a single state data.
 
@@ -88,9 +42,6 @@ class OneStateDataExperiment(BaseExperiment):
             state (str): State which data will be used to train model.
             split_rate (float): Split rate for training and validation data.
         """
-
-        # Get features
-        FEATURES = features
 
         # Create readme
         self.create_readme()
@@ -105,16 +56,9 @@ class OneStateDataExperiment(BaseExperiment):
         # Exclude country name
         state_df = state_df.drop(columns=["country name"])
 
-        single_state_params = LSTMHyperparameters(
-            input_size=len(FEATURES),
-            hidden_size=128,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=10,
-            batch_size=1,
-            num_layers=3,
-        )
-        single_state_rnn = BaseLSTM(single_state_params)
+        # Get the model data
+        single_state_params = self.model.hyperparameters
+        single_state_rnn = self.model
 
         # Add params to readme
         self.readme_add_section(
@@ -123,7 +67,7 @@ class OneStateDataExperiment(BaseExperiment):
 
         # Add list of features
         self.readme_add_section(
-            title="## Features", text="```\n" + "\n".join(FEATURES) + "\n```"
+            title="## Features", text="```\n" + "\n".join(self.FEATURES) + "\n```"
         )
 
         # Split data
@@ -136,7 +80,7 @@ class OneStateDataExperiment(BaseExperiment):
             state_loader.preprocess_training_data_batches(
                 train_data_df=state_train,
                 hyperparameters=single_state_params,
-                features=FEATURES,
+                features=self.FEATURES,
                 scaler=MinMaxScaler(),
             )
         )
@@ -162,7 +106,7 @@ class OneStateDataExperiment(BaseExperiment):
         single_state_rnn_evaluation.eval(
             state_train,
             state_test,
-            features=FEATURES,
+            features=self.FEATURES,
             scaler=state_scaler,
         )
 
@@ -189,7 +133,7 @@ class OneStateDataExperiment(BaseExperiment):
 ## 2. Use data for all states (whole dataset)
 class AllStatesDataExperiments(BaseExperiment):
 
-    def run(self, state: str, split_rate: float, features: List[str]):
+    def run(self, state: str, split_rate: float):
         """
         Use whole dataset to train and evaluate model.
 
@@ -197,9 +141,6 @@ class AllStatesDataExperiments(BaseExperiment):
             state (str): State used for evaluation of the experiment.
             split_rate (float): Split rate for training and validation data.
         """
-
-        # Set features const
-        FEATURES = features
 
         # Create readme
         self.create_readme()
@@ -211,7 +152,7 @@ class AllStatesDataExperiments(BaseExperiment):
 
         # Get hyperparameters for training
         all_state_state_params = LSTMHyperparameters(
-            input_size=len(FEATURES),
+            input_size=len(self.FEATURES),
             hidden_size=128,
             sequence_length=10,
             learning_rate=0.0001,
@@ -225,9 +166,9 @@ class AllStatesDataExperiments(BaseExperiment):
             title="## Hyperparameters", text=f"```{self.model.hyperparameters}```"
         )
 
-        # Add list of features
+        # Add list of FEATURES
         self.readme_add_section(
-            title="## Features", text="```\n" + "\n".join(FEATURES) + "\n```"
+            title="## Features", text="```\n" + "\n".join(self.FEATURES) + "\n```"
         )
 
         #### Multiple state preprocessing starts here
@@ -244,7 +185,7 @@ class AllStatesDataExperiments(BaseExperiment):
             states_loader.preprocess_train_data_batches(
                 all_states=states_train_data_dict,
                 hyperparameters=all_state_state_params,
-                features=FEATURES,
+                features=self.FEATURES,
                 split_rate=0.8,
             )
         )
@@ -273,9 +214,9 @@ class AllStatesDataExperiments(BaseExperiment):
 
         EVAL_STATE = state
         all_states_rnn_evaluation.eval(
-            states_train_data_dict[EVAL_STATE][FEATURES],
-            states_test_data_dict[EVAL_STATE][FEATURES],
-            features=FEATURES,
+            states_train_data_dict[EVAL_STATE][self.FEATURES],
+            states_test_data_dict[EVAL_STATE][self.FEATURES],
+            features=self.FEATURES,
             scaler=all_states_scaler,
         )
 
@@ -324,7 +265,7 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
         state_data_df = state_loader.load_data()
 
         # Get only numerical features
-        FEATURES = [
+        self.FEATURES = [
             # Need to run columns
             "year",
             # Stationary columns
@@ -345,14 +286,14 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
         ]
 
         # Adjust feature names to lower
-        FEATURES = [col.lower() for col in FEATURES]
+        self.FEATURES = [col.lower() for col in self.FEATURES]
 
         # Get only data with features
-        state_data_df = state_data_df[FEATURES]
+        state_data_df = state_data_df[self.FEATURES]
 
         # Get hyperparameters for training
         only_staionary_data_params = LSTMHyperparameters(
-            input_size=len(FEATURES),
+            input_size=len(self.FEATURES),
             hidden_size=128,
             sequence_length=10,
             learning_rate=0.0001,
@@ -368,7 +309,7 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
 
         # Add list of features
         self.readme_add_section(
-            title="## Features", text="```\n" + "\n".join(FEATURES) + "\n```"
+            title="## Features", text="```\n" + "\n".join(self.FEATURES) + "\n```"
         )
 
         # Split data
@@ -381,7 +322,7 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
             state_loader.preprocess_training_data_batches(
                 train_data_df=train_data_df,
                 hyperparameters=only_staionary_data_params,
-                features=FEATURES,
+                features=self.FEATURES,
                 scaler=MinMaxScaler(),
             )
         )
@@ -406,7 +347,7 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
         only_stationary_rnn_evaluation.eval(
             train_data_df,
             test_data_df,
-            features=FEATURES,
+            features=self.FEATURES,
             scaler=state_scaler,
         )
 
@@ -431,6 +372,130 @@ class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
 # 5. Finetune experiment -> try to use all data from whole dataset and finetune finetunable layers to one state
 
 
+# Hardcode the experiments
+class Experiment1:
+    def __init__(self):
+
+        # Define features and parameters and model
+        self.FEATURES = [
+            col.lower()
+            for col in [
+                "year",
+                "Fertility rate, total",
+                "Population, total",
+                "Net migration",
+                "Arable land",
+                "Birth rate, crude",
+                "GDP growth",
+                "Death rate, crude",
+                "Agricultural land",
+                "Rural population",
+                "Rural population growth",
+                "Age dependency ratio",
+                "Urban population",
+                "Population growth",
+                "Adolescent fertility rate",
+                "Life expectancy at birth, total",
+            ]
+        ]
+        single_state_params = LSTMHyperparameters(
+            input_size=len(self.FEATURES),
+            hidden_size=128,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=10,
+            batch_size=1,
+            num_layers=3,
+        )
+
+        self.model = BaseLSTM(hyperparameters=single_state_params)
+
+        # Define the experiment
+        self.exp = OneStateDataExperiment(
+            name="OneStateDataExperiment",
+            description="Train and evaluate model on single state data.",
+        )
+
+    def run(self):
+        self.exp.run(state="Czechia", split_rate=0.8)
+
+
+class Experiment2:
+
+    # Define features and parameters and model
+    def __init__(self):
+        # Define features and parameters and model
+        self.FEATURES = [
+            col.lower()
+            for col in [
+                "year",
+                "Fertility rate, total",
+                "Population, total",
+                "Net migration",
+                "Arable land",
+                "Birth rate, crude",
+                "GDP growth",
+                "Death rate, crude",
+                "Agricultural land",
+                "Rural population",
+                "Rural population growth",
+                "Age dependency ratio",
+                "Urban population",
+                "Population growth",
+                "Adolescent fertility rate",
+                "Life expectancy at birth, total",
+            ]
+        ]
+
+        all_state_params = LSTMHyperparameters(
+            input_size=len(self.FEATURES),
+            hidden_size=128,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=10,
+            batch_size=1,
+            num_layers=3,
+        )
+
+        self.model = BaseLSTM(hyperparameters=all_state_params)
+
+        # Define the experiment
+        self.exp = AllStatesDataExperiments(
+            model=self.model,
+            name="AllStatesDataExperiments",
+            description="Train and evaluate model on whole dataset.",
+            features=self.FEATURES,
+        )
+
+    def run(self):
+        self.exp.run(state="Czechia", split_rate=0.8)
+
+
+class Experiment2_1:
+
+    def __init__(self):
+
+        # Copy model from Experiment2
+        exp2 = Experiment2()
+
+        self.model = exp2.model
+
+        exclude_features = [
+            "population, total",
+            "net migration",
+        ]
+        self.FEATURES = [
+            feature for feature in exp2.FEATURES if feature not in exclude_features
+        ]
+
+        self.exp = AllStatesDataExperiments(
+            model=self.model,
+            name="AllStatesDataExperimentsWithoutHighErrorFeatures",
+            description="Train and evaluate model on whole dataset.",
+            features=self.FEATURES,
+        )
+
+
 def run_data_experiments() -> None:
     """
     Runs all implemented data experiments
@@ -439,88 +504,19 @@ def run_data_experiments() -> None:
     # TODO: make experiments robust for trying different base parameters
 
     # Setup experiments
-    exp1 = OneStateDataExperiment(
-        name="OneStateDataExperiment",
-        description="Train and evaluate model on single state data.",
-    )
-    EXP1_FEATURES = [
-        "year",
-        "Fertility rate, total",
-        "Population, total",
-        "Net migration",
-        "Arable land",
-        "Birth rate, crude",
-        "GDP growth",
-        "Death rate, crude",
-        "Agricultural land",
-        "Rural population",
-        "Rural population growth",
-        "Age dependency ratio",
-        "Urban population",
-        "Population growth",
-        "Adolescent fertility rate",
-        "Life expectancy at birth, total",
-    ]
-    EXP1_FEATURES = [col.lower() for col in EXP1_FEATURES]
+    exp1 = Experiment1()
+    exp1.run()
 
-    exp2 = AllStatesDataExperiments(
-        name="AllStatesDataExperiments",
-        description="Train and evaluate model on whole dataset.",
-    )
-    EXP2_FEATURES = [
-        "year",
-        "Fertility rate, total",
-        "Population, total",
-        "Net migration",
-        "Arable land",
-        "Birth rate, crude",
-        "GDP growth",
-        "Death rate, crude",
-        "Agricultural land",
-        "Rural population",
-        "Rural population growth",
-        "Age dependency ratio",
-        "Urban population",
-        "Population growth",
-        "Adolescent fertility rate",
-        "Life expectancy at birth, total",
-    ]
-    EXP2_FEATURES = [col.lower() for col in EXP2_FEATURES]
+    exp2 = Experiment2()
+    exp2.run()
 
-    exp2_1 = AllStatesDataExperiments(
-        name="AllStatesDataExperimentsWithoutHighErrorFeatures",
-        description="Train and evaluate model on whole dataset.",
-    )
-    EXP2_1_FEATURES = [
-        "year",
-        "Fertility rate, total",
-        # "Population, total",
-        # "Net migration",
-        "Arable land",
-        "Birth rate, crude",
-        "GDP growth",
-        "Death rate, crude",
-        "Agricultural land",
-        "Rural population",
-        "Rural population growth",
-        "Age dependency ratio",
-        "Urban population",
-        "Population growth",
-        "Adolescent fertility rate",
-        "Life expectancy at birth, total",
-    ]
-    EXP2_1_FEATURES = [col.lower() for col in EXP2_1_FEATURES]
+    exp2_1 = Experiment2_1()
+    exp2_1.run()
 
     exp3 = OnlyStationaryFeaturesDataExperiment(
         name="OnlyStationaryFeaturesDataExperiment",
         description="Train and evaluate model on single state data with all features with boundaries (for example % values, features with some mean.) ",
     )
-
-    # Run experiments with parameters
-    # exp1.run(state="Czechia", split_rate=0.8, features=EXP1_FEATURES)
-    # exp2.run(state="Czechia", split_rate=0.8, features=EXP2_FEATURES)
-    exp2_1.run(state="Czechia", split_rate=0.8, features=EXP2_1_FEATURES)
-    # exp3.run(state="Czechia", split_rate=0.8)
 
 
 if __name__ == "__main__":

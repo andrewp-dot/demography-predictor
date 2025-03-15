@@ -5,15 +5,8 @@ from typing import List, Dict
 
 
 from src.local_model.base import LSTMHyperparameters
-from local_model_benchmark.experiments.data_experiments import (
-    OneStateDataExperiment,
-    OnlyStationaryFeaturesDataExperiment,
-    AllStatesDataExperiments,
-)
-from local_model_benchmark.experiments.model_experiments import (
-    OptimalParamsExperiment,
-    CompareLSTMARIMAExperiment,
-)
+
+from local_model_benchmark.experiments.base_experiment import BaseExperiment
 
 
 class LocalModelBenchmarkSettings(BaseSettings):
@@ -50,16 +43,3 @@ class LocalModelBenchmarkSettings(BaseSettings):
             "Life expectancy at birth, total",
         ]
     ]
-
-    # TODO:
-    base_hyperparameters: LSTMHyperparameters = LSTMHyperparameters(
-        input_size=1,
-        hidden_size=100,
-        num_layers=1,
-        output_size=1,
-        learning_rate=0.001,
-        num_epochs=100,
-        batch_size=1,
-        seq_length=1,
-    )
-    available_experiments: List = []

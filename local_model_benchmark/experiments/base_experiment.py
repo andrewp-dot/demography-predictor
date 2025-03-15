@@ -2,7 +2,10 @@ import os
 from local_model_benchmark.config import LocalModelBenchmarkSettings
 from abc import abstractmethod
 from matplotlib.figure import Figure
+from typing import List
+
 from src.local_model.model import CustomModelBase
+from src.local_model.model import BaseLSTM
 
 
 # Get settings
@@ -28,9 +31,10 @@ class BaseExperiment:
 
     def __init__(
         self,
-        model: CustomModelBase,
+        model: BaseLSTM,
         name: str,
         description: str,
+        features: List[str],
     ):
         """
         Initializes the base attributes for the experiment.
@@ -39,9 +43,11 @@ class BaseExperiment:
             model (CustomModelBase): Model used for the experiment.
             name (str): Name of the experiment.
             description (str): Brief description of the experiment.
+            features (List[str]): List of features used in the experiment (the model is trained for the specified features).
         """
         # Model
-        self.model: CustomModelBase = model
+        self.model: BaseLSTM = model
+        self.FEATURES: List[str] = features
 
         # Initiliallize base experiment settings
         self.name: str = name
