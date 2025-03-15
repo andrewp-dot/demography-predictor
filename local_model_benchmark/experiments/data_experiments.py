@@ -31,7 +31,6 @@ logger = logging.getLogger("benchmark")
 
 
 # Data based experiments
-## 1. Use data for just a single state
 class OneStateDataExperiment(BaseExperiment):
 
     def run(self, state: str, split_rate: float):
@@ -130,7 +129,6 @@ class OneStateDataExperiment(BaseExperiment):
         )
 
 
-## 2. Use data for all states (whole dataset)
 class AllStatesDataExperiments(BaseExperiment):
 
     def run(self, state: str, split_rate: float):
@@ -241,138 +239,8 @@ class AllStatesDataExperiments(BaseExperiment):
         )
 
 
-## 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)
-
-
-## 4. Devide data for aligned sequences (% values - 0 - 100) and for absolute values, which can rise (population, total, ...)
-class OnlyStationaryFeaturesDataExperiment(BaseExperiment):
-
-    def run(self, state: str, split_rate: float) -> None:
-        """
-        Trains model using one state data only with stationary features.
-
-        Args:
-            state (str): State which data will be used to train model.
-            split_rate (float): Split rate for training and validation data.
-        """
-
-        # Create reamde
-        self.create_readme()
-
-        # Load the state
-        STATE = state
-        state_loader = StateDataLoader(STATE)
-        state_data_df = state_loader.load_data()
-
-        # Get only numerical features
-        self.FEATURES = [
-            # Need to run columns
-            "year",
-            # Stationary columns
-            "Fertility rate, total",
-            "Arable land",
-            "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Population ages 15-64",
-            "Population ages 0-14",
-            "Agricultural land",
-            "Population ages 65 and above",
-            "Rural population",
-            "Rural population growth",
-            # "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-        ]
-
-        # Adjust feature names to lower
-        self.FEATURES = [col.lower() for col in self.FEATURES]
-
-        # Get only data with features
-        state_data_df = state_data_df[self.FEATURES]
-
-        # Get hyperparameters for training
-        only_staionary_data_params = LSTMHyperparameters(
-            input_size=len(self.FEATURES),
-            hidden_size=128,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=40,
-            batch_size=1,
-            num_layers=3,
-        )
-
-        # Add params to readme
-        self.readme_add_section(
-            title="## Hyperparameters", text=f"```{only_staionary_data_params}```"
-        )
-
-        # Add list of features
-        self.readme_add_section(
-            title="## Features", text="```\n" + "\n".join(self.FEATURES) + "\n```"
-        )
-
-        # Split data
-        train_data_df, test_data_df = state_loader.split_data(
-            data=state_data_df, split_rate=split_rate
-        )
-
-        # Preprocess data
-        train_input_batches, train_target_batches, state_scaler = (
-            state_loader.preprocess_training_data_batches(
-                train_data_df=train_data_df,
-                hyperparameters=only_staionary_data_params,
-                features=self.FEATURES,
-                scaler=MinMaxScaler(),
-            )
-        )
-
-        # Train rnn
-        only_stationary_rnn = BaseLSTM(only_staionary_data_params)
-
-        only_stationary_rnn.train_model(
-            batch_inputs=train_input_batches,
-            batch_targets=train_target_batches,
-        )
-
-        # Get stats
-        stats = only_stationary_rnn.training_stats
-        fig = stats.create_plot()
-
-        # Save training stats or plot it
-
-        # Evaluate model
-        only_stationary_rnn_evaluation = EvaluateModel(only_stationary_rnn)
-
-        only_stationary_rnn_evaluation.eval(
-            train_data_df,
-            test_data_df,
-            features=self.FEATURES,
-            scaler=state_scaler,
-        )
-
-        fig = only_stationary_rnn_evaluation.plot_predictions()
-        self.save_plot(fig_name="evaluation.png", figure=fig)
-        self.readme_add_plot(
-            plot_name=f"Evaluation of the model",
-            plot_description="",
-            fig_name="evaluation.png",
-        )
-
-        # Save the results
-        formatted_model_evaluation: str = pprint.pformat(
-            only_stationary_rnn_evaluation.to_readable_dict()
-        )
-
-        self.readme_add_section(
-            title="# Compare metric results", text=formatted_model_evaluation
-        )
-
-
-# 5. Finetune experiment -> try to use all data from whole dataset and finetune finetunable layers to one state
-
-
 # Hardcode the experiments
+## 1. Use data for just a single state
 class Experiment1:
     def __init__(self):
 
@@ -420,6 +288,7 @@ class Experiment1:
         self.exp.run(state="Czechia", split_rate=0.8)
 
 
+## 2. Use data for all states (whole dataset)
 class Experiment2:
 
     # Define features and parameters and model
@@ -471,6 +340,7 @@ class Experiment2:
         self.exp.run(state="Czechia", split_rate=0.8)
 
 
+## 2. Use data for all states (whole dataset) without high error features
 class Experiment2_1:
 
     def __init__(self):
@@ -495,6 +365,17 @@ class Experiment2_1:
             features=self.FEATURES,
         )
 
+    def run(self):
+        self.exp.run(state="Czechia", split_rate=0.8)
+
+
+## 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)
+
+
+## 4. Devide data for aligned sequences (% values - 0 - 100) and for absolute values, which can rise (population, total, ...)
+
+# 5. Finetune experiment -> try to use all data from whole dataset and finetune finetunable layers to one state
+
 
 def run_data_experiments() -> None:
     """
@@ -513,10 +394,26 @@ def run_data_experiments() -> None:
     exp2_1 = Experiment2_1()
     exp2_1.run()
 
-    exp3 = OnlyStationaryFeaturesDataExperiment(
-        name="OnlyStationaryFeaturesDataExperiment",
-        description="Train and evaluate model on single state data with all features with boundaries (for example % values, features with some mean.) ",
-    )
+    # TODO: fix this
+    only_stationary_features = [
+        # Need to run columns
+        "year",
+        # Stationary columns
+        "Fertility rate, total",
+        "Arable land",
+        "Birth rate, crude",
+        "GDP growth",
+        "Death rate, crude",
+        "Population ages 15-64",
+        "Population ages 0-14",
+        "Agricultural land",
+        "Population ages 65 and above",
+        "Rural population",
+        "Rural population growth",
+        # "Age dependency ratio",
+        "Urban population",
+        "Population growth",
+    ]
 
 
 if __name__ == "__main__":
