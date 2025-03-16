@@ -23,6 +23,11 @@ handlers:
     # level: INFO
     filename: logs/local_model.log
 
+  global_model:
+    class: logging.FileHandler
+    formatter: default
+    filename: logs/global_model.log
+
   finetuneable_local_model:
     class: logging.FileHandler
     formatter: default
@@ -46,6 +51,11 @@ loggers:
   local_model:
     level: INFO
     handlers: [console, local_model]
+    propagate: no
+
+  global_model:
+    level: INFO
+    handlers: [console, global_model]
     propagate: no
 
   finetuneable_local_model:

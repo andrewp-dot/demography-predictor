@@ -1,5 +1,6 @@
 # Standard library imports
 import pandas as pd
+import logging
 from typing import Union, List
 from pydantic import BaseModel
 
@@ -13,6 +14,8 @@ from xgboost import XGBRegressor
 
 
 # Custom imports
+from config import Config
+from src.utils.log import setup_logging
 
 # TODO: implement XGBoost using data
 
@@ -25,6 +28,10 @@ from xgboost import XGBRegressor
 # Final Recommendation
 # For small datasets with 2-3 targets, train separate models.
 # For large datasets with many outputs, use MultiOutputRegressor.
+
+settings = Config()
+
+logger = logging.getLogger("global_model")
 
 
 class XGBoostTuneParams(BaseModel):
@@ -77,25 +84,42 @@ class GlobalModel:
         return scaled_df
 
     def train_and_eval(
-        self, data: pd.DataFrame, split_size: float, tune_hyperparams: bool = False
+        self,
+        data: pd.DataFrame,
+        split_size: float,
+        fitted_scaler: MinMaxScaler,
+        tune_hyperparams: bool = False,
     ) -> None:
 
-        # Preprocess data
-        preprocessed_data = self.preprocess_data(data=data)
+        # Set the country name as the categorical column
+        if "country name" in data.columns:
+            data["country name"] = data["country name"].astype(dtype="category")
 
-        # TODO: preprocess data to DMatrix
-        # xgb.DMatrix(preprocessed_data, label=df["target"], enable_categorical=True)
+        # Preprocess data
+        logger.info("Preprocessing data....")
+        preprocessed_data = self.preprocess_data(data=data, fitted_scaler=fitted_scaler)
+
+        logger.critical(preprocessed_data.columns)
 
         # Split data
         X: pd.DataFrame = preprocessed_data[self.FEATURES]
         y: pd.DataFrame = preprocessed_data[self.TARGETS]
 
-        X_train, y_train, X_test, y_test = train_test_split(
-            X, y, test_size=(1 - split_size)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=(1 - split_size), random_state=42
         )
 
+        # Convert dataset into DMatrix format
+        # if len(self.TARGETS) > 1:
+        #     raise NotImplementedError("Multitarget training not implemented yet!")
+
+        # Create train and test DMatricies
+        dtrain = xgb.DMatrix(X_train, label=y_train, enable_categorical=True)
+        dtest = xgb.DMatrix(X_test, label=y_test, enable_categorical=True)
+
         # Tune hyperparams if neaded
-        if tune_hyperparams:
+        if tune_hyperparams and self.params is not None:
+            logger.info("Tuning parameters....")
             self.model = GridSearchCV(
                 estimator=self.model,
                 param_grid=self.params,
@@ -106,30 +130,71 @@ class GlobalModel:
             )
 
         # Fit the model
-        self.model.fit(X_train, y_train)
+        logger.info("Fitting model...")
 
-        # Training stats
+        params = {"objective": "reg:squarederror", "eval_metric": "rmse"}
 
-        raise NotImplementedError("")
+        self.model = xgb.train(
+            params, dtrain, num_boost_round=100, evals=[(dtest, "Test")]
+        )
 
     def eval(self, test_df: pd.DataFrame) -> None:
         NotImplementedError("")
 
 
-if __name__ == "__main__":
-    # import xgboost as xgb
-    # import pandas as pd
+def try_single_target_global_model():
 
-    # Create a sample dataset
-    df = pd.DataFrame(
-        {
-            "feature1": [1, 2, 3, 4, 5],
-            "feature2": [5, 4, 3, 2, 1],
-            "target": [10, 20, 30, 40, 50],
-        }
+    # Load data
+    whole_dataset_df = pd.read_csv(settings.dataset_path)
+    logger.info("Loading whole dataset....")
+
+    # Targets
+    # targets: List[str] = ["population, total"]
+    targets: List[str] = [
+        "population ages 15-64",
+        "population ages 0-14",
+        "population ages 65 and above",
+    ]
+
+    # Features
+    features: List[str] = [
+        col for col in whole_dataset_df.columns if col not in targets
+    ]
+
+    # Tune params
+    tune_parameters = XGBoostTuneParams(
+        n_estimators=[50, 100, 200],
+        learning_rate=[0.001, 0.01, 0.05, 0.1],
+        max_depth=[3, 5, 7, 10],
+        subsample=[0.5, 0.7, 0.9, 1.0],
+        colsample_bytree=[0.5, 0.7, 0.9, 1.0],
     )
 
-    # Convert dataset into DMatrix format
-    dtrain = xgb.DMatrix(df.drop(columns=["target"]), label=df["target"])
+    # Create global model
+    gm = GlobalModel(
+        model=XGBRegressor(),
+        features=features,
+        targets=targets,
+        params=tune_parameters,
+    )
 
-    print(dtrain)
+    logger.info("Training and evaluation model....")
+
+    # Simulation of scaler used to scale the data from the local model
+    scaler = MinMaxScaler()
+    fitted_scaler = scaler.fit(whole_dataset_df.drop(columns=["country name"]))
+
+    gm.train_and_eval(
+        data=whole_dataset_df,
+        split_size=0.8,
+        fitted_scaler=fitted_scaler,
+        tune_hyperparams=True,
+    )
+
+
+if __name__ == "__main__":
+    # Setup logging
+    setup_logging()
+
+    # Try global model
+    try_single_target_global_model()
