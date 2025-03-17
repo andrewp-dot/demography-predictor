@@ -1,7 +1,7 @@
 # Standard library imports
 import pandas as pd
 import logging
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple
 from pydantic import BaseModel
 
 from sklearn.preprocessing import LabelEncoder
@@ -18,6 +18,8 @@ from xgboost import XGBRegressor
 # Custom imports
 from config import Config
 from src.utils.log import setup_logging
+
+from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 # TODO: implement XGBoost using data
 
@@ -82,8 +84,20 @@ class GlobalModel:
         self.LABEL_ENCODERS: Dict[str, LabelEncoder] = {}
 
     def preprocess_data(
-        self, data: pd.DataFrame, fitted_scaler: MinMaxScaler
+        self,
+        data: pd.DataFrame,
+        fitted_scaler: MinMaxScaler,
     ) -> pd.DataFrame:
+        """
+        Encode categorical values by LabelEncoding, scales numerical data by the fitted scaler.
+
+        Args:
+            data (pd.DataFrame): Data to preprocess.
+            fitted_scaler (MinMaxScaler): Scaler used in the previous (local) model
+
+        Returns:
+            out: pd.DataFrame: Preprocessed dataframe.
+        """
 
         # Copy dataframe
         df = data.copy()
@@ -95,7 +109,9 @@ class GlobalModel:
         scaled_numerical_data_array = fitted_scaler.transform(numerical_data_df)
 
         scaled_numerical_data_df = pd.DataFrame(
-            scaled_numerical_data_array, columns=numerical_data_df.columns
+            scaled_numerical_data_array,
+            columns=numerical_data_df.columns,
+            index=numerical_data_df.index,
         )
 
         # Encode categorical data
@@ -116,19 +132,23 @@ class GlobalModel:
 
         return scaled_df
 
-    # TODO:
-    # Preprocess categorical data
-    # Delete DMatricies -> in order to support parameter tuning and multioutput regression
-    def train_and_eval(
+    def create_train_test_data(
         self,
         data: pd.DataFrame,
         split_size: float,
         fitted_scaler: MinMaxScaler,
-        tune_hyperparams: bool = False,
-    ) -> None:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """
+        From the given dataframe creates and scales the data using fitted scaler. Use train_test_split function from sklearn.
 
-        # Find out whether training multioutput regressor
-        IS_MULTI_TARGET = len(self.TARGETS) > 1
+        Args:
+            data (pd.DataFrame): Data to preprocess and split.
+            split_size (float): The size of the train part.
+            fitted_scaler (MinMaxScaler): Scaler used to scale the other features from the previous prediction model.
+
+        Returns:
+            out: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: X_train, X_test, y_train, y_test
+        """
 
         # Set the country name as the categorical column
         if "country name" in data.columns:
@@ -136,15 +156,74 @@ class GlobalModel:
 
         # Preprocess data
         logger.info("Preprocessing data....")
-        preprocessed_data = self.preprocess_data(data=data, fitted_scaler=fitted_scaler)
+        preprocessed_training_data = self.preprocess_data(
+            data=data, fitted_scaler=fitted_scaler
+        )
 
         # Split data
-        X: pd.DataFrame = preprocessed_data[self.FEATURES]
-        y: pd.DataFrame = preprocessed_data[self.TARGETS]
+        X: pd.DataFrame = preprocessed_training_data[self.FEATURES]
+        y: pd.DataFrame = preprocessed_training_data[self.TARGETS]
 
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=(1 - split_size), random_state=42
+            X,
+            y,
+            test_size=(1 - split_size),
+            random_state=42,
         )
+
+        return X_train, X_test, y_train, y_test
+
+    def create_train_test_timeseries(
+        self,
+        states_dfs: Dict[str, pd.DataFrame],
+        states_loader: StatesDataLoader,
+        split_size: float,
+        fitted_scaler: MinMaxScaler,
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """
+        From the given dataframe creates and scales the data using fitted scaler. Splits the dataframes by time: train data are first `len(X) * split_size` occurences, test data are the rest.
+
+        Args:
+            states_dfs (Dict[str, pd.DataFrame]): Dictionary of state dataframes where state name is the key.
+            states_loader (StatesDataLoader): Class used to split the data by timeseries.
+            split_size (float): The size of the train part.
+            fitted_scaler (MinMaxScaler): Scaler used to scale the other features from the previous prediction model.
+
+        Returns:
+            Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: _description_
+        """
+
+        # Split by time series, sequence len is equal to 1 in order to include all states
+        states_train_dfs, states_test_dfs = states_loader.split_data(
+            states_dict=states_dfs, sequence_len=1, split_rate=split_size
+        )
+
+        # Create X and y
+        train_df: pd.DataFrame = states_loader.merge_states(state_dfs=states_train_dfs)
+        test_df: pd.DataFrame = states_loader.merge_states(state_dfs=states_test_dfs)
+
+        # Preprocess the data
+        train_df = self.preprocess_data(train_df, fitted_scaler=fitted_scaler)
+        test_df = self.preprocess_data(train_df, fitted_scaler=fitted_scaler)
+
+        # Create X
+        X_train, y_train = train_df[self.FEATURES], train_df[self.TARGETS]
+        X_test, y_test = test_df[self.FEATURES], test_df[self.TARGETS]
+
+        return X_train, X_test, y_train, y_test
+
+    # TODO:
+    # Preprocess categorical data
+    # Delete DMatricies -> in order to support parameter tuning and multioutput regression
+    def train(
+        self,
+        X_train: pd.DataFrame,
+        y_train: pd.DataFrame,
+        tune_hyperparams: bool = False,
+    ) -> None:
+
+        # Find out whether training multioutput regressor
+        IS_MULTI_TARGET: bool = len(self.TARGETS) > 1
 
         # Create multioutput regressor for for the targets
         param_dict = None
@@ -178,16 +257,21 @@ class GlobalModel:
         logger.info("Fitting model...")
 
         self.model.fit(X_train, y_train)
+        logger.info("Model succesfuly fitted!")
 
-    def eval(self, test_df: pd.DataFrame) -> None:
+    def eval(self, X_test: pd.DataFrame, y_test: pd.DataFrame) -> None:
         NotImplementedError("")
 
 
 def try_single_target_global_model():
 
     # Load data
-    whole_dataset_df = pd.read_csv(settings.dataset_path)
     logger.info("Loading whole dataset....")
+    states_loader = StatesDataLoader()
+    state_dfs = states_loader.load_all_states()
+
+    # Merge data to single dataframe
+    whole_dataset_df = states_loader.merge_states(state_dfs=state_dfs)
 
     # Targets
     targets: List[str] = ["population, total"]
@@ -220,18 +304,37 @@ def try_single_target_global_model():
         params=tune_parameters,
     )
 
-    logger.info("Training and evaluating the model....")
+    logger.info("Training the model....")
 
     # Simulation of scaler used to scale the data from the local model
     scaler = MinMaxScaler()
     fitted_scaler = scaler.fit(whole_dataset_df.drop(columns=["country name"]))
 
-    gm.train_and_eval(
-        data=whole_dataset_df,
+    # Create train and test data
+    # X_train, X_test, y_train, y_test = gm.create_train_test_data(
+    #     data=whole_dataset_df,
+    #     split_size=0.8,
+    #     fitted_scaler=fitted_scaler,
+    # )
+
+    # Creater train and test data with timeseries
+    X_train, X_test, y_train, y_test = gm.create_train_test_timeseries(
+        states_dfs=state_dfs,
+        states_loader=states_loader,
         split_size=0.8,
         fitted_scaler=fitted_scaler,
+    )
+
+    # Train model
+    gm.train(
+        X_train=X_train,
+        y_train=y_train,
         tune_hyperparams=True,
     )
+
+    # Evaluate model -> TODO
+    logger.info("Evaluating the model...")
+    logger.critical("Under construction")
 
 
 if __name__ == "__main__":

@@ -63,6 +63,18 @@ class StatesDataLoader:
         # Return loaded states
         return state_dfs
 
+    def merge_states(self, state_dfs: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+        """
+        Merges given state dataframes from the dict. Useful when creating the single pandas dataframe from multiple loaded states.
+
+        Args:
+            state_dfs (Dict[str, pd.DataFrame]): Dictionary where state name is the key.
+
+        Returns:
+            pd.DataFrame: Single dataframe with specified states data.
+        """
+        return pd.concat(state_dfs.values(), axis=0)
+
     def load_all_states(self) -> Dict[str, pd.DataFrame]:
         """
         Loads data from all states.
