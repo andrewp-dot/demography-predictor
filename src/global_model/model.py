@@ -8,6 +8,12 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.multioutput import MultiOutputRegressor
+from sklearn.metrics import (
+    root_mean_squared_error,
+    mean_squared_error,
+    mean_absolute_error,
+    r2_score,
+)
 
 
 ## Import models
@@ -202,9 +208,16 @@ class GlobalModel:
         train_df: pd.DataFrame = states_loader.merge_states(state_dfs=states_train_dfs)
         test_df: pd.DataFrame = states_loader.merge_states(state_dfs=states_test_dfs)
 
+        # Set the country name as the categorical column
+        if "country name" in train_df.columns:
+            train_df["country name"] = train_df["country name"].astype(dtype="category")
+
+        if "counrty name" in test_df.columns:
+            test_df["country name"] = test_df["country name"].astype(dtype="category")
+
         # Preprocess the data
         train_df = self.preprocess_data(train_df, fitted_scaler=fitted_scaler)
-        test_df = self.preprocess_data(train_df, fitted_scaler=fitted_scaler)
+        test_df = self.preprocess_data(test_df, fitted_scaler=fitted_scaler)
 
         # Create X
         X_train, y_train = train_df[self.FEATURES], train_df[self.TARGETS]
@@ -260,7 +273,26 @@ class GlobalModel:
         logger.info("Model succesfuly fitted!")
 
     def eval(self, X_test: pd.DataFrame, y_test: pd.DataFrame) -> None:
-        NotImplementedError("")
+        # Get predictions
+        predictions = self.model.predict(X_test)
+
+        # Compare predictions
+
+        # Compute evaluation metrics
+        mse = mean_squared_error(y_test, predictions)
+        rmse = root_mean_squared_error(y_test, predictions)  # RMSE
+        mae = mean_absolute_error(y_test, predictions)
+        r2 = r2_score(y_test, predictions)
+
+        # Print results
+        print(f"Evaluation Results:")
+        print(f"Mean Squared Error (MSE): {mse:.4f}")
+        print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+        print(f"Mean Absolute Error (MAE): {mae:.4f}")
+        print(f"R² Score: {r2:.4f}")
+
+        # Optionally, store metrics in an attribute for later use
+        self.evaluation_results = {"MSE": mse, "RMSE": rmse, "MAE": mae, "R2": r2}
 
 
 def try_single_target_global_model():
@@ -311,19 +343,19 @@ def try_single_target_global_model():
     fitted_scaler = scaler.fit(whole_dataset_df.drop(columns=["country name"]))
 
     # Create train and test data
-    # X_train, X_test, y_train, y_test = gm.create_train_test_data(
-    #     data=whole_dataset_df,
-    #     split_size=0.8,
-    #     fitted_scaler=fitted_scaler,
-    # )
-
-    # Creater train and test data with timeseries
-    X_train, X_test, y_train, y_test = gm.create_train_test_timeseries(
-        states_dfs=state_dfs,
-        states_loader=states_loader,
+    X_train, X_test, y_train, y_test = gm.create_train_test_data(
+        data=whole_dataset_df,
         split_size=0.8,
         fitted_scaler=fitted_scaler,
     )
+
+    # Creater train and test data with timeseries
+    # X_train, X_test, y_train, y_test = gm.create_train_test_timeseries(
+    #     states_dfs=state_dfs,
+    #     states_loader=states_loader,
+    #     split_size=0.8,
+    #     fitted_scaler=fitted_scaler,
+    # )
 
     # Train model
     gm.train(
@@ -335,6 +367,7 @@ def try_single_target_global_model():
     # Evaluate model -> TODO
     logger.info("Evaluating the model...")
     logger.critical("Under construction")
+    gm.eval(X_test=X_test, y_test=y_test)
 
 
 if __name__ == "__main__":
