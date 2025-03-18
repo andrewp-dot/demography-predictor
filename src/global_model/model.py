@@ -1,5 +1,6 @@
 # Standard library imports
 import pandas as pd
+import numpy as np
 import logging
 from typing import Union, List, Dict, Tuple
 from pydantic import BaseModel
@@ -75,6 +76,7 @@ class GlobalModel:
         model: Union[XGBRegressor, GridSearchCV],
         features: List[str],
         targets: List[str],
+        scaler: MinMaxScaler | None = None,
         params: XGBoostTuneParams | None = None,
     ):
 
@@ -89,10 +91,13 @@ class GlobalModel:
         # Initialize label encoders for categorical data
         self.LABEL_ENCODERS: Dict[str, LabelEncoder] = {}
 
+        # Initialize evaluation results
+        self.evaluation_results: pd.DataFrame | None = None
+        self.SCALER: MinMaxScaler = scaler
+
     def preprocess_data(
         self,
         data: pd.DataFrame,
-        fitted_scaler: MinMaxScaler,
     ) -> pd.DataFrame:
         """
         Encode categorical values by LabelEncoding, scales numerical data by the fitted scaler.
@@ -112,7 +117,13 @@ class GlobalModel:
         numerical_data_df = df.select_dtypes(include=["number"])
 
         # Scale numerical data
-        scaled_numerical_data_array = fitted_scaler.transform(numerical_data_df)
+
+        # Create and fit scaler if note defined
+        if self.SCALER is None:
+            self.SCALER = MinMaxScaler()
+            self.SCALER.fit(numerical_data_df)
+
+        scaled_numerical_data_array = self.SCALER.transform(numerical_data_df)
 
         scaled_numerical_data_df = pd.DataFrame(
             scaled_numerical_data_array,
@@ -162,9 +173,7 @@ class GlobalModel:
 
         # Preprocess data
         logger.info("Preprocessing data....")
-        preprocessed_training_data = self.preprocess_data(
-            data=data, fitted_scaler=fitted_scaler
-        )
+        preprocessed_training_data = self.preprocess_data(data=data)
 
         # Split data
         X: pd.DataFrame = preprocessed_training_data[self.FEATURES]
@@ -216,8 +225,8 @@ class GlobalModel:
             test_df["country name"] = test_df["country name"].astype(dtype="category")
 
         # Preprocess the data
-        train_df = self.preprocess_data(train_df, fitted_scaler=fitted_scaler)
-        test_df = self.preprocess_data(test_df, fitted_scaler=fitted_scaler)
+        train_df = self.preprocess_data(train_df)
+        test_df = self.preprocess_data(test_df)
 
         # Create X
         X_train, y_train = train_df[self.FEATURES], train_df[self.TARGETS]
@@ -272,11 +281,67 @@ class GlobalModel:
         self.model.fit(X_train, y_train)
         logger.info("Model succesfuly fitted!")
 
+    def transform_columns(
+        self, data: pd.DataFrame, columns: List[str], inverse: bool = False
+    ) -> pd.DataFrame:
+
+        # Copy the dataframe
+        df = data.copy()
+
+        # Get the column indexes
+        column_indexes: Dict[str, int] = {
+            col: list(self.SCALER.feature_names_in_).index(col) for col in columns
+        }
+
+        # Get the rows and cols
+        num_features = len(list(self.SCALER.feature_names_in_))
+        rows = len(df)
+
+        logger.debug(f"({rows} , {num_features})")
+
+        # Create a dummy array
+        dummy = np.zeros((rows, num_features))
+
+        # Set the dummy columns to feature values
+        for col, col_index in column_indexes.items():
+            dummy[:, col_index] = df[col].values
+
+        # Transform columns
+        try:
+            transformed_columns = (
+                self.SCALER.inverse_transform(dummy)
+                if inverse
+                else self.SCALER.transform(dummy)
+            )
+
+        except Exception as e:
+            raise ValueError(
+                f"The exception occured: {str(e)}. Is the scale fitted properly?"
+            )
+
+        # Create dataframe from the columns
+        transformed_columns_df = pd.DataFrame(
+            transformed_columns[
+                :, list(column_indexes.values())
+            ],  # All rows, select the columns to be transformed
+            columns=column_indexes.keys(),  # name the columns to be transformed
+        )
+
+        return transformed_columns_df
+
     def eval(self, X_test: pd.DataFrame, y_test: pd.DataFrame) -> None:
         # Get predictions
         predictions = self.model.predict(X_test)
 
-        # Compare predictions
+        predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
+
+        # Transform predictions back
+        y_test = self.transform_columns(
+            data=y_test, columns=y_test.columns, inverse=True
+        )
+        predictions = self.transform_columns(
+            data=predictions_df, columns=predictions_df.columns, inverse=True
+        )
 
         # Compute evaluation metrics
         mse = mean_squared_error(y_test, predictions)
@@ -284,15 +349,12 @@ class GlobalModel:
         mae = mean_absolute_error(y_test, predictions)
         r2 = r2_score(y_test, predictions)
 
-        # Print results
-        print(f"Evaluation Results:")
-        print(f"Mean Squared Error (MSE): {mse:.4f}")
-        print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
-        print(f"Mean Absolute Error (MAE): {mae:.4f}")
-        print(f"R² Score: {r2:.4f}")
-
         # Optionally, store metrics in an attribute for later use
-        self.evaluation_results = {"MSE": mse, "RMSE": rmse, "MAE": mae, "R2": r2}
+        self.evaluation_results = pd.DataFrame(
+            {"mse": [mse], "rmse": [rmse], "mae": [mae], "r2": [r2]}
+        )
+
+        logger.info(f"GlobalModel evaluation:\n{self.evaluation_results}")
 
 
 def try_single_target_global_model():
@@ -328,19 +390,20 @@ def try_single_target_global_model():
         colsample_bytree=[0.5, 0.7, 0.9, 1.0],
     )
 
+    # Simulation of scaler used to scale the data from the local model
+    scaler = MinMaxScaler()
+    fitted_scaler = scaler.fit(whole_dataset_df.drop(columns=["country name"]))
+
     # Create global model
     gm = GlobalModel(
         model=XGBRegressor(objective="reg:squarederror", random_state=42),
         features=features,
         targets=targets,
         params=tune_parameters,
+        scaler=fitted_scaler,
     )
 
     logger.info("Training the model....")
-
-    # Simulation of scaler used to scale the data from the local model
-    scaler = MinMaxScaler()
-    fitted_scaler = scaler.fit(whole_dataset_df.drop(columns=["country name"]))
 
     # Create train and test data
     X_train, X_test, y_train, y_test = gm.create_train_test_data(
@@ -361,7 +424,7 @@ def try_single_target_global_model():
     gm.train(
         X_train=X_train,
         y_train=y_train,
-        tune_hyperparams=True,
+        # tune_hyperparams=True,
     )
 
     # Evaluate model -> TODO
