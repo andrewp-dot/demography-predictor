@@ -284,6 +284,20 @@ class GlobalModel:
     def transform_columns(
         self, data: pd.DataFrame, columns: List[str], inverse: bool = False
     ) -> pd.DataFrame:
+        """
+        Transform specified columns from the given da
+
+        Args:
+            data (pd.DataFrame): The given slice of data with columns which you want to transform.
+            columns (List[str]): Columns from the data you want to transform
+            inverse (bool, optional): If True, the inverse transformation is done, else classic transformation is done. Defaults to False.
+
+        Raises:
+            ValueError: Error of the data transformation. Is the scaler fitted properly?
+
+        Returns:
+            out: pd.DataFrame: Dataframe with columns transformed.
+        """
 
         # Copy the dataframe
         df = data.copy()
@@ -330,24 +344,27 @@ class GlobalModel:
         return transformed_columns_df
 
     def eval(self, X_test: pd.DataFrame, y_test: pd.DataFrame) -> None:
-        # Get predictions
-        predictions = self.model.predict(X_test)
+        """
+        Evaluates model using test data. Saves the data into the `evaluation_results` parameter of the GlobalModel class.
 
-        predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
+        Args:
+            X_test (pd.DataFrame): Test input data.
+            y_test (pd.DataFrame): Test output data.
+        """
 
-        # Transform predictions back
+        # Get predictions in human readable dataframe
+        predictions_df = self.predict_human_readable(X_test)
+
+        # Transform the original data back back
         y_test = self.transform_columns(
             data=y_test, columns=y_test.columns, inverse=True
         )
-        predictions = self.transform_columns(
-            data=predictions_df, columns=predictions_df.columns, inverse=True
-        )
 
         # Compute evaluation metrics
-        mse = mean_squared_error(y_test, predictions)
-        rmse = root_mean_squared_error(y_test, predictions)  # RMSE
-        mae = mean_absolute_error(y_test, predictions)
-        r2 = r2_score(y_test, predictions)
+        mse = mean_squared_error(y_test, predictions_df)
+        rmse = root_mean_squared_error(y_test, predictions_df)  # RMSE
+        mae = mean_absolute_error(y_test, predictions_df)
+        r2 = r2_score(y_test, predictions_df)
 
         # Optionally, store metrics in an attribute for later use
         self.evaluation_results = pd.DataFrame(
@@ -355,6 +372,27 @@ class GlobalModel:
         )
 
         logger.info(f"GlobalModel evaluation:\n{self.evaluation_results}")
+
+    def predict_human_readable(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Predicts and unscales the scaled data.
+
+        Returns:
+            out: pd.DataFrame: The pandas dataframe with human readable predictions.
+        """
+        predictions = self.model.predict(data)
+
+        # Create predictions dataframe
+        predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
+
+        predictions = self.transform_columns(
+            data=predictions_df, columns=predictions_df.columns, inverse=True
+        )
+
+        # Create df again
+        predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
+
+        return predictions_df
 
 
 def try_single_target_global_model():
@@ -368,12 +406,12 @@ def try_single_target_global_model():
     whole_dataset_df = states_loader.merge_states(state_dfs=state_dfs)
 
     # Targets
-    targets: List[str] = ["population, total"]
-    # targets: List[str] = [
-    #     "population ages 15-64",
-    #     "population ages 0-14",
-    #     "population ages 65 and above",
-    # ]
+    # targets: List[str] = ["population, total"]
+    targets: List[str] = [
+        "population ages 15-64",
+        "population ages 0-14",
+        "population ages 65 and above",
+    ]
 
     # Features
     features: List[str] = [
@@ -427,9 +465,8 @@ def try_single_target_global_model():
         # tune_hyperparams=True,
     )
 
-    # Evaluate model -> TODO
+    # Evaluate model
     logger.info("Evaluating the model...")
-    logger.critical("Under construction")
     gm.eval(X_test=X_test, y_test=y_test)
 
 
