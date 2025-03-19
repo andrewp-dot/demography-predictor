@@ -41,7 +41,9 @@ class StatesDataLoader:
             # Create and save loader
             self.__state_loaders[state] = StateDataLoader(state)
 
-    def load_states(self, states: List[str]) -> Dict[str, pd.DataFrame]:
+    def load_states(
+        self, states: List[str], exclude_covid_years: bool = False
+    ) -> Dict[str, pd.DataFrame]:
         """
         Loads the states from the given list
 
@@ -56,7 +58,9 @@ class StatesDataLoader:
         state_dfs: Dict[str, pd.DataFrame] = {}
         for state in states:
             try:
-                state_dfs[state] = self.__state_loaders[state].load_data()
+                state_dfs[state] = self.__state_loaders[state].load_data(
+                    exclude_covid_years=exclude_covid_years
+                )
             except KeyError:
                 logger.error(f"State '{state}' not found in the dataset.")
 
