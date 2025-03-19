@@ -20,7 +20,7 @@ class StateDataLoader:
     def __init__(self, state: str):
         self.state = state
 
-    def load_data(self) -> pd.DataFrame:
+    def load_data(self, exclude_covid_years: bool = False) -> pd.DataFrame:
         """
         Load the state data. Renames the columns all to lower.
 
@@ -28,8 +28,13 @@ class StateDataLoader:
         """
         data = pd.read_csv(f"{config.states_data_dir}/{self.state}.csv")
 
-        # Lowercase columns
+        # Lowercase columns in case they are not
         data.columns = data.columns.str.lower()
+
+        if exclude_covid_years:
+            # Covid started about 17th November in 2019. The impact of covid 19 is expected on years 2020 and higher.
+            data = data.loc[data["year"] < 2020]
+
         return data
 
     def scale_data(

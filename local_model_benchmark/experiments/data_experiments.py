@@ -61,14 +61,10 @@ class OneStateDataExperiment(BaseExperiment):
         single_state_rnn = self.model
 
         # Add params to readme
-        self.readme_add_section(
-            title="## Hyperparameters", text=f"```{single_state_params}```"
-        )
+        self.readme_add_params()
 
         # Add list of features
-        self.readme_add_section(
-            title="## Features", text="```\n" + "\n".join(self.FEATURES) + "\n```"
-        )
+        self.readme_add_features()
 
         # Split data
         state_train, state_test = state_loader.split_data(
@@ -161,14 +157,10 @@ class AllStatesDataExperiments(BaseExperiment):
         )
 
         # Add params to readme
-        self.readme_add_section(
-            title="## Hyperparameters", text=f"```{self.model.hyperparameters}```"
-        )
+        self.readme_add_params()
 
         # Add list of FEATURES
-        self.readme_add_section(
-            title="## Features", text="```\n" + "\n".join(self.FEATURES) + "\n```"
-        )
+        self.readme_add_features()
 
         #### Multiple state preprocessing starts here
 
@@ -459,6 +451,57 @@ class Experiment3(Experiment):
         self.exp.run(state="Czechia", split_rate=0.8)
 
 
+class Experiment3_1(Experiment):
+
+    def __init__(self):
+
+        # Define features and parameters and model
+        self.FEATURES = [
+            col.lower()
+            for col in [
+                # Need to run columns
+                "year",
+                # Stationary columns
+                "Fertility rate, total",
+                "Arable land",
+                "Birth rate, crude",
+                "GDP growth",
+                "Death rate, crude",
+                "Population ages 15-64",
+                "Population ages 0-14",
+                "Agricultural land",
+                "Population ages 65 and above",
+                "Rural population",
+                "Rural population growth",
+                # "Age dependency ratio",
+                "Urban population",
+                "Population growth",
+            ]
+        ]
+        single_state_params = LSTMHyperparameters(
+            input_size=len(self.FEATURES),
+            hidden_size=128,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=10,
+            batch_size=1,
+            num_layers=3,
+        )
+
+        self.model = BaseLSTM(hyperparameters=single_state_params)
+
+        # Define the experiment
+        self.exp = AllStatesDataExperiments(
+            model=self.model,
+            name="OnlyStationaryFeaturesAllData",
+            description="Train and evaluate model on single state data.",
+            features=self.FEATURES,
+        )
+
+    def run(self):
+        self.exp.run(state="Czechia", split_rate=0.8)
+
+
 # 5. Finetune experiment -> try to use all data from whole dataset and finetune finetunable layers to one state
 
 
@@ -471,12 +514,12 @@ def run_data_experiments(exp_keys: List[float] = None) -> None:
     """
 
     # Setup experiments
-
     experiments: Dict[float, Experiment] = {
         1: Experiment1(),
         2: Experiment2(),
         2.1: Experiment2_1(),
         3: Experiment3(),
+        3.1: Experiment3_1(),
     }
 
     # If there are defined experiments keys to run
@@ -503,4 +546,4 @@ if __name__ == "__main__":
 
     # Run experiments
     # run_data_experiments(exp_keys=[1])
-    run_data_experiments(exp_keys=[2.1, 3])
+    run_data_experiments(exp_keys=[3.1])

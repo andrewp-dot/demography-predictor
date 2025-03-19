@@ -20,7 +20,7 @@
 3. Statistical model implementation (ARIMA)
 
 ## Work in progress (WIP)
-1. Global model implementation
+1. Global model implementation (Note: implemented, not integrated)
 2. Demography predictor implementation (both, local and global)
 
 

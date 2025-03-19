@@ -163,7 +163,33 @@ class BaseExperiment:
             return
 
         raise ValueError(
-            "Cennot add section! The readme does not exist! Try to use 'experiment.create_readme()' first."
+            "Cannot add section! The readme does not exist! Try to use 'experiment.create_readme()' first."
+        )
+
+    def readme_add_params(self) -> None:
+
+        if self.readme_path is not None:
+
+            with open(self.readme_path, "a") as readme:
+                readme.write("## Hyperparameters\n")
+                readme.write(f"```{self.model.hyperparameters}```\n")
+            return
+
+        raise ValueError(
+            "Cannot add parameters! The readme does not exist! Try to use 'experiment.create_readme()' first."
+        )
+
+    def readme_add_features(self) -> None:
+
+        if self.readme_path is not None:
+
+            with open(self.readme_path, "a") as readme:
+                readme.write("## Features\n")
+                readme.write("```\n" + "\n".join(self.FEATURES) + "\n```")
+            return
+
+        raise ValueError(
+            "Cannot add parameters! The readme does not exist! Try to use 'experiment.create_readme()' first."
         )
 
     @abstractmethod
