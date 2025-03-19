@@ -319,12 +319,12 @@ class Experiment2(Experiment):
 
         self.hyperparameters = LSTMHyperparameters(
             input_size=len(self.FEATURES),
-            hidden_size=128,
+            hidden_size=2048,
             sequence_length=10,
             learning_rate=0.0001,
             epochs=10,
             batch_size=1,
-            num_layers=3,
+            num_layers=4,
         )
 
         self.model = BaseLSTM(hyperparameters=self.hyperparameters)

@@ -1,3 +1,4 @@
+import os
 import logging
 import logging.config
 import yaml
@@ -5,6 +6,11 @@ from colorama import Fore
 
 
 def setup_logging() -> None:
+    # Create the directory for logs
+
+    if not os.path.isdir("./logs"):
+        os.makedirs("./logs")
+
     # Load YAML config
     try:
         with open("loggers_config.yaml", "r") as file:

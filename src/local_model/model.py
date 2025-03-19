@@ -85,7 +85,7 @@ class BaseLSTM(CustomModelBase):
             batch_size,
             self.hyperparameters.hidden_size,
             dtype=torch.float32,
-        )
+        ).to(device=self.device)
 
         c_t = torch.zeros(
             self.hyperparameters.num_layers
@@ -93,7 +93,7 @@ class BaseLSTM(CustomModelBase):
             batch_size,
             self.hyperparameters.hidden_size,
             dtype=torch.float32,
-        )
+        ).to(device=self.device)
 
         return h_t, c_t
 
@@ -228,8 +228,8 @@ class BaseLSTM(CustomModelBase):
 
                 # Slide over the sequence
                 window = input_sequence[i : i + sequence_length]  # Extract window
-                window = window.unsqueeze(
-                    0
+                window = window.unsqueeze(0).to(
+                    device=self.device
                 )  # Add batch dimension: (1, sequence_length, input_size)
 
                 # Forward pass
@@ -237,7 +237,9 @@ class BaseLSTM(CustomModelBase):
 
                 predictions.append(pred.cpu())
 
-            current_window = input_sequence[-sequence_length:].unsqueeze(0)
+            current_window = (
+                input_sequence[-sequence_length:].unsqueeze(0).to(device=self.device)
+            )
 
             # Predict new data using autoregression
             for _ in range(to_predict_years_num):
