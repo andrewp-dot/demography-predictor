@@ -15,7 +15,7 @@ from local_model_benchmark.config import LocalModelBenchmarkSettings
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
-from local_model_benchmark.experiments.base_experiment import BaseExperiment
+from local_model_benchmark.experiments.base_experiment import BaseExperiment, Experiment
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -231,29 +231,14 @@ class AllStatesDataExperiments(BaseExperiment):
         )
 
 
-# Hardcode the experiments
-class Experiment:
-
-    def __init__(
-        self,
-        model: BaseLSTM,
-        features: List[str],
-        hyperparameters: LSTMHyperparameters,
-        experiment: BaseExperiment,
-    ):
-        self.model: BaseLSTM = model
-        self.hyperparameters: LSTMHyperparameters = hyperparameters
-        self.FEATURES: List[str] = features
-        self.exp = experiment
-
-    @abstractmethod
-    def run(self, *args, **kwargs):
-        raise NotImplementedError("No run method is implemented for this experiment!")
-
-
 ## 1. Use data for just a single state
 class Experiment1(Experiment):
+
+    NAME = "OneStateDataExperiment"
+    DESCRIPTION = "Train and evaluate model on single state data."
+
     def __init__(self):
+        self.name = self.__name__
 
         # Define features and parameters and model
         self.FEATURES = [
@@ -292,8 +277,8 @@ class Experiment1(Experiment):
         # Define the experiment
         self.exp = OneStateDataExperiment(
             model=self.model,
-            name="OneStateDataExperiment",
-            description="Train and evaluate model on single state data.",
+            name=self.NAME,
+            description=self.DESCRIPTION,
             features=self.FEATURES,
         )
 
@@ -304,8 +289,13 @@ class Experiment1(Experiment):
 ## 2. Use data for all states (whole dataset)
 class Experiment2(Experiment):
 
+    NAME = "AllStatesDataExperiments"
+    DESCRIPTION = "Train and evaluate model on whole dataset."
+
     # Define features and parameters and model
     def __init__(self):
+        self.name = self.__name__
+
         # Define features and parameters and model
         self.FEATURES = [
             col.lower()
@@ -344,8 +334,8 @@ class Experiment2(Experiment):
         # Define the experiment
         self.exp = AllStatesDataExperiments(
             model=self.model,
-            name="AllStatesDataExperiments",
-            description="Train and evaluate model on whole dataset.",
+            name=self.NAME,
+            description=self.DESCRIPTION,
             features=self.FEATURES,
         )
 
@@ -356,7 +346,11 @@ class Experiment2(Experiment):
 ## 2. Use data for all states (whole dataset) without high error features
 class Experiment2_1(Experiment):
 
+    NAME = "AllStatesDataExperimentsWithoutHighErrorFeatures"
+    DESCRIPTION = "Train and evaluate model on whole dataset."
+
     def __init__(self):
+        self.name = self.__name__
 
         # Copy model from Experiment2
         exp2 = Experiment2()
@@ -386,8 +380,8 @@ class Experiment2_1(Experiment):
 
         self.exp = AllStatesDataExperiments(
             model=self.model,
-            name="AllStatesDataExperimentsWithoutHighErrorFeatures",
-            description="Train and evaluate model on whole dataset.",
+            name=self.NAME,
+            description=self.DESCRIPTION,
             features=self.FEATURES,
         )
 
@@ -402,7 +396,14 @@ class Experiment2_1(Experiment):
 
 class Experiment3(Experiment):
 
+    NAME = "OnlyStationaryFeatures"
+    DESCRIPTION = (
+        "Train and evaluate model on single state data using only stationary features."
+    )
+
     def __init__(self):
+
+        # Define the name of the experime
 
         # Define features and parameters and model
         self.FEATURES = [
@@ -442,8 +443,8 @@ class Experiment3(Experiment):
         # Define the experiment
         self.exp = OneStateDataExperiment(
             model=self.model,
-            name="OnlyStationaryFeatures",
-            description="Train and evaluate model on single state data.",
+            name=self.NAME,
+            description=self.DESCRIPTION,
             features=self.FEATURES,
         )
 
@@ -452,6 +453,11 @@ class Experiment3(Experiment):
 
 
 class Experiment3_1(Experiment):
+
+    NAME = "OnlyStationaryFeaturesAllData"
+    DESCRIPTION = (
+        "Train and evaluate model on whole dataset and using stationary features."
+    )
 
     def __init__(self):
 

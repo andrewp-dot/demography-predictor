@@ -6,7 +6,7 @@ from typing import List
 
 from src.local_model.model import CustomModelBase
 from src.local_model.model import BaseLSTM
-
+from src.local_model.base import LSTMHyperparameters
 
 # Get settings
 settings = LocalModelBenchmarkSettings()
@@ -197,3 +197,25 @@ class BaseExperiment:
         raise NotImplementedError(
             f"Experiment '{self.name}' does not have implemented the run function!"
         )
+
+
+# Hardcode the experiments
+class Experiment:
+
+    def __init__(
+        self,
+        name: str,
+        model: BaseLSTM,
+        features: List[str],
+        hyperparameters: LSTMHyperparameters,
+        experiment: BaseExperiment,
+    ):
+        self.name: str = name
+        self.model: BaseLSTM = model
+        self.hyperparameters: LSTMHyperparameters = hyperparameters
+        self.FEATURES: List[str] = features
+        self.exp = experiment
+
+    @abstractmethod
+    def run(self, *args, **kwargs):
+        raise NotImplementedError("No run method is implemented for this experiment!")

@@ -3,24 +3,20 @@ In this file are experiments with local model.
 """
 
 # Standard libraries
-import os
-import pandas as pd
-import pprint
 import logging
-import torch
-from typing import List, Tuple, Union
-
-
-from config import Config
-from src.utils.log import setup_logging
+from typing import Dict, List
 
 
 # Custom imports
+from config import Config
+from src.utils.log import setup_logging
+
 from local_model_benchmark.experiments.data_experiments import OneStateDataExperiment
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
 
+from local_model_benchmark.experiments.base_experiment import Experiment
 
 settings = Config()
 logger = logging.getLogger("benchmark")
@@ -28,7 +24,13 @@ logger = logging.getLogger("benchmark")
 # TODO: Define experiments
 # TODO: doc comments
 
-# Here create and define experiments
+
+# List of available experimets
+experiment_list: List[Experiment] = []
+
+# Setup experiments -> convert experiment list to dict
+experiments: Dict[str, Experiment] = {exp.exp.name: exp for exp in experiment_list}
+
 
 # if __name__ == "__main__":
 # experiments()
