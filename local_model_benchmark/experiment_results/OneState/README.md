@@ -1,11 +1,11 @@
 
-# OnlyStationaryFeaturesAllData
+# OneState
 
 **Description:** Train and evaluate model on single state data.
 
 ## Hyperparameters
 ```
-Input size:         14
+Input size:         16
 Batch size:         1
 
 Hidden size:        128
@@ -21,18 +21,20 @@ Bidirectional:      False
 ```
 year
 fertility rate, total
+population, total
+net migration
 arable land
 birth rate, crude
 gdp growth
 death rate, crude
-population ages 15-64
-population ages 0-14
 agricultural land
-population ages 65 and above
 rural population
 rural population growth
+age dependency ratio
 urban population
 population growth
+adolescent fertility rate
+life expectancy at birth, total
 ```
 ## Loss graph
 
@@ -40,13 +42,13 @@ population growth
 ![Loss graph](./plots/loss.png)
 
 
-## Evaluation of the model - state: Czechia
+## Prediction of Czechia by the training data
 
 
-![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
+![Prediction of Czechia by the training data](./plots/evaluation.png)
 
 # Metric result
-{'mae': 2.1172215479151277,
- 'mse': 8.778885948016992,
- 'r2': -70.91669720493071,
- 'rmse': 2.2380347306245287}
+{'mae': 13728.871346101718,
+ 'mse': 2832384243.20279,
+ 'r2': -34.26208806894042,
+ 'rmse': 14375.692214473955}

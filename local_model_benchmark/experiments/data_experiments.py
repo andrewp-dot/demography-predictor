@@ -234,11 +234,10 @@ class AllStatesDataExperiments(BaseExperiment):
 ## 1. Use data for just a single state
 class Experiment1(Experiment):
 
-    NAME = "OneStateDataExperiment"
+    NAME = "OneState"
     DESCRIPTION = "Train and evaluate model on single state data."
 
     def __init__(self):
-        self.name = self.__name__
 
         # Define features and parameters and model
         self.FEATURES = [
@@ -282,19 +281,18 @@ class Experiment1(Experiment):
             features=self.FEATURES,
         )
 
-    def run(self):
-        self.exp.run(state="Czechia", split_rate=0.8)
+    def run(self, state: str = "Czechia", split_rate: float = 0.8):
+        self.exp.run(state=state, split_rate=split_rate)
 
 
 ## 2. Use data for all states (whole dataset)
 class Experiment2(Experiment):
 
-    NAME = "AllStatesDataExperiments"
+    NAME = "AllStates"
     DESCRIPTION = "Train and evaluate model on whole dataset."
 
     # Define features and parameters and model
     def __init__(self):
-        self.name = self.__name__
 
         # Define features and parameters and model
         self.FEATURES = [
@@ -339,18 +337,17 @@ class Experiment2(Experiment):
             features=self.FEATURES,
         )
 
-    def run(self):
-        self.exp.run(state="Czechia", split_rate=0.8)
+    def run(self, state: str = "Czechia", split_rate: float = 0.8):
+        self.exp.run(state=state, split_rate=split_rate)
 
 
 ## 2. Use data for all states (whole dataset) without high error features
 class Experiment2_1(Experiment):
 
-    NAME = "AllStatesDataExperimentsWithoutHighErrorFeatures"
-    DESCRIPTION = "Train and evaluate model on whole dataset."
+    NAME = "AllStatesWithoutHighErrorFeatures"
+    DESCRIPTION = "Train and evaluate model on whole dataset excluding the high errorneous features."
 
     def __init__(self):
-        self.name = self.__name__
 
         # Copy model from Experiment2
         exp2 = Experiment2()
@@ -385,8 +382,8 @@ class Experiment2_1(Experiment):
             features=self.FEATURES,
         )
 
-    def run(self):
-        self.exp.run(state="Czechia", split_rate=0.8)
+    def run(self, state: str = "Czechia", split_rate: float = 0.8):
+        self.exp.run(state=state, split_rate=split_rate)
 
 
 ## 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)
@@ -448,8 +445,8 @@ class Experiment3(Experiment):
             features=self.FEATURES,
         )
 
-    def run(self):
-        self.exp.run(state="Czechia", split_rate=0.8)
+    def run(self, state: str = "Czechia", split_rate: float = 0.8):
+        self.exp.run(state=state, split_rate=split_rate)
 
 
 class Experiment3_1(Experiment):
@@ -504,8 +501,8 @@ class Experiment3_1(Experiment):
             features=self.FEATURES,
         )
 
-    def run(self):
-        self.exp.run(state="Czechia", split_rate=0.8)
+    def run(self, state: str = "Czechia", split_rate: float = 0.8):
+        self.exp.run(state=state, split_rate=split_rate)
 
 
 # 5. Finetune experiment -> try to use all data from whole dataset and finetune finetunable layers to one state

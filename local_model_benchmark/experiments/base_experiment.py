@@ -217,5 +217,5 @@ class Experiment:
         self.exp = experiment
 
     @abstractmethod
-    def run(self, *args, **kwargs):
+    def run(self, state: str = "Czechia", split_rate: float = 0.8, *args, **kwargs):
         raise NotImplementedError("No run method is implemented for this experiment!")

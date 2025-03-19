@@ -11,12 +11,19 @@ from typing import Dict, List
 from config import Config
 from src.utils.log import setup_logging
 
-from local_model_benchmark.experiments.data_experiments import OneStateDataExperiment
+from local_model_benchmark.experiments.data_experiments import (
+    Experiment1,
+    Experiment2,
+    Experiment2_1,
+    Experiment3,
+    Experiment3_1,
+)
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
 
 from local_model_benchmark.experiments.base_experiment import Experiment
+
 
 settings = Config()
 logger = logging.getLogger("benchmark")
@@ -26,14 +33,70 @@ logger = logging.getLogger("benchmark")
 
 
 # List of available experimets
-experiment_list: List[Experiment] = []
+experiment_list: List[Experiment] = [
+    Experiment1(),
+    Experiment2(),
+    Experiment2_1(),
+    Experiment3(),
+    Experiment3_1(),
+]
 
 # Setup experiments -> convert experiment list to dict
-experiments: Dict[str, Experiment] = {exp.exp.name: exp for exp in experiment_list}
+
+AVAILABLE_EXPERIMENTS: Dict[str, Experiment] = {
+    exp.exp.name: exp for exp in experiment_list
+}
 
 
-# if __name__ == "__main__":
-# experiments()
+def print_available_experiments(
+    with_description: bool = False,
+) -> Dict[str, Experiment]:
+
+    print("Available experiments:")
+    print("-" * 50)
+    if with_description:
+        for exp_name, exp in AVAILABLE_EXPERIMENTS.items():
+            print(f" {exp_name}".ljust(50), exp.exp.description)
+
+        return
+
+    for exp_name in AVAILABLE_EXPERIMENTS.keys():
+        print(f" {exp_name}")
+
+    return
+
+
+def run_experiments(
+    experiments: List[str], state: str = "Czechia", split_rate: float = 0.8
+) -> None:
+
+    try:
+        to_run_experiments_dict: Dict[str, Experiment] = {
+            name: AVAILABLE_EXPERIMENTS[name] for name in experiments
+        }
+    except KeyError as e:
+        logger.error(f"There is no experiment named {e}. Running no experiments.")
+        return
+
+    for name, exp in to_run_experiments_dict.items():
+        logger.info(f"Running experiment {name} ...")
+        exp.run(state=state, split_rate=split_rate)
+        logger.info(f"Exp {name} Done!")
+
+
+def run_all_experiments(state: str = "Czechia", split_rate: float = 0.8) -> None:
+    for name, exp in AVAILABLE_EXPERIMENTS.items():
+        logger.info(f"Running experiment {name} ...")
+        exp.run(state=state, split_rate=split_rate)
+        logger.info(f"Exp {name} Done!")
+
+
+if __name__ == "__main__":
+    # Setup logging
+    setup_logging()
+
+    # Print all experiments
+    print_available_experiments(True)
 
 
 # Use different scaler(s)

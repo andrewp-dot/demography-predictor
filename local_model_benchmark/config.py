@@ -4,14 +4,23 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Dict
 
 
+def get_experiment_result_dir() -> DirectoryPath:
+    experiment_result_dir = os.path.join(
+        ".", "local_model_benchmark", "experiment_results"
+    )
+
+    # Create it if it does not exist
+    if not os.path.isdir(experiment_result_dir):
+        os.makedirs(experiment_result_dir)
+
+    return experiment_result_dir
+
+
 class LocalModelBenchmarkSettings(BaseSettings):
 
     # Path configs
     benchmark_results_dir: DirectoryPath = Field(
-        ...,
-        default_factory=lambda: os.path.join(
-            ".", "local_model_benchmark", "experiment_results"
-        ),
+        ..., default_factory=get_experiment_result_dir
     )
 
     # Model config
