@@ -19,6 +19,9 @@
         - Parameter optimization using `optuna` library
 3. Statistical model implementation (ARIMA)
 
+Bonus:
+1. Simple CLI for `lbenchmark`. For more info run `poetry run cli lbenchmark --help`
+
 ## Work in progress (WIP)
 1. Global model implementation (Note: implemented, not integrated)
 2. Demography predictor implementation (both, local and global)
