@@ -79,7 +79,9 @@ class StatesDataLoader:
         """
         return pd.concat(state_dfs.values(), axis=0)
 
-    def load_all_states(self) -> Dict[str, pd.DataFrame]:
+    def load_all_states(
+        self, exclude_covid_years: bool = False
+    ) -> Dict[str, pd.DataFrame]:
         """
         Loads data from all states.
 
@@ -90,7 +92,7 @@ class StatesDataLoader:
         # Get loader for each state
         state_dfs: Dict[str, pd.DataFrame] = {}
         for state, loader in self.__state_loaders.items():
-            state_dfs[state] = loader.load_data()
+            state_dfs[state] = loader.load_data(exclude_covid_years=exclude_covid_years)
 
         # Return loaded states
         return state_dfs

@@ -2,10 +2,11 @@ import os
 from local_model_benchmark.config import LocalModelBenchmarkSettings
 from abc import abstractmethod
 from matplotlib.figure import Figure
-from typing import List
+from typing import List, Union
 
 from src.local_model.model import CustomModelBase
 from src.local_model.model import BaseLSTM
+from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.base import LSTMHyperparameters
 
 # Get settings
@@ -31,7 +32,7 @@ class BaseExperiment:
 
     def __init__(
         self,
-        model: BaseLSTM,
+        model: Union[BaseLSTM, FineTunableLSTM],
         name: str,
         description: str,
         features: List[str],

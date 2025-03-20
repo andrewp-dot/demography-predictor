@@ -1,4 +1,5 @@
 # Standard libraries
+import os
 import pandas as pd
 import pprint
 import logging
@@ -8,15 +9,19 @@ import copy
 import optuna
 
 
-from config import Config
-from src.utils.log import setup_logging
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
+from config import Config
+from src.utils.log import setup_logging
+from src.utils.save_model import get_experiment_model, save_experiment_model
+
 from local_model_benchmark.experiments.base_experiment import BaseExperiment, Experiment
 
+from src.local_model.finetunable_model import FineTunableLSTM, train_base_model
 from src.local_model.statistical_models import LocalARIMA, EvaluateARIMA
 from src.preprocessors.state_preprocessing import StateDataLoader
+from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
 
 
@@ -506,8 +511,95 @@ class CompareLSTMARIMAExperiment(BaseExperiment):
             )
 
 
-# 3. Compare prediction using whole state data and the last few records of data
-# 4. Predict parameters for different years (e.g. to 2030, 2040, ... )
+# 3. Finetune model for the given state
+class FineTuneExperiment(BaseExperiment):
+
+    def run(self, state: str, split_rate: float):
+        # Create readme
+        self.create_readme()
+        self.readme_add_features()
+
+        EVLAUATION_STATE_NAME = state
+
+        # Create and train base model
+        base_model: BaseLSTM = self.model.base_model
+
+        # Save the model params
+        self.readme_add_section(title="# Base model parameters", text="")
+        self.readme_add_params(custom_params=base_model.hyperparameters)
+
+        # Save base model
+        save_experiment_model(
+            base_model,
+            f"base_model_{base_model.hyperparameters.hidden_size}.pkl",
+        )
+
+        # Write the finetunable model hyperparameters
+        self.readme_add_section(title="# Finetunable model parameters", text="")
+        self.readme_add_params()
+
+        # Load data
+        state_loader = StateDataLoader(EVLAUATION_STATE_NAME)
+        state_data_df = state_loader.load_data()
+
+        # Split state data
+        train_state_data_df, test_state_data_df = state_loader.split_data(
+            data=state_data_df, split_rate=split_rate
+        )
+
+        # Use the same scaler as the base model
+        trainig_batches, target_batches, _ = (
+            state_loader.preprocess_training_data_batches(
+                train_data_df=train_state_data_df,
+                hyperparameters=self.model.hyperparameters,
+                features=FEATURES,
+                scaler=base_model.scaler,
+            )
+        )
+
+        logger.info("Finetuning model...")
+        self.model.train_model(
+            batch_inputs=trainig_batches,
+            batch_targets=target_batches,
+            display_nth_epoch=1,
+        )
+
+        # Evaluate finetunable model
+        logger.info("Evaluating finetunable model...")
+        finetunable_model_evaluation = EvaluateModel(self.model)
+        finetunable_model_evaluation.eval(
+            test_X=train_state_data_df,
+            test_y=test_state_data_df,
+            features=FEATURES,
+            scaler=base_model.scaler,
+        )
+
+        logger.info(
+            f"[FinetunabelModel]: Overall metrics:\n{finetunable_model_evaluation.overall_metrics}\n"
+        )
+        logger.info(
+            f"[FinetunabelModel]: Per feature metrics:\n{finetunable_model_evaluation.per_target_metrics}\n"
+        )
+
+        # Save the predictions
+        fig = finetunable_model_evaluation.plot_predictions()
+
+        fig_name = f"finetuned_model_{EVLAUATION_STATE_NAME}_predictions.png"
+        self.save_plot(fig_name=fig_name, figure=fig)
+        self.readme_add_plot(
+            plot_name=f"Finetuned model predictions - {EVLAUATION_STATE_NAME}",
+            plot_description="Finetuned model predictions.",
+            fig_name=fig_name,
+        )
+
+        # Save model
+        save_experiment_model(
+            self.model, f"finetunable_model_{EVLAUATION_STATE_NAME}.pkl"
+        )
+
+
+# 4. Compare prediction using whole state data and the last few records of data
+# 5. Predict parameters for different years (e.g. to 2030, 2040, ... )
 
 
 class LSTMOptimalParameters(Experiment):
@@ -551,7 +643,7 @@ class LSTMOptimalParameters(Experiment):
             num_layers=3,
         )
 
-        self.model = BaseLSTM(hyperparameters=hyperparameters)
+        self.model = BaseLSTM(hyperparameters=hyperparameters, features=self.FEATURES)
 
         self.exp = OptimalParamsExperiment(
             model=self.model,
@@ -610,7 +702,7 @@ class RNNvsStatisticalMethods(Experiment):
             num_layers=3,
         )
 
-        self.model = BaseLSTM(hyperparameters=hyperparameters)
+        self.model = BaseLSTM(hyperparameters=hyperparameters, features=self.FEATURES)
 
         self.exp = CompareLSTMARIMAExperiment(
             model=self.model,
@@ -623,12 +715,105 @@ class RNNvsStatisticalMethods(Experiment):
         return self.exp.run(state=state, split_rate=split_rate)
 
 
+class FinetuneBaseLSTM(Experiment):
+
+    NAME = "FinetuneBaseLSTM"
+    DESCRIPTION = "Finetunes the base LSTM model."
+
+    def __init__(self):
+
+        self.name = self.NAME
+
+        self.FEATURES = [
+            col.lower()
+            for col in [
+                "year",
+                "Fertility rate, total",
+                "Population, total",
+                "Net migration",
+                "Arable land",
+                "Birth rate, crude",
+                "GDP growth",
+                "Death rate, crude",
+                "Agricultural land",
+                "Rural population",
+                "Rural population growth",
+                "Age dependency ratio",
+                "Urban population",
+                "Population growth",
+                "Adolescent fertility rate",
+                "Life expectancy at birth, total",
+            ]
+        ]
+
+        # This is implemented in run experiment due to the need of training the base model
+        self.model = None
+
+        self.exp = FineTuneExperiment(
+            model=None,
+            name=self.name,
+            description=self.DESCRIPTION,
+            features=self.FEATURES,
+        )
+
+    def run(self, state="Czechia", split_rate=0.8):
+        # Train the base model
+        base_hyperparameters = LSTMHyperparameters(
+            input_size=len(self.FEATURES),
+            hidden_size=256,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=3,
+            batch_size=32,
+            num_layers=3,
+        )
+
+        # Try to get model first
+        try:
+            base_model = get_experiment_model(
+                name=f"base_model_{base_hyperparameters.hidden_size}.pkl"
+            )
+        except:
+            base_model = train_base_model(
+                hyperparameters=base_hyperparameters,
+                features=FEATURES,
+                evaluation_state_name=state,
+            )
+
+        # Create finetunable model
+        finetunable_hyperparameters = LSTMHyperparameters(
+            input_size=len(FEATURES),
+            hidden_size=base_hyperparameters.hidden_size,  # Yet the base model hidden size and finetunable layer hidden size has to be the same
+            sequence_length=base_hyperparameters.sequence_length,
+            learning_rate=0.0001,
+            epochs=30,
+            batch_size=1,
+            num_layers=1,
+        )
+
+        self.model = FineTunableLSTM(
+            base_model=base_model, hyperparameters=finetunable_hyperparameters
+        )
+
+        self.exp = FineTuneExperiment(
+            model=self.model,
+            name=self.name,
+            description=self.DESCRIPTION,
+            features=self.FEATURES,
+        )
+
+        return self.exp.run(state=state, split_rate=split_rate)
+
+
 def run_experiments():
     exp1 = LSTMOptimalParameters()
     exp1.run()
 
     exp2 = RNNvsStatisticalMethods()
     exp2.run()
+
+    exp3 = FinetuneBaseLSTM()
+    exp3.run()
 
 
 if __name__ == "__main__":

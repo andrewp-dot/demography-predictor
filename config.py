@@ -4,6 +4,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 
 
+def get_trained_models_dir() -> DirectoryPath:
+    trained_models_dir = os.path.join(".", "trained_models")
+
+    if not os.path.isdir(trained_models_dir):
+        os.makedirs(trained_models_dir)
+
+    return trained_models_dir
+
+
 class Config(BaseSettings):
 
     # Configure settings config
@@ -19,6 +28,9 @@ class Config(BaseSettings):
     benchmark_results_dir: str = os.path.join(
         ".", "local_model_benchmark", "experiment_results"
     )
+
+    # Model save dir
+    trained_models_dir: str = Field(..., default_factory=get_trained_models_dir)
 
 
 def get_data_science_dir() -> DirectoryPath:

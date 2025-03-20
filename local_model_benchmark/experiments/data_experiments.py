@@ -128,6 +128,17 @@ class OneStateDataExperiment(BaseExperiment):
 
 class AllStatesDataExperiments(BaseExperiment):
 
+    def __init__(
+        self,
+        model: BaseLSTM,
+        name: str,
+        description: str,
+        features: List[str],
+        exclude_covid_years: bool = False,
+    ):
+        super().__init__(model, name, description, features)
+        self.exclude_covid_years = exclude_covid_years
+
     def run(self, state: str, split_rate: float):
         """
         Use whole dataset to train and evaluate model.
@@ -143,7 +154,9 @@ class AllStatesDataExperiments(BaseExperiment):
         # Load whole dataset
         states_loader = StatesDataLoader()
 
-        all_states = states_loader.load_all_states()
+        all_states = states_loader.load_all_states(
+            exclude_covid_years=self.exclude_covid_years
+        )
 
         # Get hyperparameters for training
         all_state_state_params = LSTMHyperparameters(
@@ -183,8 +196,6 @@ class AllStatesDataExperiments(BaseExperiment):
         #### Multiple state preprocessing ends here
 
         # Train rnn
-        # all_states_rnn = BaseLSTM(all_state_state_params)
-
         self.model.train_model(
             batch_inputs=train_input_batches,
             batch_targets=train_target_batches,
@@ -232,7 +243,7 @@ class AllStatesDataExperiments(BaseExperiment):
 
 
 ## 1. Use data for just a single state
-class Experiment1(Experiment):
+class OneState(Experiment):
 
     NAME = "OneState"
     DESCRIPTION = "Train and evaluate model on single state data."
@@ -271,7 +282,9 @@ class Experiment1(Experiment):
             num_layers=3,
         )
 
-        self.model = BaseLSTM(hyperparameters=self.hyperparameters)
+        self.model = BaseLSTM(
+            hyperparameters=self.hyperparameters, features=self.FEATURES
+        )
 
         # Define the experiment
         self.exp = OneStateDataExperiment(
@@ -286,7 +299,7 @@ class Experiment1(Experiment):
 
 
 ## 2. Use data for all states (whole dataset)
-class Experiment2(Experiment):
+class AllStates(Experiment):
 
     NAME = "AllStates"
     DESCRIPTION = "Train and evaluate model on whole dataset."
@@ -319,15 +332,17 @@ class Experiment2(Experiment):
 
         self.hyperparameters = LSTMHyperparameters(
             input_size=len(self.FEATURES),
-            hidden_size=2048,
+            hidden_size=256,
             sequence_length=10,
             learning_rate=0.0001,
             epochs=10,
             batch_size=1,
-            num_layers=4,
+            num_layers=3,
         )
 
-        self.model = BaseLSTM(hyperparameters=self.hyperparameters)
+        self.model = BaseLSTM(
+            hyperparameters=self.hyperparameters, features=self.FEATURES
+        )
 
         # Define the experiment
         self.exp = AllStatesDataExperiments(
@@ -342,7 +357,7 @@ class Experiment2(Experiment):
 
 
 ## 2. Use data for all states (whole dataset) without high error features
-class Experiment2_1(Experiment):
+class AllStatesWithoutHighErrorFeatures(Experiment):
 
     NAME = "AllStatesWithoutHighErrorFeatures"
     DESCRIPTION = "Train and evaluate model on whole dataset excluding the high errorneous features."
@@ -350,7 +365,7 @@ class Experiment2_1(Experiment):
     def __init__(self):
 
         # Copy model from Experiment2
-        exp2 = Experiment2()
+        exp2 = AllStates()
 
         exclude_features = [
             "population, total",
@@ -373,7 +388,9 @@ class Experiment2_1(Experiment):
             num_layers=exp2_hyperparams.num_layers,
         )
 
-        self.model = BaseLSTM(hyperparameters=self.hyperparameters)
+        self.model = BaseLSTM(
+            hyperparameters=self.hyperparameters, features=self.FEATURES
+        )
 
         self.exp = AllStatesDataExperiments(
             model=self.model,
@@ -388,10 +405,9 @@ class Experiment2_1(Experiment):
 
 ## 3. Use data with categories (divide states to categories by GDP in the last year, by geolocation, ...)
 
+
 ## 4. Devide data for aligned sequences (% values - 0 - 100) and for absolute values, which can rise (population, total, ...)
-
-
-class Experiment3(Experiment):
+class OnlyStationaryFeatures(Experiment):
 
     NAME = "OnlyStationaryFeatures"
     DESCRIPTION = (
@@ -435,7 +451,9 @@ class Experiment3(Experiment):
             num_layers=3,
         )
 
-        self.model = BaseLSTM(hyperparameters=single_state_params)
+        self.model = BaseLSTM(
+            hyperparameters=single_state_params, features=self.FEATURES
+        )
 
         # Define the experiment
         self.exp = OneStateDataExperiment(
@@ -449,7 +467,7 @@ class Experiment3(Experiment):
         self.exp.run(state=state, split_rate=split_rate)
 
 
-class Experiment3_1(Experiment):
+class OnlyStationaryFeaturesAllData(Experiment):
 
     NAME = "OnlyStationaryFeaturesAllData"
     DESCRIPTION = (
@@ -491,7 +509,9 @@ class Experiment3_1(Experiment):
             num_layers=3,
         )
 
-        self.model = BaseLSTM(hyperparameters=single_state_params)
+        self.model = BaseLSTM(
+            hyperparameters=single_state_params, features=self.FEATURES
+        )
 
         # Define the experiment
         self.exp = AllStatesDataExperiments(
@@ -505,7 +525,59 @@ class Experiment3_1(Experiment):
         self.exp.run(state=state, split_rate=split_rate)
 
 
-# 5. Finetune experiment -> try to use all data from whole dataset and finetune finetunable layers to one state
+# 4. Train model without covid years experiment
+class ExcludeCovidYears(Experiment):
+
+    NAME = "ExcludeCovidYears"
+    DESCRIPTION = "Trains a model on all states data excluding the covid years."
+
+    def __init__(self):
+        self.name = self.NAME
+        self.FEATURES = [
+            col.lower()
+            for col in [
+                # Need to run columns
+                "year",
+                # Stationary columns
+                "Fertility rate, total",
+                "Arable land",
+                "Birth rate, crude",
+                "GDP growth",
+                "Death rate, crude",
+                "Population ages 15-64",
+                "Population ages 0-14",
+                "Agricultural land",
+                "Population ages 65 and above",
+                "Rural population",
+                "Rural population growth",
+                # "Age dependency ratio",
+                "Urban population",
+                "Population growth",
+            ]
+        ]
+
+        hyperparameters = LSTMHyperparameters(
+            input_size=len(self.FEATURES),
+            hidden_size=256,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=10,
+            batch_size=1,
+            num_layers=3,
+        )
+
+        self.model = BaseLSTM(hyperparameters=hyperparameters, features=self.FEATURES)
+
+        self.exp = AllStatesDataExperiments(
+            model=self.model,
+            name=self.name,
+            description=self.DESCRIPTION,
+            features=self.FEATURES,
+            exclude_covid_years=True,
+        )
+
+    def run(self, state: str = "Czechia", split_rate: float = 0.8):
+        self.exp.run(state=state, split_rate=split_rate)
 
 
 def run_data_experiments(exp_keys: List[float] = None) -> None:
@@ -517,12 +589,13 @@ def run_data_experiments(exp_keys: List[float] = None) -> None:
     """
 
     # Setup experiments
-    experiments: Dict[float, Experiment] = {
-        1: Experiment1(),
-        2: Experiment2(),
-        2.1: Experiment2_1(),
-        3: Experiment3(),
-        3.1: Experiment3_1(),
+    experiments: Dict[str, Experiment] = {
+        "AllStates": AllStates(),
+        "AllStatesWithoutHighErrorFeatures": AllStatesWithoutHighErrorFeatures(),
+        "ExcludeCovidYears": ExcludeCovidYears(),
+        "OneState": OneState(),
+        "OnlyStationaryFeatures": OnlyStationaryFeatures(),
+        "OnlyStationaryFeaturesAllData": OnlyStationaryFeaturesAllData(),
     }
 
     # If there are defined experiments keys to run
@@ -548,5 +621,4 @@ if __name__ == "__main__":
     setup_logging()
 
     # Run experiments
-    # run_data_experiments(exp_keys=[1])
-    run_data_experiments(exp_keys=[3.1])
+    run_data_experiments(exp_keys=["AllStates", "AllStatesWithoutHighErrorFeatures"])

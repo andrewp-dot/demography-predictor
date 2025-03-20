@@ -14,9 +14,13 @@
         - Train LSTM model using just one State 
         - Train LSTM with only stationary features (% features etc.)
         - Use only stationary features
-        - Compare LSTM model and statistical model(s)
+        
+        <!-- # New -->
+        - experiment with exclusion of covid years
+        - Finetune experiment -> use all states and finetune layer using the state 
     - Model experiments
         - Parameter optimization using `optuna` library
+        - Compare LSTM model and statistical model(s)
 3. Statistical model implementation (ARIMA)
 
 Bonus:
@@ -26,17 +30,16 @@ Bonus:
 1. Global model implementation (Note: implemented, not integrated)
 2. Demography predictor implementation (both, local and global)
 3. Statistical model implementation (Grey model)
+4. Experiments:
+    - None
 
 
 ## TODO:
-
-0. !!!! FIX THE INTERFACE FOR THE EXPERIMENTS TO BE COMPATIBLE WITH EVERY MODEL YOU CREATE, OR DESIGN THE EXPERIMENTS IN THAT WAY, THAT YOU CAN COMPARE LOCAL MODELS !!! (objective: find a way how to compare different LSTM models).
+0. !!!! FIX THE INTERFACE FOR THE EXPERIMENTS TO BE COMPATIBLE WITH EVERY MODEL YOU CREATE, OR DESIGN THE EXPERIMENTS IN THAT WAY, THAT YOU CAN COMPARE LOCAL MODELS !!! (objective: find a way how to compare different LSTM models) - nearly done, not tested.
 
 1. Experiments
-    - experiment with exclusion of covid years
     - use just part of the dataset (only states with same geolocation, wealth level...)
     - Different Neural network architectures (not a just a pure LSTM)
-    - Finetune experiment -> use all states and finetune layer using the state 
     - (BONUS) LSTM and NN as a global model instead of local 
 2. Write experiment results -> method comparision, advantages, disadvantages (ARIMA, LSTM experiment)
 3. Predictions using the population from Lakmoos AI. –> find a call, data adapter for Clones -> Add to Poli's calendar

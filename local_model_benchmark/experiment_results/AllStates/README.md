@@ -8,9 +8,9 @@
 Input size:         16
 Batch size:         1
 
-Hidden size:        2048
+Hidden size:        256
 Sequence length:    10
-Layers:             4
+Layers:             3
 
 Learning rate:      0.0001
 Epochs:             10
@@ -36,3 +36,19 @@ population growth
 adolescent fertility rate
 life expectancy at birth, total
 ```
+## Loss graph
+
+
+![Loss graph](./plots/loss.png)
+
+
+## Evaluation of the model - state: Czechia
+
+
+![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
+
+# Metric result
+{'mae': 8194968.081969293,
+ 'mse': 1088894961549800.4,
+ 'r2': -262820.9797969713,
+ 'rmse': 8258915.432592933}

@@ -8,12 +8,14 @@ from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
 from src.utils.log import setup_logging
+from src.utils.save_model import save_model, get_model
 from src.local_model.base import LSTMHyperparameters, TrainingStats, EvaluateModel
 from src.local_model.base import CustomModelBase
 from src.local_model.model import BaseLSTM
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
+
 
 logger = logging.getLogger(name="finetuneable_local_model")
 
@@ -33,7 +35,9 @@ logger = logging.getLogger(name="finetuneable_local_model")
 class FineTunableLSTM(CustomModelBase):
 
     def __init__(
-        self, base_model: CustomModelBase, hyperparameters: LSTMHyperparameters
+        self,
+        base_model: CustomModelBase,
+        hyperparameters: LSTMHyperparameters,
     ):
         super(FineTunableLSTM, self).__init__(hyperparameters)
 
@@ -42,7 +46,9 @@ class FineTunableLSTM(CustomModelBase):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Load pretrained LSTM layers
+        self.base_model = base_model
         self.base_lstm = base_model.lstm
+        self.base_hyperparameters = base_model.hyperparameters
 
         # Freeze pretrained LSTM layers
         for param in self.base_lstm.parameters():
@@ -304,8 +310,24 @@ def train_base_model(
     evaluation_state_name: str,
 ) -> BaseLSTM:
 
+    MODEL_NAME = f"base_model_{hyperparameters.hidden_size}.pkl"
+
     # Set features const
     FEATURES = features
+
+    try:
+        model: BaseLSTM = get_model(MODEL_NAME)
+        logger.info(f"Base model already exist. Model name: {MODEL_NAME}")
+
+        # TODO: change this
+        if model.FEATURES != FEATURES:
+            raise ValueError(
+                "The Base model has incompatibile features with the one you want"
+            )
+
+        return model
+    except ValueError as e:
+        logger.info(f"{str(e)}. Training new model.")
 
     # Load data
     all_states_loader = StatesDataLoader()
@@ -328,7 +350,7 @@ def train_base_model(
     )
 
     # Create model
-    base_model = BaseLSTM(hyperparameters=hyperparameters)
+    base_model = BaseLSTM(hyperparameters=hyperparameters, features=FEATURES)
     base_model.set_scaler(scaler=base_fitted_scaler)
 
     # Train model using whole dataset
@@ -409,6 +431,9 @@ if __name__ == "__main__":
         evaluation_state_name=EVLAUATION_STATE_NAME,
     )
 
+    # Save base model
+    save_model(base_model, f"base_model_{base_model.hyperparameters.hidden_size}.pkl")
+
     # Create finetunable model
     finetunable_hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
@@ -465,3 +490,8 @@ if __name__ == "__main__":
 
     fig = finetunable_model_evaluation.plot_predictions()
     fig.show()
+
+    # Save model
+    save_model(
+        finetunable_local_model, f"finetunable_model_{EVLAUATION_STATE_NAME}.pkl"
+    )

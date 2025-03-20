@@ -1,5 +1,5 @@
 # Define * import
 
-__all__ = ["log"]
+__all__ = ["log", "save_model"]
 
-from . import log
+from . import log, save_model

@@ -29,10 +29,11 @@ logger = logging.getLogger("local_model")
 
 class BaseLSTM(CustomModelBase):
 
-    def __init__(self, hyperparameters: LSTMHyperparameters):
+    def __init__(self, hyperparameters: LSTMHyperparameters, features: List[str]):
         super(BaseLSTM, self).__init__(hyperparameters)
 
         # self.hyperparameters: LSTMHyperparameters = hyperparameters
+        self.FEATURES: List[str] = features
 
         # Set device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

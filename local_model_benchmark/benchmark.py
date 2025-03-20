@@ -12,15 +12,17 @@ from config import Config
 from src.utils.log import setup_logging
 
 from local_model_benchmark.experiments.data_experiments import (
-    Experiment1,
-    Experiment2,
-    Experiment2_1,
-    Experiment3,
-    Experiment3_1,
+    AllStates,
+    AllStatesWithoutHighErrorFeatures,
+    OneState,
+    OnlyStationaryFeatures,
+    OnlyStationaryFeaturesAllData,
+    ExcludeCovidYears,
 )
 from local_model_benchmark.experiments.model_experiments import (
     LSTMOptimalParameters,
     RNNvsStatisticalMethods,
+    FinetuneBaseLSTM,
 )
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -38,14 +40,16 @@ logger = logging.getLogger("benchmark")
 
 # List of available experimets
 experiment_list: List[Experiment] = [
-    Experiment1(),
-    Experiment2(),
-    Experiment2_1(),
-    Experiment3(),
-    Experiment3_1(),
+    AllStates(),
+    AllStatesWithoutHighErrorFeatures(),
+    OneState(),
+    OnlyStationaryFeatures(),
+    OnlyStationaryFeaturesAllData(),
+    ExcludeCovidYears(),
     # Model experiments
     LSTMOptimalParameters(),
     RNNvsStatisticalMethods(),
+    FinetuneBaseLSTM(),
 ]
 
 # Setup experiments -> convert experiment list to dict
