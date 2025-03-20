@@ -134,6 +134,9 @@ class BaseLSTM(CustomModelBase):
         :param batch_targets: torch.Tensor: batches of target sequences
         :param display_nth_epoch: int: First and every nth epoch is displayed
         """
+
+        torch.autograd.set_detect_anomaly(True)
+
         # Put the model to the device
         self.to(device=self.device)
 
@@ -161,14 +164,27 @@ class BaseLSTM(CustomModelBase):
 
                 # Put the targets to the device
                 batch_input, batch_target = batch_input.to(
-                    self.device
-                ), batch_target.to(self.device)
+                    device=self.device
+                ), batch_target.to(device=self.device)
 
                 # Forward pass
                 outputs = self(batch_input)
 
+                logger.error("loss ")
+
                 # Compute loss
                 loss = criterion(outputs, batch_target)
+
+                if torch.isnan(loss) or torch.isinf(loss):
+                    logger.error(f"Loss is NaN/Inf at epoch {epoch}")
+                    raise ValueError("Loss became NaN or Inf, stopping training!")
+
+                logger.error("loss ")
+
+                loss.to(
+                    device=self.device
+                )  # Use this to prevent errors, see if this will work on azure
+
                 epoch_loss += loss.item()
 
                 # Backward pass
@@ -176,8 +192,11 @@ class BaseLSTM(CustomModelBase):
                 loss.backward()  # Computes gradients
                 optimizer.step()  # Update weights and biases
 
+            logger.error("Herre 1 ")
             epoch_loss /= len(batch_inputs)
             self.training_stats.losses.append(epoch_loss)
+
+            logger.error("Herre 2 ")
 
             if not epoch % display_nth_epoch:
                 logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
@@ -306,7 +325,7 @@ if __name__ == "__main__":
         batch_size=1,
         num_layers=4,
     )
-    rnn = BaseLSTM(hyperparameters)
+    rnn = BaseLSTM(hyperparameters, FEATURES)
 
     # Load data
     czech_loader = StateDataLoader("Czechia")
