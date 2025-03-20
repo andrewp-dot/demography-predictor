@@ -8,11 +8,12 @@ import copy
 import optuna
 
 
-from src.utils.log import setup_logging, Config
+from config import Config
+from src.utils.log import setup_logging
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
-from local_model_benchmark.experiments.base_experiment import BaseExperiment
+from local_model_benchmark.experiments.base_experiment import BaseExperiment, Experiment
 
 from src.local_model.statistical_models import LocalARIMA, EvaluateARIMA
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -25,6 +26,10 @@ logger = logging.getLogger("benchmark")
 # Get settings
 settings = Config()
 
+# TODO: rework these experiments
+# 1. Stash changes
+# 2. Add them to CLI
+
 ## Model experiments settings
 
 # Get the list of all available features
@@ -33,21 +38,21 @@ settings = Config()
 # Setup features to use all
 FEATURES = [
     "year",
-    # "Fertility rate, total",
-    # "Population, total",
-    # "Net migration",
-    # "Arable land",
-    # "Birth rate, crude",
-    # "GDP growth",
-    # "Death rate, crude",
-    # "Agricultural land",
-    # "Rural population",
-    # "Rural population growth",
-    # "Age dependency ratio",
-    # "Urban population",
-    # "Population growth",
-    # "Adolescent fertility rate",
-    # "Life expectancy at birth, total",
+    "Fertility rate, total",
+    "Population, total",
+    "Net migration",
+    "Arable land",
+    "Birth rate, crude",
+    "GDP growth",
+    "Death rate, crude",
+    "Agricultural land",
+    "Rural population",
+    "Rural population growth",
+    "Age dependency ratio",
+    "Urban population",
+    "Population growth",
+    "Adolescent fertility rate",
+    "Life expectancy at birth, total",
 ]
 
 FEATURES = [col.lower() for col in FEATURES]
@@ -70,14 +75,16 @@ class OptimalParamsExperiment(BaseExperiment):
     # TODO: evaluation -> use more then r2 score?
     def __init__(
         self,
+        model: BaseLSTM,
         name: str,
         description: str,
+        features: List[str],
         hidden_size_range: Tuple[int, int],
         sequence_length_range: Tuple[int, int],
         num_layers_range: Tuple[int, int],
         learning_rate_range: Tuple[int, int],
     ):
-        super().__init__(name, description)
+        super().__init__(model, name, description, features)
 
         # Add ranges for parameters
         self.hidden_size_range: Tuple[int, int] = self.__min_max_tuple(
@@ -223,7 +230,7 @@ class OptimalParamsExperiment(BaseExperiment):
 
         return study.best_params
 
-    def run(self, state: str, split_rate: float, features: List[str]):
+    def run(self, state: str, split_rate: float):
 
         self.create_readme()
 
@@ -237,7 +244,7 @@ class OptimalParamsExperiment(BaseExperiment):
         state_df.drop(columns=["country name"], inplace=True)
 
         # Get features
-        FEATURES = [col.lower() for col in features]
+        FEATURES = self.FEATURES
 
         # Split data
         train_data_df, test_data_df = state_loader.split_data(
@@ -247,7 +254,7 @@ class OptimalParamsExperiment(BaseExperiment):
         best_params_dict = self.find_optimal_hyperparams(
             train_df=train_data_df,
             test_df=test_data_df,
-            base_params=BASE_HYPERPARAMS,
+            base_params=self.model.hyperparameters,
             state_loader=state_loader,
             features=FEATURES,
         )
@@ -256,21 +263,19 @@ class OptimalParamsExperiment(BaseExperiment):
         base_train_batches, base_target_batches, base_scaler = (
             state_loader.preprocess_training_data_batches(
                 train_data_df=train_data_df,
-                hyperparameters=BASE_HYPERPARAMS,
+                hyperparameters=self.model.hyperparameters,
                 features=FEATURES,
                 scaler=MinMaxScaler(),
             )
         )
 
-        base_model = BaseLSTM(hyperparameters=BASE_HYPERPARAMS)
-
-        base_model.train_model(
+        self.model.train_model(
             batch_inputs=base_train_batches,
             batch_targets=base_target_batches,
             display_nth_epoch=2,
         )
 
-        base_model_evaluation = EvaluateModel(base_model)
+        base_model_evaluation = EvaluateModel(self.model)
         base_model_evaluation.eval(
             test_X=train_data_df,
             test_y=test_data_df,
@@ -280,6 +285,9 @@ class OptimalParamsExperiment(BaseExperiment):
 
         # Plot and save base model plot
         base_fig = base_model_evaluation.plot_predictions()
+
+        # Add params
+        self.readme_add_params()
 
         self.readme_add_section(
             title="# Base model evaluation",
@@ -296,7 +304,7 @@ class OptimalParamsExperiment(BaseExperiment):
         # Train and evaluate parametricaly adjusted model
         # Rewrite the parameters to optimal
         OPTIMAL_PAREMETRS = self.adjust_hidden_size(
-            BASE_HYPERPARAMS, best_params_dict["hidden_size"]
+            self.model.hyperparameters, best_params_dict["hidden_size"]
         )
         OPTIMAL_PAREMETRS = self.adjust_sequence_len(
             OPTIMAL_PAREMETRS, best_params_dict["sequence_length"]
@@ -318,6 +326,7 @@ class OptimalParamsExperiment(BaseExperiment):
             )
         )
 
+        # Train and evaluate the adjusted parameters model
         optimal_model = BaseLSTM(hyperparameters=OPTIMAL_PAREMETRS)
 
         optimal_model.train_model(
@@ -339,18 +348,18 @@ class OptimalParamsExperiment(BaseExperiment):
 
         self.save_plot(fig_name="optimal_model_eval.png", figure=optimal_fig)
 
+        # Write optimal model evaluation
         self.readme_add_section(
             title="# Optimal model evaluation",
-            text=f"Hyperparameters:\n```{str(OPTIMAL_PAREMETRS)}```\n",
+            text="",
         )
+        self.readme_add_params(custom_params=optimal_model.hyperparameters)
 
         self.readme_add_plot(
             plot_name="Optimal model predicted vs reference values",
             plot_description="Displays the performance for every feature predicted of the `Optimal Model`.",
             fig_name="optimal_model_eval.png",
         )
-
-        # Train and evaluate the adjusted parameters model
 
         # Save the results
         formatted_base_model_evaluation: str = pprint.pformat(
@@ -376,7 +385,7 @@ Optimal model:
 # 2.1. VAR, SARIMA, ARIMA * 19?
 class CompareLSTMARIMAExperiment(BaseExperiment):
 
-    def run(self, state: str, split_rate: float, features: List[str]) -> None:
+    def run(self, state: str, split_rate: float) -> None:
         # Create readme
         self.create_readme()
 
@@ -403,6 +412,7 @@ class CompareLSTMARIMAExperiment(BaseExperiment):
         )
 
         # Exclude "year" from features
+        features = self.FEATURES
         features.remove("year")
 
         # For every features create ARIMA and LSTM model
@@ -500,27 +510,125 @@ class CompareLSTMARIMAExperiment(BaseExperiment):
 # 4. Predict parameters for different years (e.g. to 2030, 2040, ... )
 
 
-def run_experiments():
+class LSTMOptimalParameters(Experiment):
 
-    # Exp1
-    logger.info("Running experiment 1...")
-    exp1 = OptimalParamsExperiment(
-        name="OptimalParamsExperiment",
-        description="The goal is to find the optimal parameters for the given BaseLSTM model.",
-        hidden_size_range=(128, 2048),
-        sequence_length_range=(10, 15),
-        num_layers_range=(1, 5),
-        learning_rate_range=(1e-5, 1e-2),
+    NAME = "OptimalParamsExperiment"
+    DESCRIPTION = "Compares the performance of LSTM model with the statistical ARIMA model for all features prediction. Each model is trained just to predict 1 feauture from all features."
+
+    def __init__(self):
+
+        self.name = self.NAME
+
+        self.FEATURES = [
+            col.lower()
+            for col in [
+                "year",
+                "Fertility rate, total",
+                "Population, total",
+                "Net migration",
+                "Arable land",
+                "Birth rate, crude",
+                "GDP growth",
+                "Death rate, crude",
+                "Agricultural land",
+                "Rural population",
+                "Rural population growth",
+                "Age dependency ratio",
+                "Urban population",
+                "Population growth",
+                "Adolescent fertility rate",
+                "Life expectancy at birth, total",
+            ]
+        ]
+
+        hyperparameters = LSTMHyperparameters(
+            input_size=len(self.FEATURES),
+            hidden_size=256,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=20,
+            batch_size=1,
+            num_layers=3,
+        )
+
+        self.model = BaseLSTM(hyperparameters=hyperparameters)
+
+        self.exp = OptimalParamsExperiment(
+            model=self.model,
+            name=self.NAME,
+            description=self.DESCRIPTION,
+            features=self.FEATURES,
+            hidden_size_range=(128, 2048),
+            sequence_length_range=(10, 15),
+            num_layers_range=(1, 5),
+            learning_rate_range=(1e-5, 1e-2),
+        )
+
+    def run(self, state="Czechia", split_rate=0.8):
+        return self.exp.run(state=state, split_rate=split_rate)
+
+
+class RNNvsStatisticalMethods(Experiment):
+    NAME = "CompareLSTMARIMAExperiment"
+    DESCRIPTION = (
+        "The goal is to find the optimal parameters for the given BaseLSTM model."
     )
-    exp1.run(state="Czechia", split_rate=0.8, features=FEATURES)
 
-    # Exp2
-    # logger.info("Running experiment 2...")
-    # exp2 = CompareLSTMARIMAExperiment(
-    #     name="CompareLSTMARIMAExperiment",
-    #     description="Compares the performance of LSTM model with the statistical ARIMA model for all features prediction. Each model is trained just to predict 1 feauture from all features.",
-    # )
-    # exp2.run(state="Czechia", split_rate=0.8, features=ALL_FEATURES)
+    def __init__(self):
+
+        self.name = self.NAME
+
+        self.FEATURES = [
+            col.lower()
+            for col in [
+                "year",
+                "Fertility rate, total",
+                "Population, total",
+                "Net migration",
+                "Arable land",
+                "Birth rate, crude",
+                "GDP growth",
+                "Death rate, crude",
+                "Agricultural land",
+                "Rural population",
+                "Rural population growth",
+                "Age dependency ratio",
+                "Urban population",
+                "Population growth",
+                "Adolescent fertility rate",
+                "Life expectancy at birth, total",
+            ]
+        ]
+
+        hyperparameters = LSTMHyperparameters(
+            input_size=len(self.FEATURES),
+            hidden_size=256,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=20,
+            batch_size=1,
+            num_layers=3,
+        )
+
+        self.model = BaseLSTM(hyperparameters=hyperparameters)
+
+        self.exp = CompareLSTMARIMAExperiment(
+            model=self.model,
+            name=self.NAME,
+            description=self.DESCRIPTION,
+            features=self.FEATURES,
+        )
+
+    def run(self, state="Czechia", split_rate=0.8):
+        return self.exp.run(state=state, split_rate=split_rate)
+
+
+def run_experiments():
+    exp1 = LSTMOptimalParameters()
+    exp1.run()
+
+    exp2 = RNNvsStatisticalMethods()
+    exp2.run()
 
 
 if __name__ == "__main__":

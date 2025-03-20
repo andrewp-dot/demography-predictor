@@ -18,6 +18,10 @@ from local_model_benchmark.experiments.data_experiments import (
     Experiment3,
     Experiment3_1,
 )
+from local_model_benchmark.experiments.model_experiments import (
+    LSTMOptimalParameters,
+    RNNvsStatisticalMethods,
+)
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
@@ -39,6 +43,9 @@ experiment_list: List[Experiment] = [
     Experiment2_1(),
     Experiment3(),
     Experiment3_1(),
+    # Model experiments
+    LSTMOptimalParameters(),
+    RNNvsStatisticalMethods(),
 ]
 
 # Setup experiments -> convert experiment list to dict

@@ -166,13 +166,20 @@ class BaseExperiment:
             "Cannot add section! The readme does not exist! Try to use 'experiment.create_readme()' first."
         )
 
-    def readme_add_params(self) -> None:
+    def readme_add_params(
+        self, custom_params: LSTMHyperparameters | None = None
+    ) -> None:
+
+        write_params = self.model.hyperparameters
 
         if self.readme_path is not None:
 
+            if custom_params:
+                write_params = custom_params
+
             with open(self.readme_path, "a") as readme:
                 readme.write("## Hyperparameters\n")
-                readme.write(f"```{self.model.hyperparameters}```\n")
+                readme.write(f"```{write_params}```\n")
             return
 
         raise ValueError(
