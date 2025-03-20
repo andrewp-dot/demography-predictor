@@ -70,6 +70,51 @@ class DemographyPredictor:
         print(final_predictions)
 
 
+def create_local_model(features: List[str]):
+
+    states_loader = StatesDataLoader()
+    state_dfs = states_loader.load_all_states()
+
+    # Define local model
+    hyperparameters = LSTMHyperparameters(
+        input_size=len(features),
+        hidden_size=256,
+        sequence_length=15,
+        learning_rate=0.0001,
+        epochs=30,
+        batch_size=32,  # Do not change this if you do not want to experience segfault
+        num_layers=4,
+    )
+
+    # Train local model
+    local_model = BaseLSTM(hyperparameters=hyperparameters, features=features)
+
+    # Create train and test data dict
+    train_data_dict, test_data_dict = states_loader.split_data(
+        states_dict=state_dfs, sequence_len=hyperparameters.sequence_length
+    )
+
+    # Create batches
+    input_train_batches, target_train_batches, fitted_scaler = (
+        states_loader.preprocess_train_data_batches(
+            states_train_data_dict=train_data_dict,
+            hyperparameters=hyperparameters,
+            features=features,
+        )
+    )
+
+    # Set fitted scaler
+    local_model.set_scaler(scaler=fitted_scaler)
+
+    local_model.train_model(
+        batch_inputs=input_train_batches,
+        batch_targets=target_train_batches,
+        # display_nth_epoch=1,
+    )
+
+    return local_model
+
+
 def predictor_v1() -> DemographyPredictor:
 
     # Train global model
@@ -100,45 +145,7 @@ def predictor_v1() -> DemographyPredictor:
 
     LOCAL_FEATURES = [feature for feature in FEATURES if feature != "country name"]
 
-    # Define local model
-    hyperparameters = LSTMHyperparameters(
-        input_size=len(LOCAL_FEATURES),
-        hidden_size=256,
-        sequence_length=15,
-        learning_rate=0.0001,
-        epochs=30,
-        batch_size=1,
-        num_layers=4,
-    )
-
-    # Train local model
-    local_model = BaseLSTM(hyperparameters=hyperparameters, features=LOCAL_FEATURES)
-    logger.error("H")
-
-    # Create train and test data dict
-    train_data_dict, test_data_dict = states_loader.split_data(
-        states_dict=state_dfs, sequence_len=hyperparameters.sequence_length
-    )
-
-    # Create batches
-    input_train_batches, target_train_batches, fitted_scaler = (
-        states_loader.preprocess_train_data_batches(
-            states_train_data_dict=train_data_dict,
-            hyperparameters=hyperparameters,
-            features=LOCAL_FEATURES,
-        )
-    )
-
-    # Set fitted scaler
-    local_model.set_scaler(scaler=fitted_scaler)
-
-    logger.error("r")
-
-    local_model.train_model(
-        batch_inputs=input_train_batches, batch_targets=target_train_batches
-    )
-
-    logger.error("e")
+    local_model = create_local_model(features=LOCAL_FEATURES)
 
     # Define global model
     global_model: GlobalModel = GlobalModel(

@@ -170,7 +170,7 @@ class BaseLSTM(CustomModelBase):
                 # Forward pass
                 outputs = self(batch_input)
 
-                logger.error("loss ")
+                # logger.error("loss ")
 
                 # Compute loss
                 loss = criterion(outputs, batch_target)
@@ -179,7 +179,7 @@ class BaseLSTM(CustomModelBase):
                     logger.error(f"Loss is NaN/Inf at epoch {epoch}")
                     raise ValueError("Loss became NaN or Inf, stopping training!")
 
-                logger.error("loss ")
+                # logger.error("loss ")
 
                 loss.to(
                     device=self.device
@@ -192,11 +192,8 @@ class BaseLSTM(CustomModelBase):
                 loss.backward()  # Computes gradients
                 optimizer.step()  # Update weights and biases
 
-            logger.error("Herre 1 ")
             epoch_loss /= len(batch_inputs)
             self.training_stats.losses.append(epoch_loss)
-
-            logger.error("Herre 2 ")
 
             if not epoch % display_nth_epoch:
                 logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
@@ -318,7 +315,7 @@ if __name__ == "__main__":
 
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
-        hidden_size=2048,
+        hidden_size=256,
         sequence_length=15,
         learning_rate=0.0001,
         epochs=30,
