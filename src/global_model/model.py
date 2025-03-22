@@ -76,13 +76,14 @@ class GlobalModel:
         model: Union[XGBRegressor, GridSearchCV],
         features: List[str],
         targets: List[str],
-        scaler: MinMaxScaler | None = None,
+        scaler: Union[MinMaxScaler, RobustScaler, StandardScaler] | None = None,
         params: XGBoostTuneParams | None = None,
     ):
 
         # Define model
         self.model: Union[XGBRegressor, MultiOutputRegressor] = model
         self.params: XGBoostTuneParams = params
+        self.SCALER: Union[MinMaxScaler, RobustScaler, StandardScaler] = scaler
 
         # Define features and targest
         self.FEATURES: List[str] = features
@@ -93,7 +94,6 @@ class GlobalModel:
 
         # Initialize evaluation results
         self.evaluation_results: pd.DataFrame | None = None
-        self.SCALER: MinMaxScaler = scaler
 
     def preprocess_data(
         self,
@@ -123,7 +123,7 @@ class GlobalModel:
             self.SCALER = MinMaxScaler()
             self.SCALER.fit(numerical_data_df)
 
-        scaled_numerical_data_array = self.SCALER.transform(numerical_data_df)
+        scaled_numerical_data_array = self.SCALER.fit_transform(numerical_data_df)
 
         scaled_numerical_data_df = pd.DataFrame(
             scaled_numerical_data_array,
@@ -153,7 +153,6 @@ class GlobalModel:
         self,
         data: pd.DataFrame,
         split_size: float,
-        fitted_scaler: MinMaxScaler,
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
         From the given dataframe creates and scales the data using fitted scaler. Use train_test_split function from sklearn.
@@ -234,9 +233,6 @@ class GlobalModel:
 
         return X_train, X_test, y_train, y_test
 
-    # TODO:
-    # Preprocess categorical data
-    # Delete DMatricies -> in order to support parameter tuning and multioutput regression
     def train(
         self,
         X_train: pd.DataFrame,

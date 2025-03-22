@@ -3,6 +3,7 @@ import pandas as pd
 import logging
 from typing import Union, List
 from xgboost import XGBRegressor
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 # Custom imports
 from src.utils.log import setup_logging
@@ -60,7 +61,13 @@ class DemographyPredictor:
             input_data=scaled_data_df, last_year=last_year, target_year=target_year
         )
 
-        feature_predictions_df = pd.DataFrame(feature_predictions, columns=FEAUTRES)
+        # Unscale feature predictions
+        feature_predictions_unscaled = self.local_model.scaler.inverse_transform(
+            feature_predictions
+        )
+        feature_predictions_df = pd.DataFrame(
+            feature_predictions_unscaled, columns=FEAUTRES
+        )
 
         # Predict target variable using global model
         final_predictions = self.global_model.predict_human_readable(
@@ -79,11 +86,11 @@ def create_local_model(features: List[str]):
     hyperparameters = LSTMHyperparameters(
         input_size=len(features),
         hidden_size=256,
-        sequence_length=15,
+        sequence_length=10,
         learning_rate=0.0001,
-        epochs=30,
+        epochs=2,
         batch_size=32,  # Do not change this if you do not want to experience segfault
-        num_layers=4,
+        num_layers=3,
     )
 
     # Train local model
@@ -109,7 +116,7 @@ def create_local_model(features: List[str]):
     local_model.train_model(
         batch_inputs=input_train_batches,
         batch_targets=target_train_batches,
-        # display_nth_epoch=1,
+        display_nth_epoch=1,
     )
 
     return local_model
@@ -127,7 +134,8 @@ def predictor_v1() -> DemographyPredictor:
 
     ## Targets
     ALL_TARGETS = [
-        "population, total" "population ages 15-64",
+        "population, total",
+        "population ages 15-64",
         "population ages 0-14",
         "population ages 65 and above",
     ]
@@ -145,6 +153,7 @@ def predictor_v1() -> DemographyPredictor:
 
     LOCAL_FEATURES = [feature for feature in FEATURES if feature != "country name"]
 
+    # Maybe use get model instead of manual training
     local_model = create_local_model(features=LOCAL_FEATURES)
 
     # Define global model
@@ -152,11 +161,12 @@ def predictor_v1() -> DemographyPredictor:
         model=XGBRegressor(),
         features=FEATURES,
         targets=targets,
-        scaler=local_model.scaler,
+        scaler=MinMaxScaler(),
     )
 
     X_train, X_test, y_train, y_test = global_model.create_train_test_data(
-        data=whole_dataset_df, split_size=0.8, fitted_scaler=local_model.scaler
+        data=whole_dataset_df,
+        split_size=0.8,
     )
 
     global_model.train(X_train=X_train, y_train=y_train)
