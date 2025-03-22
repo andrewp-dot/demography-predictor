@@ -114,22 +114,23 @@ class GlobalModel:
         df = data.copy()
 
         # Scale the numerical columns
-        numerical_data_df = df.select_dtypes(include=["number"])
+        # numerical_data_df = df.select_dtypes(include=["number"])
+        scaled_numerical_data_df = df.select_dtypes(include=["number"])
 
         # Scale numerical data
 
         # Create and fit scaler if note defined
-        if self.SCALER is None:
-            self.SCALER = MinMaxScaler()
-            self.SCALER.fit(numerical_data_df)
+        # if self.SCALER is None:
+        #     self.SCALER = MinMaxScaler()
+        #     self.SCALER.fit(numerical_data_df)
 
-        scaled_numerical_data_array = self.SCALER.fit_transform(numerical_data_df)
+        # scaled_numerical_data_array = self.SCALER.fit_transform(numerical_data_df)
 
-        scaled_numerical_data_df = pd.DataFrame(
-            scaled_numerical_data_array,
-            columns=numerical_data_df.columns,
-            index=numerical_data_df.index,
-        )
+        # scaled_numerical_data_df = pd.DataFrame(
+        #     scaled_numerical_data_array,
+        #     columns=numerical_data_df.columns,
+        #     index=numerical_data_df.index,
+        # )
 
         # Encode categorical data
         categorical_data_df = df.select_dtypes(exclude=["number"])
@@ -168,7 +169,7 @@ class GlobalModel:
 
         # Set the country name as the categorical column
         if "country name" in data.columns:
-            data["country name"] = data["country name"].astype(dtype="category")
+            data.loc[:, "country name"] = data["country name"].astype("category")
 
         # Preprocess data
         logger.info("Preprocessing data....")
@@ -352,9 +353,9 @@ class GlobalModel:
         predictions_df = self.predict_human_readable(X_test)
 
         # Transform the original data back back
-        y_test = self.transform_columns(
-            data=y_test, columns=y_test.columns, inverse=True
-        )
+        # y_test = self.transform_columns(
+        #     data=y_test, columns=y_test.columns, inverse=True
+        # )
 
         # Compute evaluation metrics
         mse = mean_squared_error(y_test, predictions_df)
@@ -381,9 +382,9 @@ class GlobalModel:
         # Create predictions dataframe
         predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
 
-        predictions = self.transform_columns(
-            data=predictions_df, columns=predictions_df.columns, inverse=True
-        )
+        # predictions = self.transform_columns(
+        #     data=predictions_df, columns=predictions_df.columns, inverse=True
+        # )
 
         # Create df again
         predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)

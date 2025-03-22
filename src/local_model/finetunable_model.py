@@ -50,6 +50,10 @@ class FineTunableLSTM(CustomModelBase):
         self.base_lstm = base_model.lstm
         self.base_hyperparameters = base_model.hyperparameters
 
+        # Get this for compatibility
+        self.FEATURES = self.base_model.FEATURES
+        self.scaler = self.base_model.scaler
+
         # Freeze pretrained LSTM layers
         for param in self.base_lstm.parameters():
             param.requires_grad = False
@@ -91,7 +95,7 @@ class FineTunableLSTM(CustomModelBase):
                 batch_size,
                 self.hyperparameters.hidden_size,
                 dtype=torch.float32,
-            )
+            ).to(self.device)
 
         # Initiliaze cell state
         if c_0 is None:
@@ -102,7 +106,7 @@ class FineTunableLSTM(CustomModelBase):
                 batch_size,
                 self.hyperparameters.hidden_size,
                 dtype=torch.float32,
-            )
+            ).to(self.device)
 
         # Return states
         return h_0, c_0
@@ -128,15 +132,20 @@ class FineTunableLSTM(CustomModelBase):
         h_0: torch.Tensor | None = None,
         c_0: torch.Tensor | None = None,
     ):
-        # Note: does not reset hidden states
 
         # Initialize hidden state
         self.h_0, self.c_0 = self.__initialize_hidden_states(
             batch_size=x.size(0), h_0=h_0, c_0=c_0
         )
 
+        # Move hidden states to device
+        x = x.to(device=self.device)
+        self.h_0 = self.h_0.to(self.device)
+        self.c_0 = self.c_0.to(self.device)
+
         # Forward pass for the base model, skip gradiend calculation -> freeze base model lstm layers
         with torch.no_grad():
+
             old_lstm_out, _ = self.base_lstm(
                 x,
                 (
@@ -144,6 +153,9 @@ class FineTunableLSTM(CustomModelBase):
                     self.c_0[: self.base_lstm.num_layers],
                 ),
             )
+
+        # Put the out to the device
+        old_lstm_out.to(device=self.device)
 
         # Get the output of new lstm
         new_lstm_out, _ = self.new_lstm(
@@ -153,6 +165,9 @@ class FineTunableLSTM(CustomModelBase):
                 self.c_0[self.base_lstm.num_layers :],
             ),
         )
+
+        # Get the output of new lstm
+        new_lstm_out.to(device=self.device)
 
         # Get last time step
         last_time_step_out = new_lstm_out[:, -1, :]
@@ -257,9 +272,12 @@ class FineTunableLSTM(CustomModelBase):
 
                 # Slide over the sequence
                 window = input_sequence[i : i + sequence_length]  # Extract window
-                window = window.unsqueeze(
-                    0
+                window = window.unsqueeze(0).to(
+                    self.device
                 )  # Add batch dimension: (1, sequence_length, input_size)
+
+                # Put the input to the device
+                window.to(device=self.device)
 
                 # Forward pass
                 pred, (h_0, c_0) = self(window, self.h_0, self.c_0)
@@ -290,7 +308,11 @@ class FineTunableLSTM(CustomModelBase):
 
                 # Shift the window by removing the first value and adding the new prediction
                 current_window = torch.cat(
-                    (current_window[:, 1:, :], pred.unsqueeze(0)), dim=1
+                    (
+                        current_window[:, 1:, :].to(device=self.device),
+                        pred.unsqueeze(0),
+                    ),
+                    dim=1,
                 )
 
         # Reset the hidden state for next prediction
@@ -416,12 +438,12 @@ if __name__ == "__main__":
 
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
-        hidden_size=256,
-        sequence_length=10,
+        hidden_size=512,
+        sequence_length=12,
         learning_rate=0.0001,
-        epochs=30,
+        epochs=40,
         batch_size=16,
-        num_layers=4,
+        num_layers=3,
     )
 
     # Create and train base model
@@ -440,9 +462,9 @@ if __name__ == "__main__":
         hidden_size=hyperparameters.hidden_size,  # Yet the base model hidden size and finetunable layer hidden size has to be the same
         sequence_length=hyperparameters.sequence_length,
         learning_rate=0.0001,
-        epochs=30,
+        epochs=50,
         batch_size=1,
-        num_layers=1,
+        num_layers=2,
     )
 
     finetunable_local_model = FineTunableLSTM(
