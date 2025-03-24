@@ -30,10 +30,12 @@ logger = logging.getLogger("local_model")
 class BaseLSTM(CustomModelBase):
 
     def __init__(self, hyperparameters: LSTMHyperparameters, features: List[str]):
-        super(BaseLSTM, self).__init__(hyperparameters)
-
-        # self.hyperparameters: LSTMHyperparameters = hyperparameters
-        self.FEATURES: List[str] = features
+        super(BaseLSTM, self).__init__(
+            features=features,
+            targets=features,
+            hyperparameters=hyperparameters,
+            scaler=None,
+        )
 
         # Set device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -59,12 +61,9 @@ class BaseLSTM(CustomModelBase):
         # Get stats
         self.training_stats = TrainingStats()
 
-        # Get fitted scaler
-        self.scaler = None
-
     def set_scaler(self, scaler: MinMaxScaler) -> None:
-        if self.scaler is None:
-            self.scaler = scaler
+        if self.SCALER is None:
+            self.SCALER = scaler
             return
 
         raise ValueError("Scaler is already set")
@@ -125,6 +124,7 @@ class BaseLSTM(CustomModelBase):
         batch_inputs: torch.Tensor,
         batch_targets: torch.Tensor,
         display_nth_epoch: int = 10,
+        loss_function: Union[nn.MSELoss, nn.L1Loss, nn.HuberLoss] = None,
     ):
         """
         Trains model using batched input sequences and batched target sequences.
@@ -136,6 +136,11 @@ class BaseLSTM(CustomModelBase):
         """
 
         torch.autograd.set_detect_anomaly(True)
+
+        # Get loss function
+        criterion = loss_function
+        if loss_function is None:
+            criterion = nn.MSELoss()
 
         # Put the model to the device
         self.to(device=self.device)

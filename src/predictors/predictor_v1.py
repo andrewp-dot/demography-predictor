@@ -1,5 +1,6 @@
 # Standard library imports
 import pandas as pd
+from torch import nn
 import logging
 from typing import Union, List
 from xgboost import XGBRegressor
@@ -27,7 +28,7 @@ def create_local_model(features: List[str]):
     # Define local model
     hyperparameters = LSTMHyperparameters(
         input_size=len(features),
-        hidden_size=2048,
+        hidden_size=512,
         sequence_length=13,
         learning_rate=0.0001,
         epochs=30,
@@ -59,6 +60,7 @@ def create_local_model(features: List[str]):
         batch_inputs=input_train_batches,
         batch_targets=target_train_batches,
         display_nth_epoch=1,
+        loss_function=nn.HuberLoss(),
     )
 
     return local_model
@@ -72,10 +74,10 @@ def create_finetunable_model(features: List[str], state: str):
     # Maybe finetune model
     finetunable_hyperparameters = LSTMHyperparameters(
         input_size=BASE_HYPERPARAMETERS.input_size,
-        hidden_size=BASE_HYPERPARAMETERS.hidden_size,
+        hidden_size=256,
         sequence_length=BASE_HYPERPARAMETERS.sequence_length,
-        learning_rate=0.0001,
-        epochs=35,
+        learning_rate=0.001,
+        epochs=50,
         batch_size=1,  # Do not change this if you do not want to experience segfault
         num_layers=1,
     )
@@ -96,7 +98,7 @@ def create_finetunable_model(features: List[str], state: str):
             train_data_df=train_df,
             hyperparameters=finetunable_hyperparameters,
             features=local_model.FEATURES,
-            scaler=local_model.scaler,
+            scaler=local_model.SCALER,
         )
     )
 
@@ -104,6 +106,7 @@ def create_finetunable_model(features: List[str], state: str):
         batch_inputs=train_input_batches,
         batch_targets=target_input_batches,
         display_nth_epoch=1,
+        loss_function=nn.HuberLoss(),
     )
 
     return finetunable_model
@@ -144,8 +147,8 @@ def predictor_v1(targets: List[str]) -> DemographyPredictor:
     ]
 
     # Maybe use get model instead of manual training
-    # local_model = create_local_model(features=LOCAL_FEATURES)
-    local_model = create_finetunable_model(features=LOCAL_FEATURES, state="Czechia")
+    local_model = create_local_model(features=LOCAL_FEATURES)
+    # local_model = create_finetunable_model(features=LOCAL_FEATURES, state="Czechia")
 
     # Define global model
     global_model: GlobalModel = GlobalModel(
@@ -175,12 +178,12 @@ if __name__ == "__main__":
     setup_logging()
 
     # Create predictor
-    # targets: List[str] = [
-    #     "population ages 15-64",
-    #     "population ages 0-14",
-    #     "population ages 65 and above",
-    # ]
-    targets: List[str] = ["population, total"]
+    targets: List[str] = [
+        "population ages 15-64",
+        "population ages 0-14",
+        "population ages 65 and above",
+    ]
+    # targets: List[str] = ["population, total"]
 
     pred = predictor_v1(targets=targets)
 
@@ -223,3 +226,7 @@ if __name__ == "__main__":
 
     fig.tight_layout()
     fig.savefig(fname="test.png")
+
+    predictions_df = pred.predict(input_data=train_df, target_year=2050)
+
+    print(predictions_df)

@@ -23,7 +23,7 @@
         - Compare LSTM model and statistical model(s)
 3. Statistical model implementation (ARIMA)
 4. Global model implementation (XGBoost)
-5. Demography predictor implementation (both, local and global)
+5. Demography predictor implementation (both, local and global) -> relatively poor performance, for poulation total it is useless
 
 Bonus:
 1. Simple CLI for `lbenchmark`. For more info run `poetry run cli lbenchmark --help`
@@ -42,6 +42,7 @@ Bonus:
     - Different Neural network architectures (not a just a pure LSTM)
     - (BONUS) LSTM and NN as a global model instead of local 
 2. Write experiment results -> method comparision, advantages, disadvantages (ARIMA, LSTM experiment)
+    - fix experiment, use one neural network and N ARIMAS for comparision
 3. Predictions using the population from Lakmoos AI. –> find a call, data adapter for Clones -> Add to Poli's calendar
 
 ## Bonus

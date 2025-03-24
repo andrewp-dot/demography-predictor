@@ -40,10 +40,10 @@ class FineTunableLSTM(CustomModelBase):
         hyperparameters: LSTMHyperparameters,
     ):
         super(FineTunableLSTM, self).__init__(
-            features=self.base_model.FEATURES,
-            targets=self.base_model.TARGETS,
+            features=base_model.FEATURES,
+            targets=base_model.TARGETS,
             hyperparameters=hyperparameters,
-            scaler=self.base_model.SCALER,
+            scaler=base_model.SCALER,
         )
 
         # Get the device
@@ -61,13 +61,16 @@ class FineTunableLSTM(CustomModelBase):
         # TODO: add layer to get different number of neurons
         fine_tune_hidden_size = hyperparameters.hidden_size
 
+        logger.debug(f"Base lstm hidden size: {base_model.lstm.hidden_size}")
+        logger.debug(f"New lstm hidden size: {fine_tune_hidden_size}")
+
         # Hidden layer for transforming the hidden size of the base model to hidden size of the new lstm model
         self.hidden_transform = nn.Linear(
             base_model.lstm.hidden_size, fine_tune_hidden_size
         )
 
         self.new_lstm = nn.LSTM(
-            input_size=base_model.lstm.hidden_size,
+            input_size=fine_tune_hidden_size,
             hidden_size=fine_tune_hidden_size,
             num_layers=hyperparameters.num_layers,
             batch_first=True,
@@ -82,31 +85,53 @@ class FineTunableLSTM(CustomModelBase):
         # Initialize the hidden states
         self.h_0 = None
         self.c_0 = None
+        self.base_h_0 = None
+        self.base_c_0 = None
 
     def __initialize_hidden_states(
         self,
         batch_size: int,
+        base_h_0: torch.Tensor | None = None,
+        base_c_0: torch.Tensor | None = None,
         h_0: torch.Tensor | None = None,
         c_0: torch.Tensor | None = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
 
-        # Initiliaze hidden state
+        # Initiliaze hidden state for base model
+        if base_h_0 is None:
+            base_h_0 = torch.zeros(
+                self.base_model.hyperparameters.num_layers
+                * (2 if self.hyperparameters.bidirectional else 1),  # for bidirectional
+                batch_size,
+                self.base_model.hyperparameters.hidden_size,
+                dtype=torch.float32,
+            ).to(self.device)
+
+        # Initiliaze cell state
+        if base_c_0 is None:
+            base_c_0 = torch.zeros(
+                self.base_model.hyperparameters.num_layers
+                * (2 if self.hyperparameters.bidirectional else 1),  # for bidirectional
+                batch_size,
+                self.base_model.hyperparameters.hidden_size,
+                dtype=torch.float32,
+            ).to(self.device)
+
+        # Initiliaze hidden state for finetunable layer
         if h_0 is None:
             # Initialize hidden state and cell state for both: base model layers and finetunable layers
             h_0 = torch.zeros(
-                self.base_model.hyperparameters.num_layers
-                + self.hyperparameters.num_layers
+                self.hyperparameters.num_layers
                 * (2 if self.hyperparameters.bidirectional else 1),  # for bidirectional
                 batch_size,
                 self.hyperparameters.hidden_size,
                 dtype=torch.float32,
             ).to(self.device)
 
-        # Initiliaze cell state
+        # Initiliaze cell state for the finetunable layer
         if c_0 is None:
             c_0 = torch.zeros(
-                self.base_model.hyperparameters.num_layers
-                + self.hyperparameters.num_layers
+                self.hyperparameters.num_layers
                 * (2 if self.hyperparameters.bidirectional else 1),  # for bidirectional
                 batch_size,
                 self.hyperparameters.hidden_size,
@@ -114,17 +139,24 @@ class FineTunableLSTM(CustomModelBase):
             ).to(self.device)
 
         # Return states
-        return h_0, c_0
+        return base_h_0, base_c_0, h_0, c_0
 
     def __reset_hidden_state(self) -> None:
+        self.base_h_0, self.base_c_0 = None, None
         self.h_0, self.c_0 = None, None
 
     def __update_hidden_state(
-        self, h_0: torch.Tensor, c_0: torch.Tensor, keep_context: bool
+        self,
+        base_h_0: torch.Tensor,
+        base_c_0: torch.Tensor,
+        h_0: torch.Tensor,
+        c_0: torch.Tensor,
+        keep_context: bool,
     ) -> None:
 
         # For keeping the state
         if keep_context:
+            self.base_h_0, self.base_c_0 = base_h_0, base_c_0
             self.h_0, self.c_0 = h_0, c_0
             return
 
@@ -134,50 +166,59 @@ class FineTunableLSTM(CustomModelBase):
     def forward(
         self,
         x: torch.Tensor,
+        base_h_0: torch.Tensor | None = None,
+        base_c_0: torch.Tensor | None = None,
         h_0: torch.Tensor | None = None,
         c_0: torch.Tensor | None = None,
     ):
-
-        # Initialize hidden state
-        self.h_0, self.c_0 = self.__initialize_hidden_states(
-            batch_size=x.size(0), h_0=h_0, c_0=c_0
+        # Initialize hidden states
+        self.base_h_0, self.base_c_0, self.h_0, self.c_0 = (
+            self.__initialize_hidden_states(
+                batch_size=x.size(0),
+                base_h_0=base_h_0,
+                base_c_0=base_c_0,
+                h_0=h_0,
+                c_0=c_0,
+            )
         )
 
-        # Move hidden states to device
-        x = x.to(device=self.device)
+        logger.debug(
+            f"Shapes: {self.base_h_0.shape}, {self.base_c_0.shape}, {self.h_0.shape}, {self.c_0.shape}"
+        )
+
+        # Move inputs to the correct device
+        x = x.to(self.device)
+        self.base_h_0 = self.base_h_0.to(self.device)
+        self.base_c_0 = self.base_c_0.to(self.device)
         self.h_0 = self.h_0.to(self.device)
         self.c_0 = self.c_0.to(self.device)
 
-        # Forward pass for the base model, skip gradiend calculation -> freeze base model lstm layers
+        # Forward pass for the frozen base LSTM
         with torch.no_grad():
-
-            old_lstm_out, _ = self.base_lstm(
-                x,
-                (
-                    self.h_0[: self.base_lstm.num_layers],
-                    self.c_0[: self.base_lstm.num_layers],
-                ),
+            base_lstm_out, (base_h_n, base_c_n) = self.base_lstm(
+                x, (self.base_h_0, self.base_c_0)
             )
 
-        # Put the out to the device
-        old_lstm_out.to(device=self.device)
+        # Move base output to device
+        base_lstm_out = base_lstm_out.to(self.device)
 
-        # Get the output of new lstm
-        new_lstm_out, _ = self.new_lstm(
-            old_lstm_out,
-            (
-                self.h_0[self.base_lstm.num_layers :],
-                self.c_0[self.base_lstm.num_layers :],
-            ),
+        # Transform base LSTM output (NOT hidden state)
+        transformed_out = self.hidden_transform(base_lstm_out)
+        transformed_out = transformed_out.to(self.device)
+
+        # Forward pass through fine-tunable LSTM
+        new_lstm_out, (new_h_n, new_c_n) = self.new_lstm(
+            transformed_out, (self.h_0, self.c_0)
         )
 
-        # Get the output of new lstm
-        new_lstm_out.to(device=self.device)
+        # Move to device
+        new_lstm_out = new_lstm_out.to(self.device)
 
-        # Get last time step
+        # Extract last time step
         last_time_step_out = new_lstm_out[:, -1, :]
 
-        return self.fc(last_time_step_out), (h_0, c_0)
+        # Final prediction
+        return self.fc(last_time_step_out), (base_h_n, base_c_n), (new_h_n, new_c_n)
 
     def train_model(
         self,
@@ -216,13 +257,21 @@ class FineTunableLSTM(CustomModelBase):
                 ), batch_target.to(device=self.device)
 
                 # Forward pass
-                outputs, (h_0, c_0) = self(batch_input, self.h_0, self.c_0)
+                outputs, (base_h_0, base_c_0), (h_0, c_0) = self(
+                    batch_input, self.base_h_0, self.base_c_0, self.h_0, self.c_0
+                )
 
                 loss = criterion(outputs, batch_target)
                 epoch_loss += loss.item()
 
                 # Update or reset the hidden state
-                self.__update_hidden_state(h_0=h_0, c_0=c_0, keep_context=False)
+                self.__update_hidden_state(
+                    base_h_0=base_h_0,
+                    base_c_0=base_c_0,
+                    h_0=h_0,
+                    c_0=c_0,
+                    keep_context=False,
+                )
 
                 # Backward pass
                 optimizer.zero_grad()
@@ -239,6 +288,9 @@ class FineTunableLSTM(CustomModelBase):
             # Display average loss
             if not epoch % display_nth_epoch:
                 logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+
+        # Reset hidden states after training
+        self.__reset_hidden_state()
 
     # TODO: predict stateless or statefull... initiliazie hidden state and reset after every forward pass or not
     def predict(
@@ -288,10 +340,18 @@ class FineTunableLSTM(CustomModelBase):
                 window.to(device=self.device)
 
                 # Forward pass
-                pred, (h_0, c_0) = self(window, self.h_0, self.c_0)
+                pred, (base_h_0, base_c_0), (h_0, c_0) = self(
+                    window, self.base_h_0, self.base_c_0, self.h_0, self.c_0
+                )
 
                 # Reset or upate hiden state based on keep_context value
-                self.__update_hidden_state(h_0=h_0, c_0=c_0, keep_context=keep_context)
+                self.__update_hidden_state(
+                    base_h_0=base_h_0,
+                    base_c_0=base_c_0,
+                    h_0=h_0,
+                    c_0=c_0,
+                    keep_context=False,
+                )
 
                 predictions.append(pred.cpu())
 
@@ -302,11 +362,17 @@ class FineTunableLSTM(CustomModelBase):
                 logger.debug(f"Current input window: {current_window}")
 
                 # Forward pass
-                pred, (h_0, c_0) = self(
-                    current_window, self.h_0, self.c_0
+                pred, (base_h_0, base_c_0), (h_0, c_0) = self(
+                    current_window, self.base_h_0, self.base_c_0, self.h_0, self.c_0
                 )  # Shape: (1, output_size)
 
-                self.__update_hidden_state(h_0=h_0, c_0=c_0, keep_context=keep_context)
+                self.__update_hidden_state(
+                    base_h_0=base_h_0,
+                    base_c_0=base_c_0,
+                    h_0=h_0,
+                    c_0=c_0,
+                    keep_context=False,
+                )
 
                 pred_value = pred.squeeze(0)  # Remove batch dim
                 logger.debug(f"New prediction value: {pred_value}")

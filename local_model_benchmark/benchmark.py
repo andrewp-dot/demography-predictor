@@ -21,7 +21,7 @@ from local_model_benchmark.experiments.data_experiments import (
 )
 from local_model_benchmark.experiments.model_experiments import (
     LSTMOptimalParameters,
-    RNNvsStatisticalMethods,
+    RNNvsStatisticalMethodsSingleFeature,
     FinetuneBaseLSTM,
 )
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -48,7 +48,7 @@ experiment_list: List[Experiment] = [
     ExcludeCovidYears(),
     # Model experiments
     LSTMOptimalParameters(),
-    RNNvsStatisticalMethods(),
+    RNNvsStatisticalMethodsSingleFeature(),
     FinetuneBaseLSTM(),
 ]
 

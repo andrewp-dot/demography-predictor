@@ -41,7 +41,7 @@ class DemographyPredictor:
         LOCAL_FEAUTRES = self.local_model.FEATURES
 
         # Scale local model data
-        scaled_data = self.local_model.scaler.transform(data[LOCAL_FEAUTRES])
+        scaled_data = self.local_model.SCALER.transform(data[LOCAL_FEAUTRES])
         scaled_data_df = pd.DataFrame(scaled_data, columns=LOCAL_FEAUTRES)
 
         # Get last year of predictions
@@ -57,7 +57,7 @@ class DemographyPredictor:
         )
 
         # Unscale feature predictions
-        feature_predictions_unscaled = self.local_model.scaler.inverse_transform(
+        feature_predictions_unscaled = self.local_model.SCALER.inverse_transform(
             feature_predictions
         )
 

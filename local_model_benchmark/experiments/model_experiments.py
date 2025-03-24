@@ -388,7 +388,7 @@ Optimal model:
 
 # 2. Compare model with statistical methods (ARIMA, GM)
 # 2.1. VAR, SARIMA, ARIMA * 19?
-class CompareLSTMARIMAExperiment(BaseExperiment):
+class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
 
     def run(self, state: str, split_rate: float) -> None:
         # Create readme
@@ -660,8 +660,8 @@ class LSTMOptimalParameters(Experiment):
         return self.exp.run(state=state, split_rate=split_rate)
 
 
-class RNNvsStatisticalMethods(Experiment):
-    NAME = "CompareLSTMARIMAExperiment"
+class RNNvsStatisticalMethodsSingleFeature(Experiment):
+    NAME = "RNNvsStatisticalMethodsSingleFeature"
     DESCRIPTION = (
         "The goal is to find the optimal parameters for the given BaseLSTM model."
     )
@@ -704,7 +704,7 @@ class RNNvsStatisticalMethods(Experiment):
 
         self.model = BaseLSTM(hyperparameters=hyperparameters, features=self.FEATURES)
 
-        self.exp = CompareLSTMARIMAExperiment(
+        self.exp = CompareLSTMARIMASingleFeatureExperiment(
             model=self.model,
             name=self.NAME,
             description=self.DESCRIPTION,
@@ -809,7 +809,7 @@ def run_experiments():
     exp1 = LSTMOptimalParameters()
     exp1.run()
 
-    exp2 = RNNvsStatisticalMethods()
+    exp2 = RNNvsStatisticalMethodsSingleFeature()
     exp2.run()
 
     exp3 = FinetuneBaseLSTM()
