@@ -3,7 +3,7 @@ import pandas as pd
 import logging
 import torch
 from torch import nn
-from typing import Tuple, List
+from typing import Tuple, List, Union
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
@@ -36,30 +36,35 @@ class FineTunableLSTM(CustomModelBase):
 
     def __init__(
         self,
-        base_model: CustomModelBase,
+        base_model: BaseLSTM,
         hyperparameters: LSTMHyperparameters,
     ):
-        super(FineTunableLSTM, self).__init__(hyperparameters)
+        super(FineTunableLSTM, self).__init__(
+            features=self.base_model.FEATURES,
+            targets=self.base_model.TARGETS,
+            hyperparameters=hyperparameters,
+            scaler=self.base_model.SCALER,
+        )
 
-        # Get the hyperparameters and device
-        # self.hyperparameters: LSTMHyperparameters = hyperparameters
+        # Get the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Load pretrained LSTM layers
         self.base_model = base_model
         self.base_lstm = base_model.lstm
-        self.base_hyperparameters = base_model.hyperparameters
-
-        # Get this for compatibility
-        self.FEATURES = self.base_model.FEATURES
-        self.scaler = self.base_model.scaler
 
         # Freeze pretrained LSTM layers
-        for param in self.base_lstm.parameters():
+        for param in self.base_model.lstm.parameters():
             param.requires_grad = False
 
         # Add new LSTM layers for fine-tuning
+        # TODO: add layer to get different number of neurons
         fine_tune_hidden_size = hyperparameters.hidden_size
+
+        # Hidden layer for transforming the hidden size of the base model to hidden size of the new lstm model
+        self.hidden_transform = nn.Linear(
+            base_model.lstm.hidden_size, fine_tune_hidden_size
+        )
 
         self.new_lstm = nn.LSTM(
             input_size=base_model.lstm.hidden_size,
@@ -89,7 +94,7 @@ class FineTunableLSTM(CustomModelBase):
         if h_0 is None:
             # Initialize hidden state and cell state for both: base model layers and finetunable layers
             h_0 = torch.zeros(
-                self.base_lstm.num_layers
+                self.base_model.hyperparameters.num_layers
                 + self.hyperparameters.num_layers
                 * (2 if self.hyperparameters.bidirectional else 1),  # for bidirectional
                 batch_size,
@@ -100,7 +105,7 @@ class FineTunableLSTM(CustomModelBase):
         # Initiliaze cell state
         if c_0 is None:
             c_0 = torch.zeros(
-                self.base_lstm.num_layers
+                self.base_model.hyperparameters.num_layers
                 + self.hyperparameters.num_layers
                 * (2 if self.hyperparameters.bidirectional else 1),  # for bidirectional
                 batch_size,
@@ -179,12 +184,15 @@ class FineTunableLSTM(CustomModelBase):
         batch_inputs: torch.Tensor,
         batch_targets: torch.Tensor,
         display_nth_epoch: int = 10,
+        loss_function: Union[nn.MSELoss, nn.L1Loss, nn.HuberLoss] = None,
     ):
         # Put the model to the device
         self.to(device=self.device)
 
         # Get loss function
-        criterion = nn.MSELoss()
+        criterion = loss_function
+        if loss_function is None:
+            criterion = nn.MSELoss()
 
         # Get optimizer
         optimizer = torch.optim.Adam(

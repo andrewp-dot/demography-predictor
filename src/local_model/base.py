@@ -14,11 +14,6 @@ from sklearn.metrics import (
     r2_score,
 )
 import logging
-import pprint
-
-# Custom imports
-from src.utils.log import setup_logging
-
 
 logger = logging.getLogger("local_model")
 
@@ -474,7 +469,7 @@ class EvaluateModel(BaseEvaluation):
 
 class CustomModelBase(nn.Module):
     """
-    Defines the interface for the neural networks models in this project. From this
+    Defines the interface for the recurrent neural networks models in this project. From this
 
     Raises:
         NotImplementedError: If forward method is not implemented yet.
@@ -482,10 +477,23 @@ class CustomModelBase(nn.Module):
         NotImplementedError: If predict method is not implemented yet.
     """
 
-    def __init__(self, hyperparameters: LSTMHyperparameters, *args, **kwargs):
+    def __init__(
+        self,
+        features: List[str],
+        targets: List[str],
+        hyperparameters: LSTMHyperparameters,
+        scaler: MinMaxScaler,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
         self.hyperparameters: LSTMHyperparameters = hyperparameters
+
+        self.FEATURES: List[str] = features
+        self.TARGETS: List[str] = targets
+
+        self.SCALER: MinMaxScaler = scaler
 
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
