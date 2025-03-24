@@ -22,15 +22,15 @@
         - Parameter optimization using `optuna` library
         - Compare LSTM model and statistical model(s)
 3. Statistical model implementation (ARIMA)
+4. Global model implementation (XGBoost)
+5. Demography predictor implementation (both, local and global)
 
 Bonus:
 1. Simple CLI for `lbenchmark`. For more info run `poetry run cli lbenchmark --help`
 
 ## Work in progress (WIP)
-1. Global model implementation (Note: implemented, not integrated)
-2. Demography predictor implementation (both, local and global)
-3. Statistical model implementation (Grey model)
-4. Experiments:
+1. Statistical model implementation (Grey model)
+2. Experiments:
     - None
 
 
