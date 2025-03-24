@@ -44,6 +44,7 @@ Bonus:
 2. Write experiment results -> method comparision, advantages, disadvantages (ARIMA, LSTM experiment)
     - fix experiment, use one neural network and N ARIMAS for comparision
 3. Predictions using the population from Lakmoos AI. –> find a call, data adapter for Clones -> Add to Poli's calendar
+4. Try predict population total using the population growth
 
 ## Bonus
 1. Model inference (`API`)
