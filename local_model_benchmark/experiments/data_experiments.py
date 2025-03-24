@@ -126,7 +126,7 @@ class OneStateDataExperiment(BaseExperiment):
         )
 
 
-class AllStatesDataExperiments(BaseExperiment):
+class MultipleStatesDataExperiments(BaseExperiment):
 
     def __init__(
         self,
@@ -135,9 +135,11 @@ class AllStatesDataExperiments(BaseExperiment):
         description: str,
         features: List[str],
         exclude_covid_years: bool = False,
+        load_states: List[str] = None,
     ):
         super().__init__(model, name, description, features)
         self.exclude_covid_years = exclude_covid_years
+        self.load_states: List[str] = load_states
 
     def run(self, state: str, split_rate: float):
         """
@@ -154,9 +156,15 @@ class AllStatesDataExperiments(BaseExperiment):
         # Load whole dataset
         states_loader = StatesDataLoader()
 
-        all_states = states_loader.load_all_states(
-            exclude_covid_years=self.exclude_covid_years
-        )
+        loaded_states = None
+        if self.load_states is None:
+            loaded_states = states_loader.load_all_states(
+                exclude_covid_years=self.exclude_covid_years
+            )
+        else:
+            loaded_states = states_loader.load_states(
+                states=self.load_states, exclude_covid_years=self.exclude_covid_years
+            )
 
         # Get hyperparameters for training
         all_state_state_params = LSTMHyperparameters(
@@ -179,7 +187,7 @@ class AllStatesDataExperiments(BaseExperiment):
 
         # Split data
         states_train_data_dict, states_test_data_dict = states_loader.split_data(
-            states_dict=all_states,
+            states_dict=loaded_states,
             sequence_len=all_state_state_params.sequence_length,
             split_rate=split_rate,
         )
@@ -345,7 +353,7 @@ class AllStates(Experiment):
         )
 
         # Define the experiment
-        self.exp = AllStatesDataExperiments(
+        self.exp = MultipleStatesDataExperiments(
             model=self.model,
             name=self.NAME,
             description=self.DESCRIPTION,
@@ -392,7 +400,7 @@ class AllStatesWithoutHighErrorFeatures(Experiment):
             hyperparameters=self.hyperparameters, features=self.FEATURES
         )
 
-        self.exp = AllStatesDataExperiments(
+        self.exp = MultipleStatesDataExperiments(
             model=self.model,
             name=self.NAME,
             description=self.DESCRIPTION,
@@ -407,6 +415,12 @@ class AllStatesWithoutHighErrorFeatures(Experiment):
 
 
 class StatesCategories(Experiment):
+
+    # TODO: clustering?
+    NAME = "StatesCategories"
+    DESCRIPTION = (
+        "Train and evaluate model using data for states with the same category."
+    )
 
     # States divided to this categories by GPT
     RICH: List[str] = [
@@ -591,8 +605,88 @@ class StatesCategories(Experiment):
         "Zimbabwe",
     ]
 
-    def __init__(self, name, model, features, hyperparameters, experiment):
-        super().__init__(name, model, features, hyperparameters, experiment)
+    def __init__(self):
+        # Get name
+        name = self.NAME
+
+        # Setup model
+        features = [
+            col.lower()
+            for col in [
+                # Need to run columns
+                "year",
+                # Stationary columns
+                "Fertility rate, total",
+                "Arable land",
+                "Birth rate, crude",
+                "GDP growth",
+                "Death rate, crude",
+                "Population ages 15-64",
+                "Population ages 0-14",
+                "Agricultural land",
+                "Population ages 65 and above",
+                "Rural population",
+                "Rural population growth",
+                # "Age dependency ratio",
+                "Urban population",
+                "Population growth",
+            ]
+        ]
+
+        hyperparameters = LSTMHyperparameters(
+            input_size=len(features),
+            hidden_size=128,
+            sequence_length=10,
+            learning_rate=0.0001,
+            epochs=10,
+            batch_size=1,
+            num_layers=3,
+        )
+
+        model = BaseLSTM(hyperparameters=hyperparameters, features=features)
+
+        # Initilize experiment
+        exp = MultipleStatesDataExperiments(
+            model=None,
+            name=self.NAME,
+            description=self.DESCRIPTION,
+            features=features,
+        )
+
+        super().__init__(
+            name=name,
+            model=model,
+            features=features,
+            hyperparameters=hyperparameters,
+            experiment=exp,
+        )
+
+    def run(self, state: str, split_rate: float = 0.8):
+
+        # Find the group of the state
+        load_group = None
+
+        if state in self.RICH:
+            load_group = self.RICH
+        elif state in self.NEUTRAL:
+            load_group = self.NEUTRAL
+        elif state in self.POOR:
+            load_group = self.POOR
+
+        # Validate if the state group is found
+        if load_group is None:
+            raise ValueError(f"State '{state}' was not found in any state group!")
+
+        # Define experiment
+        self.exp = MultipleStatesDataExperiments(
+            model=self.model,
+            name=self.NAME,
+            description=self.DESCRIPTION,
+            features=self.FEATURES,
+            load_states=load_group,
+        )
+
+        self.exp.run(state=state, split_rate=split_rate)
 
 
 ## 4. Devide data for aligned sequences (% values - 0 - 100) and for absolute values, which can rise (population, total, ...)
@@ -608,6 +702,7 @@ class OnlyStationaryFeatures(Experiment):
         # Define the name of the experime
 
         # Define features and parameters and model
+        # TODO: select the stationary features
         self.FEATURES = [
             col.lower()
             for col in [
@@ -703,7 +798,7 @@ class OnlyStationaryFeaturesAllData(Experiment):
         )
 
         # Define the experiment
-        self.exp = AllStatesDataExperiments(
+        self.exp = MultipleStatesDataExperiments(
             model=self.model,
             name="OnlyStationaryFeaturesAllData",
             description="Train and evaluate model on single state data.",
@@ -757,7 +852,7 @@ class ExcludeCovidYears(Experiment):
 
         self.model = BaseLSTM(hyperparameters=hyperparameters, features=self.FEATURES)
 
-        self.exp = AllStatesDataExperiments(
+        self.exp = MultipleStatesDataExperiments(
             model=self.model,
             name=self.name,
             description=self.DESCRIPTION,

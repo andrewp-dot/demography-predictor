@@ -122,10 +122,10 @@ class StatesDataLoader:
         state_split_test_dict: Dict[str, pd.DataFrame] = {}
 
         # Split each state
-        for state_name, loader in self.__state_loaders.items():
+        for state_name in states_dict.keys():
 
             # Get train data and test data
-            state_train_df, state_test_df = loader.split_data(
+            state_train_df, state_test_df = self.__state_loaders[state_name].split_data(
                 states_dict[state_name], split_rate=split_rate
             )
 

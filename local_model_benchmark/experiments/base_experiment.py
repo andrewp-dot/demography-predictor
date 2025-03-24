@@ -222,7 +222,7 @@ class Experiment:
         self.model: BaseLSTM = model
         self.hyperparameters: LSTMHyperparameters = hyperparameters
         self.FEATURES: List[str] = features
-        self.exp = experiment
+        self.exp: BaseExperiment = experiment
 
     @abstractmethod
     def run(self, state: str = "Czechia", split_rate: float = 0.8, *args, **kwargs):

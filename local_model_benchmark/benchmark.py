@@ -18,6 +18,7 @@ from local_model_benchmark.experiments.data_experiments import (
     OnlyStationaryFeatures,
     OnlyStationaryFeaturesAllData,
     ExcludeCovidYears,
+    StatesCategories,
 )
 from local_model_benchmark.experiments.model_experiments import (
     LSTMOptimalParameters,
@@ -46,6 +47,7 @@ experiment_list: List[Experiment] = [
     OnlyStationaryFeatures(),
     OnlyStationaryFeaturesAllData(),
     ExcludeCovidYears(),
+    StatesCategories(),
     # Model experiments
     LSTMOptimalParameters(),
     RNNvsStatisticalMethodsSingleFeature(),

@@ -18,6 +18,7 @@
         <!-- # New -->
         - experiment with exclusion of covid years
         - Finetune experiment -> use all states and finetune layer using the state 
+        - use just part of the dataset (only states with same geolocation, wealth level...) -> by wealth country richness
     - Model experiments
         - Parameter optimization using `optuna` library
         - Compare LSTM model and statistical model(s)
@@ -38,13 +39,17 @@ Bonus:
 0. !!!! FIX THE INTERFACE FOR THE EXPERIMENTS TO BE COMPATIBLE WITH EVERY MODEL YOU CREATE, OR DESIGN THE EXPERIMENTS IN THAT WAY, THAT YOU CAN COMPARE LOCAL MODELS !!! (objective: find a way how to compare different LSTM models) - nearly done, not tested.
 
 1. Experiments
-    - use just part of the dataset (only states with same geolocation, wealth level...)
     - Different Neural network architectures (not a just a pure LSTM)
     - (BONUS) LSTM and NN as a global model instead of local 
+    - (fix) features for experiments -> use all or mostly the same experiments
 2. Write experiment results -> method comparision, advantages, disadvantages (ARIMA, LSTM experiment)
     - fix experiment, use one neural network and N ARIMAS for comparision
+    - print the table with header: `feature_name` | `best_model`
 3. Predictions using the population from Lakmoos AI. –> find a call, data adapter for Clones -> Add to Poli's calendar
 4. Try predict population total using the population growth
+5. FineTune Experiments:
+    - finetune model using 1 state
+    - finetune model using similiar states
 
 ## Bonus
 1. Model inference (`API`)
