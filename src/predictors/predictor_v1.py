@@ -199,11 +199,27 @@ if __name__ == "__main__":
     target_year = test_df["year"].max()
 
     # Validation data
+    evaluation = EvaluateModel(model=pred)
+
+    evaluation.eval(
+        test_X=train_df,
+        test_y=test_df,
+        # features=pred.global_model.FEATURES,
+        # targets=pred.global_model.TARGETS,
+        # scaler=pred.local_model.SCALER,
+    )
+
+    print(evaluation.overall_metrics)
+    exit()
+
     YEARS = test_df["year"].values
 
     test_y = test_df[targets]
 
     print(test_y.head())
+
+    # Get last year of predictions
+    last_year = train_df["year"].max()
 
     predictions_df = pred.predict(input_data=train_df, target_year=target_year)
 

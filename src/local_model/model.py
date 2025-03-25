@@ -208,11 +208,11 @@ class BaseLSTM(CustomModelBase):
         input_data: pd.DataFrame,
         last_year: int,
         target_year: int,
-    ) -> torch.Tensor:
+    ) -> pd.DataFrame:
         """
         Predicts values using past data. 2 cycles: 1st to gain context for all past data. 2nd is used to generate predictions.
 
-        :param input_data: pd.DataFrame: input data
+        :param input_data: pd.DataFrame: Unscaled input data.
         :param last_year: int: the last known year used in order to compute the number of new data iterations
         :param target_year: int: predict data to year
 
@@ -229,7 +229,23 @@ class BaseLSTM(CustomModelBase):
         # Put the model into the evaluation mode
         self.eval()
 
-        input_sequence = torch.tensor(data=input_data.values, dtype=torch.float32)
+        # Preprocess data
+
+        FEATURES = self.FEATURES
+
+        if set(FEATURES) != set(self.SCALER.feature_names_in_):
+            logger.warning(
+                f"Unused features due to be unseen at the fit time: {set(FEATURES) - set(self.SCALER.feature_names_in_)}"
+            )
+            FEATURES = self.SCALER.feature_names_in_
+
+        scaled_input_data = self.SCALER.transform(input_data[FEATURES])
+
+        scaled_input_data_df = pd.DataFrame(scaled_input_data)
+
+        input_sequence = torch.tensor(
+            data=scaled_input_data_df.values, dtype=torch.float32
+        )
 
         logger.debug(f"Input sequence: {input_sequence.shape}")
 
@@ -285,7 +301,13 @@ class BaseLSTM(CustomModelBase):
             logger.debug(f"{year}: {pred}")
 
         new_predictions_tensor = torch.cat(new_predictions, dim=0)
-        return new_predictions_tensor
+
+        # Unscale predicted data
+        unscaled_predicted_data = self.SCALER.inverse_transform(new_predictions_tensor)
+        new_predictions_df = pd.DataFrame(
+            unscaled_predicted_data, columns=self.FEATURES
+        )
+        return new_predictions_df
 
 
 if __name__ == "__main__":

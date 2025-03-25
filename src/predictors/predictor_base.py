@@ -29,10 +29,15 @@ class DemographyPredictor:
         self.local_model: Union[BaseLSTM, LocalARIMA, FineTunableLSTM] = local_model
         self.global_model: Union[GlobalModel] = global_model
 
+        self.FEATURES: str = global_model.FEATURES
+        self.TARGETS: str = global_model.TARGETS
+
     def __repr__(self) -> str:
         return f"{self.name} ({type(self.local_model).__name__} -> {type(self.global_model.model).__name__})"
 
-    def predict(self, input_data: pd.DataFrame, target_year: int) -> pd.DataFrame:
+    def predict(
+        self, input_data: pd.DataFrame, last_year: int, target_year: int
+    ) -> pd.DataFrame:
 
         # Preprocess input data -> scale data
         data = input_data.copy()
@@ -41,29 +46,28 @@ class DemographyPredictor:
         LOCAL_FEAUTRES = self.local_model.FEATURES
 
         # Scale local model data
-        scaled_data = self.local_model.SCALER.transform(data[LOCAL_FEAUTRES])
-        scaled_data_df = pd.DataFrame(scaled_data, columns=LOCAL_FEAUTRES)
-
-        # Get last year of predictions
-        last_year = input_data["year"].max()
+        # scaled_data = self.local_model.SCALER.transform(data[LOCAL_FEAUTRES])
+        # scaled_data_df = pd.DataFrame(scaled_data, columns=LOCAL_FEAUTRES)
 
         # Predict features
-        feature_predictions = self.local_model.predict(
-            input_data=scaled_data_df, last_year=last_year, target_year=target_year
+        feature_predictions_df = self.local_model.predict(
+            input_data=data[LOCAL_FEAUTRES],
+            last_year=last_year,
+            target_year=target_year,
         )
 
-        feature_predictions_df = pd.DataFrame(
-            feature_predictions, columns=LOCAL_FEAUTRES
-        )
+        # feature_predictions_df = pd.DataFrame(
+        #     feature_predictions, columns=LOCAL_FEAUTRES
+        # )
 
         # Unscale feature predictions
-        feature_predictions_unscaled = self.local_model.SCALER.inverse_transform(
-            feature_predictions
-        )
+        # feature_predictions_unscaled = self.local_model.SCALER.inverse_transform(
+        #     feature_predictions
+        # )
 
-        feature_predictions_df = pd.DataFrame(
-            feature_predictions_unscaled, columns=LOCAL_FEAUTRES
-        )
+        # feature_predictions_df = pd.DataFrame(
+        #     feature_predictions_unscaled, columns=LOCAL_FEAUTRES
+        # )
 
         # Add missing features
         GLOBAL_FEATURES = self.global_model.FEATURES
