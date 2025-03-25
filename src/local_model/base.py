@@ -346,6 +346,7 @@ class EvaluateModel(BaseEvaluation):
     def __init__(self, model: nn.Module):
         super().__init__()
         self.model: CustomModelBase = model
+        self.all_states_evaluation: pd.DataFrame = None
 
     def eval(
         self,
@@ -392,6 +393,58 @@ class EvaluateModel(BaseEvaluation):
 
         # Get overall metrics for model
         self.get_overall_metrics()
+
+    def eval_for_every_state(
+        self,
+        X_test_states: Dict[str, pd.DataFrame],
+        y_test_states: Dict[str, pd.DataFrame],
+    ) -> None:
+
+        def get_metric_value(evaluation_df: pd.DataFrame, metric: str) -> float:
+            return evaluation_df.loc[evaluation_df["metric"] == "mae", "value"].values[
+                0
+            ]
+
+        # Create empty dataframe
+        # state | mae | mse | rmse | r2
+        # ...
+        columns = ["state", "mae", "mse", "rmse", "r2"]
+        all_evaluation_df: pd.DataFrame = pd.DataFrame(columns=columns)
+
+        for state in X_test_states.keys():
+
+            # Get X_test and y_test for state
+            test_X = X_test_states[state]
+            test_y = y_test_states[state]
+
+            # Run evaluation (Maybe create new evaluation?)
+
+            current_state_evaluation = EvaluateModel(self.model)
+            current_state_evaluation.eval(test_X=test_X, test_y=test_y)
+
+            # Get the evaluation state
+            m = current_state_evaluation.overall_metrics
+
+            # Get metrics
+            new_row = pd.DataFrame(
+                [
+                    {
+                        "state": state,
+                        "mae": get_metric_value(m, "mae"),
+                        "mse": get_metric_value(m, "mse"),
+                        "rmse": get_metric_value(m, "rmse"),
+                        "r2": get_metric_value(m, "r2"),
+                    }
+                ]
+            )
+
+            # Add evaluation to the states
+            all_evaluation_df = pd.concat(
+                [all_evaluation_df, new_row], ignore_index=True
+            )
+
+        # Save the evaluation
+        self.all_states_evaluation = all_evaluation_df
 
     def is_new_better(self, new_model_evaluation: "EvaluateModel") -> bool:
         """

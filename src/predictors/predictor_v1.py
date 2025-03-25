@@ -201,12 +201,21 @@ if __name__ == "__main__":
     # Validation data
     evaluation = EvaluateModel(model=pred)
 
-    evaluation.eval(
-        test_X=train_df,
-        test_y=test_df,
+    # Get data from every state
+    states_data_loader = StatesDataLoader()
+    all_states_df = states_data_loader.load_all_states()
+
+    train_dict, test_dict = states_data_loader.split_data(
+        states_dict=all_states_df,
+        sequence_len=pred.local_model.hyperparameters.sequence_length,
     )
 
-    print(evaluation.overall_metrics)
+    evaluation.eval_for_every_state(
+        X_test_states=train_dict,
+        y_test_states=test_dict,
+    )
+
+    print(evaluation.all_states_evaluation)
     exit()
 
     YEARS = test_df["year"].values
