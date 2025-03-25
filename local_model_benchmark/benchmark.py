@@ -5,6 +5,8 @@ In this file are experiments with local model.
 # Standard libraries
 import logging
 from typing import Dict, List
+import traceback
+import pprint
 
 
 # Custom imports
@@ -98,10 +100,28 @@ def run_experiments(
 
 
 def run_all_experiments(state: str = "Czechia", split_rate: float = 0.8) -> None:
+
+    experiments_failed: List[str] = []
     for name, exp in AVAILABLE_EXPERIMENTS.items():
         logger.info(f"Running experiment {name} ...")
-        exp.run(state=state, split_rate=split_rate)
+
+        try:
+            exp.run(state=state, split_rate=split_rate)
+        except Exception as e:
+            # Add experiments to failed experiments
+            experiments_failed.append(exp.exp.name)
+
+            # Print error message with traceback
+            logger.error(f"Exp {name} failed! Reason:")
+            traceback.print_exc()
+            continue
+
         logger.info(f"Exp {name} Done!")
+
+    # If there are any, print the names of failed experiments
+    if experiments_failed:
+        formatted_failed_experiments = pprint.pformat(experiments_failed)
+        logger.error(f"Failed experiemnts: {formatted_failed_experiments}")
 
 
 if __name__ == "__main__":

@@ -11,7 +11,10 @@ from abc import abstractmethod
 
 from typing import List, Dict
 from src.utils.log import setup_logging
-from local_model_benchmark.config import LocalModelBenchmarkSettings
+from local_model_benchmark.config import (
+    LocalModelBenchmarkSettings,
+    get_core_parameters,
+)
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
@@ -81,6 +84,8 @@ class OneStateDataExperiment(BaseExperiment):
             )
         )
 
+        single_state_rnn.set_scaler(scaler=state_scaler)
+
         # Train model
         single_state_rnn.train_model(
             batch_inputs=train_batches,
@@ -100,8 +105,8 @@ class OneStateDataExperiment(BaseExperiment):
         # Evaluate model
         single_state_rnn_evaluation = EvaluateModel(single_state_rnn)
         single_state_rnn_evaluation.eval(
-            state_train,
-            state_test,
+            test_X=state_train,
+            test_y=state_test,
         )
 
         # Get figure
@@ -164,17 +169,6 @@ class MultipleStatesDataExperiments(BaseExperiment):
                 states=self.load_states, exclude_covid_years=self.exclude_covid_years
             )
 
-        # Get hyperparameters for training
-        all_state_state_params = LSTMHyperparameters(
-            input_size=len(self.FEATURES),
-            hidden_size=128,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=10,
-            batch_size=1,
-            num_layers=3,
-        )
-
         # Add params to readme
         self.readme_add_params()
 
@@ -186,7 +180,7 @@ class MultipleStatesDataExperiments(BaseExperiment):
         # Split data
         states_train_data_dict, states_test_data_dict = states_loader.split_data(
             states_dict=loaded_states,
-            sequence_len=all_state_state_params.sequence_length,
+            sequence_len=self.model.hyperparameters.sequence_length,
             split_rate=split_rate,
         )
 
@@ -194,10 +188,12 @@ class MultipleStatesDataExperiments(BaseExperiment):
         train_input_batches, train_target_batches, all_states_scaler = (
             states_loader.preprocess_train_data_batches(
                 states_train_data_dict=states_train_data_dict,
-                hyperparameters=all_state_state_params,
+                hyperparameters=self.model.hyperparameters,
                 features=self.FEATURES,
             )
         )
+
+        self.model.set_scaler(scaler=all_states_scaler)
 
         #### Multiple state preprocessing ends here
 
@@ -221,7 +217,7 @@ class MultipleStatesDataExperiments(BaseExperiment):
 
         EVAL_STATE = state
         all_states_rnn_evaluation.eval(
-            text_X=states_train_data_dict[EVAL_STATE],
+            test_X=states_train_data_dict[EVAL_STATE],
             test_y=states_test_data_dict[EVAL_STATE],
         )
 
@@ -312,7 +308,7 @@ class AllStates(Experiment):
     def __init__(self):
 
         # Define features and parameters and model
-        self.FEATURES = [
+        FEATURES = [
             col.lower()
             for col in [
                 "year",
@@ -334,26 +330,24 @@ class AllStates(Experiment):
             ]
         ]
 
-        self.hyperparameters = LSTMHyperparameters(
-            input_size=len(self.FEATURES),
-            hidden_size=256,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=10,
-            batch_size=1,
-            num_layers=3,
-        )
+        hyperparameters = get_core_parameters(input_size=len(FEATURES))
 
-        self.model = BaseLSTM(
-            hyperparameters=self.hyperparameters, features=self.FEATURES
-        )
+        model = BaseLSTM(hyperparameters=hyperparameters, features=FEATURES)
 
         # Define the experiment
-        self.exp = MultipleStatesDataExperiments(
-            model=self.model,
+        exp = MultipleStatesDataExperiments(
+            model=model,
             name=self.NAME,
             description=self.DESCRIPTION,
-            features=self.FEATURES,
+            features=FEATURES,
+        )
+
+        super().__init__(
+            name=self.NAME,
+            model=model,
+            features=FEATURES,
+            hyperparameters=hyperparameters,
+            experiment=exp,
         )
 
     def run(self, state: str = "Czechia", split_rate: float = 0.8):
@@ -721,15 +715,7 @@ class OnlyStationaryFeatures(Experiment):
                 "Population growth",
             ]
         ]
-        single_state_params = LSTMHyperparameters(
-            input_size=len(self.FEATURES),
-            hidden_size=128,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=10,
-            batch_size=1,
-            num_layers=3,
-        )
+        single_state_params = get_core_parameters(input_size=len(self.FEATURES))
 
         self.model = BaseLSTM(
             hyperparameters=single_state_params, features=self.FEATURES
@@ -779,15 +765,7 @@ class OnlyStationaryFeaturesAllData(Experiment):
                 "Population growth",
             ]
         ]
-        single_state_params = LSTMHyperparameters(
-            input_size=len(self.FEATURES),
-            hidden_size=128,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=10,
-            batch_size=1,
-            num_layers=3,
-        )
+        single_state_params = get_core_parameters(input_size=len(self.FEATURES))
 
         self.model = BaseLSTM(
             hyperparameters=single_state_params, features=self.FEATURES
@@ -796,8 +774,8 @@ class OnlyStationaryFeaturesAllData(Experiment):
         # Define the experiment
         self.exp = MultipleStatesDataExperiments(
             model=self.model,
-            name="OnlyStationaryFeaturesAllData",
-            description="Train and evaluate model on single state data.",
+            name=self.NAME,
+            description=self.DESCRIPTION,
             features=self.FEATURES,
         )
 
@@ -836,15 +814,7 @@ class ExcludeCovidYears(Experiment):
             ]
         ]
 
-        hyperparameters = LSTMHyperparameters(
-            input_size=len(self.FEATURES),
-            hidden_size=256,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=10,
-            batch_size=1,
-            num_layers=3,
-        )
+        hyperparameters = get_core_parameters(input_size=len(self.FEATURES))
 
         self.model = BaseLSTM(hyperparameters=hyperparameters, features=self.FEATURES)
 

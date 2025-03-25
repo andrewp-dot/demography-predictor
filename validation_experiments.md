@@ -15,3 +15,9 @@ Accuracy experiment
 Method comparision
 
 **hypothesis**: Model is more accurate then traditional statistical predictions.
+
+# Experiment 4
+
+Context keeping
+
+**hypothesis**: The longer sequence is passed to the model, the better performance it has.

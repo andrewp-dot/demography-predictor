@@ -12,10 +12,10 @@ import optuna
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
-from config import Config
 from src.utils.log import setup_logging
 from src.utils.save_model import get_experiment_model, save_experiment_model
 
+from local_model_benchmark.config import get_core_parameters
 from local_model_benchmark.experiments.base_experiment import BaseExperiment, Experiment
 
 from src.local_model.finetunable_model import FineTunableLSTM, train_base_model
@@ -28,8 +28,6 @@ from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
 # Setup logger
 logger = logging.getLogger("benchmark")
 
-# Get settings
-settings = Config()
 
 # TODO: rework these experiments
 # 1. Stash changes
@@ -41,36 +39,36 @@ settings = Config()
 
 
 # Setup features to use all
-FEATURES = [
-    "year",
-    "Fertility rate, total",
-    "Population, total",
-    "Net migration",
-    "Arable land",
-    "Birth rate, crude",
-    "GDP growth",
-    "Death rate, crude",
-    "Agricultural land",
-    "Rural population",
-    "Rural population growth",
-    "Age dependency ratio",
-    "Urban population",
-    "Population growth",
-    "Adolescent fertility rate",
-    "Life expectancy at birth, total",
-]
+# FEATURES = [
+#     "year",
+#     "Fertility rate, total",
+#     "Population, total",
+#     "Net migration",
+#     "Arable land",
+#     "Birth rate, crude",
+#     "GDP growth",
+#     "Death rate, crude",
+#     "Agricultural land",
+#     "Rural population",
+#     "Rural population growth",
+#     "Age dependency ratio",
+#     "Urban population",
+#     "Population growth",
+#     "Adolescent fertility rate",
+#     "Life expectancy at birth, total",
+# ]
 
-FEATURES = [col.lower() for col in FEATURES]
+# FEATURES = [col.lower() for col in FEATURES]
 
-BASE_HYPERPARAMS = LSTMHyperparameters(
-    input_size=len(FEATURES),
-    hidden_size=256,
-    sequence_length=10,
-    learning_rate=0.0001,
-    epochs=20,
-    batch_size=1,
-    num_layers=3,
-)
+# BASE_HYPERPARAMS = LSTMHyperparameters(
+#     input_size=len(FEATURES),
+#     hidden_size=256,
+#     sequence_length=10,
+#     learning_rate=0.0001,
+#     epochs=20,
+#     batch_size=1,
+#     num_layers=3,
+# )
 
 
 # Model input based eperiments:
@@ -212,7 +210,10 @@ class OptimalParamsExperiment(BaseExperiment):
             )
 
             # Train model
-            rnn = BaseLSTM(base_params)
+            rnn = BaseLSTM(base_params, features=self.FEATURES)
+
+            rnn.set_scaler(state_scaler)
+
             rnn.train_model(batch_inputs=train_batches, batch_targets=target_batches)
 
             # Evaluate model
@@ -275,6 +276,8 @@ class OptimalParamsExperiment(BaseExperiment):
             )
         )
 
+        self.model.set_scaler(base_scaler)
+
         self.model.train_model(
             batch_inputs=base_train_batches,
             batch_targets=base_target_batches,
@@ -295,7 +298,7 @@ class OptimalParamsExperiment(BaseExperiment):
 
         self.readme_add_section(
             title="# Base model evaluation",
-            text=f"Hyperparameters:\n```{str(BASE_HYPERPARAMS)}```",
+            text=f"Hyperparameters:\n```{str(self.model.hyperparameters)}```",
         )
 
         self.save_plot(fig_name="base_model_eval.png", figure=base_fig)
@@ -331,7 +334,9 @@ class OptimalParamsExperiment(BaseExperiment):
         )
 
         # Train and evaluate the adjusted parameters model
-        optimal_model = BaseLSTM(hyperparameters=OPTIMAL_PAREMETRS)
+        optimal_model = BaseLSTM(hyperparameters=OPTIMAL_PAREMETRS, features=FEATURES)
+
+        optimal_model.set_scaler(optimal_scaler)
 
         optimal_model.train_model(
             batch_inputs=optimal_train_batches,
@@ -392,6 +397,8 @@ class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
         self.create_readme()
 
         # Adjust parameters for RNN and print them into the README.md
+        BASE_HYPERPARAMS = get_core_parameters(input_size=len(self.FEATURES))
+
         ADJUSTED_PARAMS = copy.deepcopy(BASE_HYPERPARAMS)
         ADJUSTED_PARAMS.input_size = (
             1  # Set the input size to 1, beacause there is only 1 feature
@@ -457,7 +464,7 @@ class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
             )
 
             # Create RNN
-            rnn = BaseLSTM(hyperparameters=ADJUSTED_PARAMS)
+            rnn = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=self.FEATURES)
 
             # Preprocess data
             input_batches, target_batches, scaler = (
@@ -468,6 +475,8 @@ class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
                     scaler=MinMaxScaler(),
                 )
             )
+
+            rnn.set_scaler(scaler=scaler)
 
             # Train model
             rnn.train_model(
@@ -551,7 +560,7 @@ class FineTuneExperiment(BaseExperiment):
             state_loader.preprocess_training_data_batches(
                 train_data_df=train_state_data_df,
                 hyperparameters=self.model.hyperparameters,
-                features=FEATURES,
+                features=self.FEATURES,
                 scaler=base_model.scaler,
             )
         )
@@ -595,10 +604,6 @@ class FineTuneExperiment(BaseExperiment):
         )
 
 
-# 4. Compare prediction using whole state data and the last few records of data
-# 5. Predict parameters for different years (e.g. to 2030, 2040, ... )
-
-
 class LSTMOptimalParameters(Experiment):
 
     NAME = "OptimalParamsExperiment"
@@ -630,15 +635,7 @@ class LSTMOptimalParameters(Experiment):
             ]
         ]
 
-        hyperparameters = LSTMHyperparameters(
-            input_size=len(self.FEATURES),
-            hidden_size=256,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=20,
-            batch_size=1,
-            num_layers=3,
-        )
+        hyperparameters = get_core_parameters(input_size=len(self.FEATURES))
 
         self.model = BaseLSTM(hyperparameters=hyperparameters, features=self.FEATURES)
 
@@ -689,15 +686,7 @@ class RNNvsStatisticalMethodsSingleFeature(Experiment):
             ]
         ]
 
-        hyperparameters = LSTMHyperparameters(
-            input_size=len(self.FEATURES),
-            hidden_size=256,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=20,
-            batch_size=1,
-            num_layers=3,
-        )
+        hyperparameters = get_core_parameters(input_size=len(self.FEATURES))
 
         self.model = BaseLSTM(hyperparameters=hyperparameters, features=self.FEATURES)
 
@@ -755,15 +744,7 @@ class FinetuneBaseLSTM(Experiment):
 
     def run(self, state="Czechia", split_rate=0.8):
         # Train the base model
-        base_hyperparameters = LSTMHyperparameters(
-            input_size=len(self.FEATURES),
-            hidden_size=256,
-            sequence_length=10,
-            learning_rate=0.0001,
-            epochs=3,
-            batch_size=32,
-            num_layers=3,
-        )
+        base_hyperparameters = get_core_parameters(input_size=len(self.FEATURES))
 
         # Try to get model first
         try:
@@ -773,14 +754,14 @@ class FinetuneBaseLSTM(Experiment):
         except:
             base_model = train_base_model(
                 hyperparameters=base_hyperparameters,
-                features=FEATURES,
+                features=self.FEATURES,
                 evaluation_state_name=state,
             )
 
         # Create finetunable model
         finetunable_hyperparameters = LSTMHyperparameters(
-            input_size=len(FEATURES),
-            hidden_size=base_hyperparameters.hidden_size,  # Yet the base model hidden size and finetunable layer hidden size has to be the same
+            input_size=len(self.FEATURES),
+            hidden_size=256,
             sequence_length=base_hyperparameters.sequence_length,
             learning_rate=0.0001,
             epochs=30,

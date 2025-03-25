@@ -4,6 +4,7 @@ import numpy as np
 import logging
 from typing import Union, List, Dict, Tuple
 from pydantic import BaseModel
+import shap
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
@@ -390,6 +391,27 @@ class GlobalModel:
         predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
 
         return predictions_df
+
+    def feature_importance(self, X_train: pd.DataFrame):
+        """
+        Create a plot or something using SHAP explainer.
+        """
+
+        if None is None:
+            raise NotImplementedError(
+                "Need to implement this for explaining features! Maybe you can implement training and for single prediction feature importance explainer."
+            )
+
+        explainer: shap.Explainer = shap.Explainer(self.model)
+        shap_values = explainer(X_train)
+
+        shap.summary_plot(shap_values, X_train)
+
+        # For a single prediction
+        shap.force_plot(explainer.expected_value, shap_values[0], X_train.iloc[0])
+
+        # Shows interaction effects
+        shap.dependence_plot("feature_name", shap_values, X_train)
 
 
 def try_single_target_global_model():

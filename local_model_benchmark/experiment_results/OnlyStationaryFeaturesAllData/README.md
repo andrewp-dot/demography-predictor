@@ -34,3 +34,19 @@ rural population growth
 urban population
 population growth
 ```
+## Loss graph
+
+
+![Loss graph](./plots/loss.png)
+
+
+## Evaluation of the model - state: Czechia
+
+
+![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
+
+# Metric result
+{'mae': 1.8403200592902011,
+ 'mse': 5.78853284226279,
+ 'r2': -80.45621174883172,
+ 'rmse': 1.892191848037692}

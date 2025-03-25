@@ -8,12 +8,12 @@
 Input size:         14
 Batch size:         1
 
-Hidden size:        512
+Hidden size:        256
 Sequence length:    10
-Layers:             4
+Layers:             3
 
 Learning rate:      0.0001
-Epochs:             10
+Epochs:             1
 
 Bidirectional:      False
 ```
@@ -46,7 +46,7 @@ life expectancy at birth, total
 ![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
 
 # Metric result
-{'mae': 2.9351862297035534,
- 'mse': 15.025515016724546,
- 'r2': -177.45880746383997,
- 'rmse': 3.02845131350808}
+{'mae': 5.641811257960231,
+ 'mse': 67.32442509373665,
+ 'r2': -6018.214294423909,
+ 'rmse': 5.834995847268258}

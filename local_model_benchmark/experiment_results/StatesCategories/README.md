@@ -46,7 +46,7 @@ population growth
 ![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
 
 # Metric result
-{'mae': 2.640425495301556,
- 'mse': 11.935203530571062,
- 'r2': -192.4507019828619,
- 'rmse': 2.840262068526201}
+{'mae': 2.6405676101856446,
+ 'mse': 11.93506170897288,
+ 'r2': -192.4381959021003,
+ 'rmse': 2.8403906195127724}

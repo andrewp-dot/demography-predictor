@@ -8,7 +8,7 @@
 Input size:         14
 Batch size:         1
 
-Hidden size:        128
+Hidden size:        256
 Sequence length:    10
 Layers:             3
 
@@ -46,7 +46,7 @@ population growth
 ![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
 
 # Metric result
-{'mae': 1.2852814382471824,
- 'mse': 3.003953951109542,
- 'r2': -48.79020251398979,
- 'rmse': 1.350632962324238}
+{'mae': 1.9581076255042547,
+ 'mse': 6.648423348096595,
+ 'r2': -209.74094910208382,
+ 'rmse': 2.046816651541895}

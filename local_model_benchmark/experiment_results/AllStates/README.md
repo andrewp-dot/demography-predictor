@@ -13,7 +13,7 @@ Sequence length:    10
 Layers:             3
 
 Learning rate:      0.0001
-Epochs:             10
+Epochs:             1
 
 Bidirectional:      False
 ```
@@ -48,7 +48,7 @@ life expectancy at birth, total
 ![Evaluation of the model - state: Czechia](./plots/evaluation_czechia.png)
 
 # Metric result
-{'mae': 8194968.081969293,
- 'mse': 1088894961549800.4,
- 'r2': -262820.9797969713,
- 'rmse': 8258915.432592933}
+{'mae': 19484711.574640106,
+ 'mse': 7494895401017509.0,
+ 'r2': -1815750.8932965673,
+ 'rmse': 21675393.035403267}

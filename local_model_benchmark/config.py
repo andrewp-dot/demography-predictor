@@ -3,6 +3,8 @@ from pydantic import DirectoryPath, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Dict
 
+from src.local_model.base import LSTMHyperparameters
+
 
 def get_experiment_result_dir() -> DirectoryPath:
     experiment_result_dir = os.path.join(
@@ -14,6 +16,20 @@ def get_experiment_result_dir() -> DirectoryPath:
         os.makedirs(experiment_result_dir)
 
     return experiment_result_dir
+
+
+def get_core_parameters(input_size: int, batch_size: int = 1) -> LSTMHyperparameters:
+    BASE_HYPERPARAMETERS: LSTMHyperparameters = LSTMHyperparameters(
+        input_size=input_size,
+        hidden_size=256,
+        sequence_length=10,
+        learning_rate=0.0001,
+        epochs=1,
+        batch_size=batch_size,
+        num_layers=3,
+    )
+
+    return BASE_HYPERPARAMETERS
 
 
 class LocalModelBenchmarkSettings(BaseSettings):
