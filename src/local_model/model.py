@@ -239,6 +239,7 @@ class BaseLSTM(CustomModelBase):
             )
             FEATURES = self.SCALER.feature_names_in_
 
+        # Scale data
         scaled_input_data = self.SCALER.transform(input_data[FEATURES])
 
         scaled_input_data_df = pd.DataFrame(scaled_input_data)
@@ -402,8 +403,6 @@ if __name__ == "__main__":
     model_evaluation.eval(
         test_X=val_X,
         test_y=val_y,
-        features=FEATURES,
-        scaler=cz_scaler,
     )
 
     logger.info(

@@ -218,7 +218,8 @@ class OptimalParamsExperiment(BaseExperiment):
             # Evaluate model
             rnn_evaluation = EvaluateModel(rnn)
             rnn_evaluation.eval(
-                test_X=train_df, test_y=test_df, features=features, scaler=state_scaler
+                test_X=train_df,
+                test_y=test_df,
             )
 
             # Return a score (maximize R²)
@@ -284,8 +285,6 @@ class OptimalParamsExperiment(BaseExperiment):
         base_model_evaluation.eval(
             test_X=train_data_df,
             test_y=test_data_df,
-            features=FEATURES,
-            scaler=base_scaler,
         )
 
         # Plot and save base model plot
@@ -344,8 +343,6 @@ class OptimalParamsExperiment(BaseExperiment):
         optimal_model_evaluation.eval(
             test_X=train_data_df,
             test_y=test_data_df,
-            features=FEATURES,
-            scaler=optimal_scaler,
         )
 
         # Plot and save base model plot
@@ -482,8 +479,10 @@ class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
             # Evaluate model
             rnn_evaluation = EvaluateModel(model=rnn)
 
+            # TODO: what to do with this?
             rnn_evaluation.eval(
-                test_X=train_df, test_y=test_df, features=[target], scaler=scaler
+                test_X=train_df,
+                test_y=test_df,
             )
 
             # Save LSTM evaluation
@@ -570,8 +569,6 @@ class FineTuneExperiment(BaseExperiment):
         finetunable_model_evaluation.eval(
             test_X=train_state_data_df,
             test_y=test_state_data_df,
-            features=FEATURES,
-            scaler=base_model.scaler,
         )
 
         logger.info(

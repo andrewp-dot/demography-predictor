@@ -204,9 +204,6 @@ if __name__ == "__main__":
     evaluation.eval(
         test_X=train_df,
         test_y=test_df,
-        # features=pred.global_model.FEATURES,
-        # targets=pred.global_model.TARGETS,
-        # scaler=pred.local_model.SCALER,
     )
 
     print(evaluation.overall_metrics)

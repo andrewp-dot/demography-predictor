@@ -311,7 +311,14 @@ class FineTunableLSTM(CustomModelBase):
         # Put the model into the evaluation mode
         self.eval()
 
-        input_sequence = torch.tensor(data=input_data.values, dtype=torch.float32)
+        # Scale data
+        scaled_input_data = self.SCALER.transform(input_data[FEATURES])
+
+        scaled_input_data_df = pd.DataFrame(scaled_input_data)
+
+        input_sequence = torch.tensor(
+            data=scaled_input_data_df.values, dtype=torch.float32
+        )
 
         logger.debug(f"Input sequence: {input_sequence.shape}")
 
@@ -397,7 +404,13 @@ class FineTunableLSTM(CustomModelBase):
             logger.debug(f"{year}: {pred}")
 
         new_predictions_tensor = torch.cat(new_predictions, dim=0)
-        return new_predictions_tensor
+
+        # Unscale predicted data
+        unscaled_predicted_data = self.SCALER.inverse_transform(new_predictions_tensor)
+        new_predictions_df = pd.DataFrame(
+            unscaled_predicted_data, columns=self.FEATURES
+        )
+        return new_predictions_df
 
 
 def train_base_model(
@@ -466,8 +479,6 @@ def train_base_model(
     model_evaluation.eval(
         test_X=train_data_dict[evaluation_state_name],
         test_y=test_data_dict[evaluation_state_name],
-        features=FEATURES,
-        scaler=base_fitted_scaler,
     )
 
     # Get predictions plot
@@ -573,8 +584,6 @@ if __name__ == "__main__":
     finetunable_model_evaluation.eval(
         test_X=train_state_data_df,
         test_y=test_state_data_df,
-        features=FEATURES,
-        scaler=base_model.scaler,
     )
 
     logger.info(

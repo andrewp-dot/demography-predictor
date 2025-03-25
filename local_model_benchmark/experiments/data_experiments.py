@@ -102,8 +102,6 @@ class OneStateDataExperiment(BaseExperiment):
         single_state_rnn_evaluation.eval(
             state_train,
             state_test,
-            features=self.FEATURES,
-            scaler=state_scaler,
         )
 
         # Get figure
@@ -223,10 +221,8 @@ class MultipleStatesDataExperiments(BaseExperiment):
 
         EVAL_STATE = state
         all_states_rnn_evaluation.eval(
-            states_train_data_dict[EVAL_STATE][self.FEATURES],
-            states_test_data_dict[EVAL_STATE][self.FEATURES],
-            features=self.FEATURES,
-            scaler=all_states_scaler,
+            text_X=states_train_data_dict[EVAL_STATE],
+            test_y=states_test_data_dict[EVAL_STATE],
         )
 
         evaluation_fig = all_states_rnn_evaluation.plot_predictions()
