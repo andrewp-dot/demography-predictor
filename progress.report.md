@@ -50,6 +50,7 @@ Bonus:
 5. FineTune Experiments:
     - finetune model using 1 state
     - finetune model using similiar states
+6. The full model evaluation
 
 ## Bonus
 1. Model inference (`API`)
