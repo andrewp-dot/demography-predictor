@@ -39,6 +39,7 @@ Bonus:
 1. Statistical model implementation (Grey model)
 2. Experiments:
     - None
+3. Different model for experiment fix. -> think about it, how you can do it better
 
 
 ## TODO:

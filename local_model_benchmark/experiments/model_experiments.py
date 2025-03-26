@@ -406,7 +406,7 @@ class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
 
         self.readme_add_section(
             title="# LSTM model parameters",
-            text=f"Hyperparameters:\n```{str(BASE_HYPERPARAMS)}```",
+            text=f"Hyperparameters:\n```{str(ADJUSTED_PARAMS)}```",
         )
 
         # Load data
@@ -423,6 +423,9 @@ class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
         # Exclude "year" from features
         features = self.FEATURES
         features.remove("year")
+
+        # feature: best_model dict
+        feature_bestmodel_dict: Dict[str, str] = {}
 
         # For every features create ARIMA and LSTM model
         for feature in features:
@@ -464,7 +467,7 @@ class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
             )
 
             # Create RNN
-            rnn = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=self.FEATURES)
+            rnn = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=[target])
 
             # Preprocess data
             input_batches, target_batches, scaler = (
@@ -517,6 +520,29 @@ class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
                 title="### Overall metrics (RNN)",
                 text=f"```\n{formatted_rnn_eval}\n```\n",
             )
+
+            # Compare
+            if rnn_evaluation.is_new_better(new_model_evaluation=arima_evaluation):
+                feature_bestmodel_dict[target] = "ARIMA"
+            else:
+                feature_bestmodel_dict[target] = "LSTM"
+
+        # Create comparatation dataframe
+        comparation_df: pd.DataFrame = pd.DataFrame(
+            {
+                "feature": list(feature_bestmodel_dict.keys()),
+                "best_model": list(feature_bestmodel_dict.values()),
+            }
+        )
+
+        formatted_comparation_dict = pprint.pformat(
+            comparation_df.to_dict(orient="records")
+        )
+
+        self.readme_add_section(
+            title="# Feature comparation dict",
+            text=f"```\n{formatted_comparation_dict}\n```\n",
+        )
 
 
 class CompareLSTMARIMAExperiment(BaseExperiment):
@@ -884,7 +910,7 @@ class LSTMOptimalParameters(Experiment):
 
 class RNNvsStatisticalMethodsSingleFeature(Experiment):
     NAME = "RNNvsStatisticalMethodsSingleFeature"
-    DESCRIPTION = "Compares the performance of LSTM model with the statistical ARIMA model for all features prediction. Each model is trained just to predict 1 feauture from all features."
+    DESCRIPTION = "Uses just 1 states data. Compares the performance of LSTM model with the statistical ARIMA model for all features prediction. Each model is trained just to predict 1 feauture from all features."
 
     def __init__(self):
 
