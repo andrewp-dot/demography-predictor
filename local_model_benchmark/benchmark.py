@@ -41,6 +41,8 @@ logger = logging.getLogger("benchmark")
 # TODO: Define experiments
 # TODO: doc comments
 
+# Setup logging if it is not
+setup_logging()
 
 data_experiments: List[Experiment] = [
     AllStates(),

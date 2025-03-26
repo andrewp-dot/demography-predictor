@@ -18,15 +18,23 @@ def get_experiment_result_dir() -> DirectoryPath:
     return experiment_result_dir
 
 
-def get_core_parameters(input_size: int, batch_size: int = 1) -> LSTMHyperparameters:
+def get_core_parameters(
+    input_size: int,
+    hidden_size: int = 256,
+    sequence_length: int = 10,
+    learning_rate: float = 0.0001,
+    epochs: int = 10,
+    batch_size: int = 1,
+    num_layers: int = 3,
+) -> LSTMHyperparameters:
     BASE_HYPERPARAMETERS: LSTMHyperparameters = LSTMHyperparameters(
         input_size=input_size,
-        hidden_size=256,
-        sequence_length=10,
-        learning_rate=0.0001,
-        epochs=10,
+        hidden_size=hidden_size,
+        sequence_length=sequence_length,
+        learning_rate=learning_rate,
+        epochs=epochs,
         batch_size=batch_size,
-        num_layers=3,
+        num_layers=num_layers,
     )
 
     return BASE_HYPERPARAMETERS

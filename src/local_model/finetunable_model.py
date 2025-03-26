@@ -227,6 +227,8 @@ class FineTunableLSTM(CustomModelBase):
         display_nth_epoch: int = 10,
         loss_function: Union[nn.MSELoss, nn.L1Loss, nn.HuberLoss] = None,
     ):
+        # TODO: trains the base LSTM model if it is not trained
+
         # Put the model to the device
         self.to(device=self.device)
 

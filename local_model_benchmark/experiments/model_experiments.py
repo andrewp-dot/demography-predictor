@@ -984,12 +984,12 @@ class RNNvsStatisticalMethods(Experiment):
             ]
         ]
 
-        hyperparameters = get_core_parameters(input_size=len(features))
+        hyperparameters = get_core_parameters(input_size=len(features), num_layers=2)
 
-        model = BaseLSTM(hyperparameters=hyperparameters, features=features)
-        # model = self.finetunable_model(
-        # hyperparameters=hyperparameters, features=features, eval_state="Czechia"
-        # )
+        # model = BaseLSTM(hyperparameters=hyperparameters, features=features)
+        model = self.finetunable_model(
+            hyperparameters=hyperparameters, features=features, eval_state="Czechia"
+        )
 
         experiment = CompareLSTMARIMAExperiment(
             model=model,
@@ -1026,7 +1026,7 @@ class RNNvsStatisticalMethods(Experiment):
             learning_rate=0.0001,
             epochs=30,
             batch_size=1,
-            num_layers=1,
+            num_layers=2,
         )
 
         model = FineTunableLSTM(
