@@ -13,6 +13,7 @@ def cli():
     """
     Defines the main cli group
     """
+    print("Executing CLI...")  # Print statement to check if cli() is executed
     setup_logging()
     pass
 
@@ -22,6 +23,7 @@ def lbenchmark():
     """
     Defines the main cli group
     """
+    setup_logging()
     pass
 
 
@@ -71,6 +73,7 @@ def run(all, experiments, state, split_rate):
     """
     Runs experiments based on given options.
     """
+    setup_logging()
 
     if all:
         run_all_experiments(state=state, split_rate=split_rate)

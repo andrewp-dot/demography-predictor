@@ -15,7 +15,7 @@
         - Train LSTM with only stationary features (% features etc.)
         - Use only stationary features
         
-        <!-- # New -->
+        <!-- New -->
         - experiment with exclusion of covid years
         - Finetune experiment -> use all states and finetune layer using the state 
         - use just part of the dataset (only states with same geolocation, wealth level...) -> by wealth country richness
@@ -25,6 +25,12 @@
 3. Statistical model implementation (ARIMA)
 4. Global model implementation (XGBoost)
 5. Demography predictor implementation (both, local and global) -> relatively poor performance, for poulation total it is useless
+
+<!-- New -->
+6. Write experiment results -> method comparision, advantages, disadvantages (ARIMA, LSTM experiment)
+    - fix experiment, use one neural network and N ARIMAS for comparision
+    - print the table with header: `feature_name` | `best_model`
+7. The full model evaluation
 
 Bonus:
 1. Simple CLI for `lbenchmark`. For more info run `poetry run cli lbenchmark --help`
@@ -36,21 +42,16 @@ Bonus:
 
 
 ## TODO:
-0. !!!! FIX THE INTERFACE FOR THE EXPERIMENTS TO BE COMPATIBLE WITH EVERY MODEL YOU CREATE, OR DESIGN THE EXPERIMENTS IN THAT WAY, THAT YOU CAN COMPARE LOCAL MODELS !!! (objective: find a way how to compare different LSTM models) - nearly done, not tested.
-
 1. Experiments
     - Different Neural network architectures (not a just a pure LSTM)
     - (BONUS) LSTM and NN as a global model instead of local 
     - (fix) features for experiments -> use all or mostly the same experiments
-2. Write experiment results -> method comparision, advantages, disadvantages (ARIMA, LSTM experiment)
-    - fix experiment, use one neural network and N ARIMAS for comparision
-    - print the table with header: `feature_name` | `best_model`
-3. Predictions using the population from Lakmoos AI. –> find a call, data adapter for Clones -> Add to Poli's calendar
-4. Try predict population total using the population growth
-5. FineTune Experiments:
+
+2. Predictions using the population from Lakmoos AI. –> find a call, data adapter for Clones -> Add to Poli's calendar
+43 Try predict population total using the population growth
+4. FineTune Experiments:
     - finetune model using 1 state
     - finetune model using similiar states
-6. The full model evaluation
 
 ## Bonus
 1. Model inference (`API`)

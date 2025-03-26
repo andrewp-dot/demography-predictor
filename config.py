@@ -3,6 +3,11 @@ from pydantic import Field, DirectoryPath
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 
+# from src.utils.log import setup_logging
+
+# # setup logging for sure
+# setup_logging()
+
 
 def get_trained_models_dir() -> DirectoryPath:
     trained_models_dir = os.path.join(".", "trained_models")

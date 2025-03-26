@@ -961,6 +961,9 @@ class RNNvsStatisticalMethods(Experiment):
         hyperparameters = get_core_parameters(input_size=len(features))
 
         model = BaseLSTM(hyperparameters=hyperparameters, features=features)
+        # model = self.finetunable_model(
+        # hyperparameters=hyperparameters, features=features, eval_state="Czechia"
+        # )
 
         experiment = CompareLSTMARIMAExperiment(
             model=model,
@@ -970,6 +973,40 @@ class RNNvsStatisticalMethods(Experiment):
         )
 
         super().__init__(name, model, features, hyperparameters, experiment)
+
+    def finetunable_model(
+        self, hyperparameters: LSTMHyperparameters, features: List[str], eval_state: str
+    ) -> FineTunableLSTM:
+        # Train the base model
+        base_hyperparameters = hyperparameters
+
+        # Try to get model first
+        try:
+            base_model = get_experiment_model(
+                name=f"base_model_{base_hyperparameters.hidden_size}.pkl"
+            )
+        except:
+            base_model = train_base_model(
+                hyperparameters=base_hyperparameters,
+                features=features,
+                evaluation_state_name=eval_state,
+            )
+
+        # Create finetunable model
+        finetunable_hyperparameters = LSTMHyperparameters(
+            input_size=len(features),
+            hidden_size=256,
+            sequence_length=base_hyperparameters.sequence_length,
+            learning_rate=0.0001,
+            epochs=30,
+            batch_size=1,
+            num_layers=1,
+        )
+
+        model = FineTunableLSTM(
+            base_model=base_model, hyperparameters=finetunable_hyperparameters
+        )
+        return model
 
     def run(self, state: str = "Czechia", split_rate: float = 0.8) -> None:
         return self.exp.run(state=state, split_rate=split_rate)

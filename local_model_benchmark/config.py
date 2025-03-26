@@ -24,7 +24,7 @@ def get_core_parameters(input_size: int, batch_size: int = 1) -> LSTMHyperparame
         hidden_size=256,
         sequence_length=10,
         learning_rate=0.0001,
-        epochs=1,
+        epochs=10,
         batch_size=batch_size,
         num_layers=3,
     )
