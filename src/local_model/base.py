@@ -284,6 +284,19 @@ class BaseEvaluation:
 
         return result
 
+    def get_metric_value(self, evaluation_df: pd.DataFrame, metric: str) -> float:
+        """
+        From the evaluation dict in format of the overall metrics dataframe (columns: metric | value) extracts the value of the given metric.
+
+        Args:
+            evaluation_df (pd.DataFrame): Evaluation dataframe compatibile with the overall metrics dataframe.
+            metric (str): Metric which you want to extract.
+
+        Returns:
+            out: float: The value of the given metric.
+        """
+        return evaluation_df.loc[evaluation_df["metric"] == metric, "value"].values[0]
+
     @abstractmethod
     def eval(
         self,
@@ -295,7 +308,46 @@ class BaseEvaluation:
     ) -> None:
         raise NotImplementedError()
 
+    def plot_single_feautre_prediction(self, feature: str) -> Figure:
+        """
+        Creates figure for a specified feature prediction.
+
+        Returns:
+            out: Figure: The plot of the reference / predicted values for a single feature.
+        """
+        # Get years
+        YEARS = self.predicted_years
+
+        fig = plt.figure(figsize=(8, 2))
+
+        plt.plot(
+            YEARS,
+            self.reference_values[feature],
+            label=f"Reference values",
+            color="b",
+        )
+
+        plt.plot(
+            YEARS,
+            self.predicted[feature],
+            label=f"Predicted",
+            color="r",
+        )
+
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
+        plt.grid()
+        plt.legend()
+
+        return fig
+
     def plot_predictions(self) -> Figure:
+        """
+        Creates figure for a all features evaluation.
+
+        Returns:
+            out: Figure: The plot of the reference / predicted values for all features.
+        """
 
         # Get years
         YEARS = self.predicted_years
@@ -310,6 +362,11 @@ class BaseEvaluation:
         # Ensure axes is always iterable
         if N_FEATURES == 1:
             axes = [axes]  # Convert to list for consistent indexing
+
+        # Create a dictionary to map features to their subplot axes and save it
+        # self.feature_plots_mapping = {
+        #     feature: ax for feature, ax in zip(FEATURES, fig.axes)
+        # }
 
         # Plotting in each subplot
         for index, feature in zip(range(N_FEATURES), FEATURES):
@@ -400,11 +457,6 @@ class EvaluateModel(BaseEvaluation):
         y_test_states: Dict[str, pd.DataFrame],
     ) -> None:
 
-        def get_metric_value(evaluation_df: pd.DataFrame, metric: str) -> float:
-            return evaluation_df.loc[evaluation_df["metric"] == "mae", "value"].values[
-                0
-            ]
-
         # Create empty dataframe
         # state | mae | mse | rmse | r2
         # ...
@@ -430,10 +482,10 @@ class EvaluateModel(BaseEvaluation):
                 [
                     {
                         "state": state,
-                        "mae": get_metric_value(m, "mae"),
-                        "mse": get_metric_value(m, "mse"),
-                        "rmse": get_metric_value(m, "rmse"),
-                        "r2": get_metric_value(m, "r2"),
+                        "mae": self.get_metric_value(m, "mae"),
+                        "mse": self.get_metric_value(m, "mse"),
+                        "rmse": self.get_metric_value(m, "rmse"),
+                        "r2": self.get_metric_value(m, "r2"),
                     }
                 ]
             )

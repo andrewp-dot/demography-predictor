@@ -25,6 +25,7 @@ from local_model_benchmark.experiments.data_experiments import (
 from local_model_benchmark.experiments.model_experiments import (
     LSTMOptimalParameters,
     RNNvsStatisticalMethodsSingleFeature,
+    RNNvsStatisticalMethods,
     FinetuneBaseLSTM,
 )
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -41,8 +42,7 @@ logger = logging.getLogger("benchmark")
 # TODO: doc comments
 
 
-# List of available experimets
-experiment_list: List[Experiment] = [
+data_experiments: List[Experiment] = [
     AllStates(),
     AllStatesWithoutHighErrorFeatures(),
     OneState(),
@@ -50,16 +50,26 @@ experiment_list: List[Experiment] = [
     OnlyStationaryFeaturesAllData(),
     ExcludeCovidYears(),
     StatesCategories(),
-    # Model experiments
+]
+
+# List of available experimets
+model_experiments: List[Experiment] = [
     LSTMOptimalParameters(),
     RNNvsStatisticalMethodsSingleFeature(),
+    RNNvsStatisticalMethods(),
     FinetuneBaseLSTM(),
 ]
 
+
 # Setup experiments -> convert experiment list to dict
 
+AVAILABLE_EXPERIMENTS_BY_GROUP: Dict[str, Dict[str, Experiment]] = {
+    "model_experiments": {exp.exp.name: exp for exp in data_experiments},
+    "data_experiments": {exp.exp.name: exp for exp in model_experiments},
+}
+
 AVAILABLE_EXPERIMENTS: Dict[str, Experiment] = {
-    exp.exp.name: exp for exp in experiment_list
+    exp.exp.name: exp for exp in (model_experiments + data_experiments)
 }
 
 
@@ -69,14 +79,19 @@ def print_available_experiments(
 
     print("Available experiments:")
     print("-" * 50)
-    if with_description:
-        for exp_name, exp in AVAILABLE_EXPERIMENTS.items():
-            print(f" {exp_name}".ljust(50), exp.exp.description)
 
-        return
+    for exp_group, experiments_dict in AVAILABLE_EXPERIMENTS_BY_GROUP.items():
+        # Print experiments by group
+        print(f"\n{exp_group}:\n")
 
-    for exp_name in AVAILABLE_EXPERIMENTS.keys():
-        print(f" {exp_name}")
+        # Print single experiments
+        if with_description:
+            for exp_name, exp in experiments_dict.items():
+                print(f" {exp_name}".ljust(50), exp.exp.description)
+
+        else:
+            for exp_name in experiments_dict.keys():
+                print(f" {exp_name}")
 
     return
 
@@ -145,7 +160,3 @@ if __name__ == "__main__":
 # TODO: try different loss functions
 
 #  criterion = nn.HuberLoss(delta=1.0)
-
-# Interesting to try:
-# Feature engineering -> correlations, stationary features, non-stationary features
-# Maybe delete the COVID years in order to known it's influence on model accuracy?

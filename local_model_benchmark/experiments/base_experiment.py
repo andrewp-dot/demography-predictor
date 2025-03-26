@@ -180,7 +180,7 @@ class BaseExperiment:
 
             with open(self.readme_path, "a") as readme:
                 readme.write("## Hyperparameters\n")
-                readme.write(f"```{write_params}```\n")
+                readme.write(f"\n```{write_params}```\n\n")
             return
 
         raise ValueError(
@@ -193,7 +193,7 @@ class BaseExperiment:
 
             with open(self.readme_path, "a") as readme:
                 readme.write("## Features\n")
-                readme.write("```\n" + "\n".join(self.FEATURES) + "\n```")
+                readme.write("```\n" + "\n".join(self.FEATURES) + "\n```\n\n")
             return
 
         raise ValueError(

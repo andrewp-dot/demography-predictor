@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import pprint
 import logging
-from typing import List, Dict, Literal, Tuple
+from typing import List, Dict, Literal, Tuple, Union
 
 import copy
 import optuna
@@ -519,6 +519,232 @@ class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
             )
 
 
+class CompareLSTMARIMAExperiment(BaseExperiment):
+
+    def __train_lstm(self, split_rate: float):
+        states_loader = StatesDataLoader()
+
+        states_data_dict = states_loader.load_all_states()
+
+        # Split data
+        train_dict, test_dict = states_loader.split_data(
+            states_dict=states_data_dict,
+            sequence_len=self.model.hyperparameters.sequence_length,
+            split_rate=split_rate,
+        )
+
+        # Preprocess data
+        train_batches, target_batches, scaler = (
+            states_loader.preprocess_train_data_batches(
+                states_train_data_dict=train_dict,
+                hyperparameters=self.model.hyperparameters,
+                features=self.FEATURES,
+            )
+        )
+
+        # Set scaler to the model
+        self.model.set_scaler(scaler)
+
+        # Train model
+        self.model.train_model(
+            batch_inputs=train_batches,
+            batch_targets=target_batches,
+            display_nth_epoch=1,
+        )
+
+    def __train_and_eval_ARIMA_models(
+        self, train_df: pd.DataFrame, test_df: pd.DataFrame
+    ) -> Dict[str, pd.DataFrame]:
+
+        arima_evaluation_dict: Dict[str, pd.DataFrame] = {}
+
+        ARIMA_FEATURES = self.FEATURES
+        ARIMA_FEATURES.remove("year")
+        for feature in ARIMA_FEATURES:
+
+            logger.info(f"[{self.name}]: Current target: {feature}")
+
+            # Set feature as a target
+            target = feature
+
+            # Get the feature to predict
+            train_df = train_df
+            test_df = test_df
+
+            # Create ARIMA
+            arima = LocalARIMA(1, 1, 1, features=[], target=target, index="year")
+            arima.train_model(train_df)
+
+            # Evaluate ARIMA
+            arima_evaluation = EvaluateARIMA(arima=arima)
+            arima_evaluation.eval(
+                test_X=train_df,
+                test_y=test_df,
+                features=[],
+                target=target,
+                index="year",
+            )
+
+            # Save overall evaluation
+            arima_evaluation_dict[target] = arima_evaluation.overall_metrics
+
+            # Save ARIMA evaluation
+            arima_predictions_fig = arima_evaluation.plot_single_feautre_prediction(
+                feature=target
+            )
+            arima_fig_name = f"arima_evaluation_{target}.png".replace(" ", "_")
+
+            self.save_plot(fig_name=arima_fig_name, figure=arima_predictions_fig)
+            self.readme_add_plot(
+                plot_name=f"Arima evaluation: {target}",
+                plot_description="",
+                fig_name=arima_fig_name,
+            )
+
+        return arima_evaluation_dict
+
+    def __compare_results_by_error_metrics(
+        self, lstm_evaluation_df: pd.DataFrame, arima_evaluation_df: pd.DataFrame
+    ) -> pd.DataFrame:
+
+        # Define error metrics
+        ERROR_METRICS = ["mae", "mse", "rmse"]
+
+        # Compare the same features
+        lstm_features = lstm_evaluation_df["feature"].unique()
+        arima_features = arima_evaluation_df["feature"].unique()
+
+        COMMON_FEATURES = list(set(lstm_features) & set(arima_features))
+
+        # feature: best model
+        result_dict: Dict[str, str] = {}
+
+        for feature in COMMON_FEATURES:
+
+            # Extracts the records in this format: {'feature': value, 'mae': value, 'mse': value, 'rmse': value}
+            lstm_feature_dict = (
+                lstm_evaluation_df.loc[lstm_evaluation_df["feature"] == feature]
+                .squeeze()
+                .to_dict()
+            )
+
+            arima_feature_dict = (
+                arima_evaluation_df.loc[arima_evaluation_df["feature"] == feature]
+                .squeeze()
+                .to_dict()
+            )
+
+            votes_dict: Dict[str, str] = {
+                "LSTM": 0,
+                "ARIMA": 0,
+            }
+
+            # Compare by metrics
+            for metric in ERROR_METRICS:
+                if lstm_feature_dict[metric] < arima_feature_dict[metric]:
+                    votes_dict["LSTM"] += 1
+                if lstm_feature_dict[metric] > arima_feature_dict[metric]:
+                    votes_dict["ARIMA"] += 1
+
+            if votes_dict["LSTM"] > votes_dict["ARIMA"]:
+                result_dict[feature] = "LSTM"
+            elif votes_dict["LSTM"] < votes_dict["ARIMA"]:
+                result_dict[feature] = "ARIMA"
+            else:
+                result_dict[feature] = ",".join(votes_dict.keys())
+
+        # Convert result dict to dataframe
+        to_result_df_dict: Dict[str, List[str]] = {
+            "feature": list(result_dict.keys()),
+            "best_model": list(result_dict.values()),
+        }
+
+        return pd.DataFrame(to_result_df_dict)
+
+    def run(self, state: str, split_rate: float) -> None:
+        # Create readme
+        self.create_readme()
+
+        # Add features add LSTM hyperparametes
+        self.readme_add_features()
+        self.readme_add_params()
+
+        # Train the lstm
+        self.__train_lstm(split_rate=split_rate)
+
+        # Preprocess data for ARIMA and LSTM evaluation
+        state_loader = StateDataLoader(state=state)
+        state_df = state_loader.load_data()
+
+        arima_train_df, arima_test_df = state_loader.split_data(
+            data=state_df, split_rate=split_rate
+        )
+
+        # Evaluate model
+        lstm_evaluation = EvaluateModel(model=self.model)
+        lstm_evaluation.eval(test_X=arima_train_df, test_y=arima_test_df)
+
+        # Train ARIMA models
+        arima_evaluation_dict = self.__train_and_eval_ARIMA_models(
+            train_df=arima_train_df, test_df=arima_test_df
+        )
+
+        # Convert ARIMA evaluation dict to the similiar per feature dataframe
+        arima_comparable_df = pd.DataFrame(
+            columns=lstm_evaluation.per_target_metrics.columns
+        )
+
+        for feature, df in arima_evaluation_dict.items():
+
+            # Create new row data frame
+            new_row_dict = [
+                {
+                    "feature": feature,
+                    "mae": lstm_evaluation.get_metric_value(df, "mae"),
+                    "mse": lstm_evaluation.get_metric_value(df, "mse"),
+                    "rmse": lstm_evaluation.get_metric_value(df, "rmse"),
+                }
+            ]
+            new_row_df = pd.DataFrame(new_row_dict)
+
+            # Append dataframe to the ARIMA comparable dict
+            arima_comparable_df = pd.concat(
+                [arima_comparable_df, new_row_df], ignore_index=True
+            )
+
+        # Write the metrics to the readme
+        lstm_comaparable_df = lstm_evaluation.per_target_metrics
+
+        # Compare results
+        reusults = self.__compare_results_by_error_metrics(
+            lstm_evaluation_df=lstm_comaparable_df,
+            arima_evaluation_df=arima_comparable_df,
+        )
+
+        lstm_pretty_dict = pprint.pformat(lstm_comaparable_df.to_dict(orient="records"))
+        arima_pretty_dict = pprint.pformat(
+            arima_comparable_df.to_dict(orient="records")
+        )
+
+        # Write the metrics to the readme
+        self.readme_add_section(
+            title="## LSTM per feature dict metrics",
+            text=f"\n```\n{lstm_pretty_dict}\n```\n\n",
+        )
+
+        self.readme_add_section(
+            title="## ARIMA per feature dict metrics",
+            text=f"\n```\n{arima_pretty_dict}\n```\n\n",
+        )
+
+        # Write the comparision resuls
+        results_pretty_dict = pprint.pformat(reusults.to_dict(orient="records"))
+        self.readme_add_section(
+            title="# LSTM ARIMA comparision results",
+            text=f"\n```\n{results_pretty_dict}\n```\n\n",
+        )
+
+
 # 3. Finetune model for the given state
 class FineTuneExperiment(BaseExperiment):
 
@@ -607,7 +833,9 @@ class FineTuneExperiment(BaseExperiment):
 class LSTMOptimalParameters(Experiment):
 
     NAME = "OptimalParamsExperiment"
-    DESCRIPTION = "Compares the performance of LSTM model with the statistical ARIMA model for all features prediction. Each model is trained just to predict 1 feauture from all features."
+    DESCRIPTION = (
+        "The goal is to find the optimal parameters for the given BaseLSTM model."
+    )
 
     def __init__(self):
 
@@ -656,9 +884,7 @@ class LSTMOptimalParameters(Experiment):
 
 class RNNvsStatisticalMethodsSingleFeature(Experiment):
     NAME = "RNNvsStatisticalMethodsSingleFeature"
-    DESCRIPTION = (
-        "The goal is to find the optimal parameters for the given BaseLSTM model."
-    )
+    DESCRIPTION = "Compares the performance of LSTM model with the statistical ARIMA model for all features prediction. Each model is trained just to predict 1 feauture from all features."
 
     def __init__(self):
 
@@ -698,6 +924,54 @@ class RNNvsStatisticalMethodsSingleFeature(Experiment):
         )
 
     def run(self, state="Czechia", split_rate=0.8):
+        return self.exp.run(state=state, split_rate=split_rate)
+
+
+class RNNvsStatisticalMethods(Experiment):
+
+    NAME = "RNNvsStatisticalMethods"
+    DESCRIPTION = "Compares the performance of LSTM model with the statistical ARIMA model for all features prediction. ARIMA model is trained just to predict 1 feauture from all features and LSTM predict all features at once."
+
+    def __init__(self):
+
+        name = self.NAME
+
+        features = [
+            col.lower()
+            for col in [
+                "year",
+                "Fertility rate, total",
+                "Population, total",
+                "Net migration",
+                "Arable land",
+                "Birth rate, crude",
+                "GDP growth",
+                "Death rate, crude",
+                "Agricultural land",
+                "Rural population",
+                "Rural population growth",
+                "Age dependency ratio",
+                "Urban population",
+                "Population growth",
+                "Adolescent fertility rate",
+                "Life expectancy at birth, total",
+            ]
+        ]
+
+        hyperparameters = get_core_parameters(input_size=len(features))
+
+        model = BaseLSTM(hyperparameters=hyperparameters, features=features)
+
+        experiment = CompareLSTMARIMAExperiment(
+            model=model,
+            name=name,
+            description=self.DESCRIPTION,
+            features=features,
+        )
+
+        super().__init__(name, model, features, hyperparameters, experiment)
+
+    def run(self, state: str = "Czechia", split_rate: float = 0.8) -> None:
         return self.exp.run(state=state, split_rate=split_rate)
 
 
