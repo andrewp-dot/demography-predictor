@@ -30,48 +30,6 @@ from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
 logger = logging.getLogger("benchmark")
 
 
-# TODO: rework these experiments
-# 1. Stash changes
-# 2. Add them to CLI
-
-## Model experiments settings
-
-# Get the list of all available features
-
-
-# Setup features to use all
-# FEATURES = [
-#     "year",
-#     "Fertility rate, total",
-#     "Population, total",
-#     "Net migration",
-#     "Arable land",
-#     "Birth rate, crude",
-#     "GDP growth",
-#     "Death rate, crude",
-#     "Agricultural land",
-#     "Rural population",
-#     "Rural population growth",
-#     "Age dependency ratio",
-#     "Urban population",
-#     "Population growth",
-#     "Adolescent fertility rate",
-#     "Life expectancy at birth, total",
-# ]
-
-# FEATURES = [col.lower() for col in FEATURES]
-
-# BASE_HYPERPARAMS = LSTMHyperparameters(
-#     input_size=len(FEATURES),
-#     hidden_size=256,
-#     sequence_length=10,
-#     learning_rate=0.0001,
-#     epochs=20,
-#     batch_size=1,
-#     num_layers=3,
-# )
-
-
 # Model input based eperiments:
 # 1. Compare performance of LSTM networks with different neurons in layers, try to find optimal (optimization algorithm?)
 class OptimalParamsExperiment(BaseExperiment):
@@ -526,7 +484,9 @@ class CompareLSTMARIMASingleFeatureExperiment(BaseExperiment):
             if rnn_evaluation.is_new_better(new_model_evaluation=arima_evaluation):
                 feature_bestmodel_dict[target] = "ARIMA"
             else:
-                feature_bestmodel_dict[target] = "LSTM"
+                feature_bestmodel_dict[target] = str(
+                    type(self.model).__name__
+                )  # Model class name
 
         # Create comparatation dataframe
         comparation_df: pd.DataFrame = pd.DataFrame(
