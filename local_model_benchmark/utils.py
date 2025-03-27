@@ -10,9 +10,12 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 from matplotlib.figure import Figure
 
 # Custom imports
+from src.utils.save_model import get_experiment_model
+
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.local_model.model import LSTMHyperparameters
+from src.local_model.model import LSTMHyperparameters, BaseLSTM
+from src.local_model.finetunable_model import FineTunableLSTM, train_base_model
 
 
 settings = Config()
@@ -68,3 +71,26 @@ def preprocess_single_state_data(
 
     # Return training batches, target batches and fitted scaler
     return train_input_batches, train_target_batches, state_scaler
+
+
+def pre_train_model_if_needed(model: Union[BaseLSTM, FineTunableLSTM], state: str, save_model: bool = False):
+    """
+    Trains the base model for experiment if the model is type of FineTunableLSTM model. Returns the given model otherwise.
+    """
+
+    base_model = model
+    # If the model is finetunable, make sure that it has trained base model
+    if isinstance(model, FineTunableLSTM):
+        try:
+            base_model = get_experiment_model(
+                name=f"base_model_{model.base_model.hyperparameters.hidden_size}.pkl"
+            )
+        except:
+            base_model = train_base_model(
+                model.base_model,
+                evaluation_state_name=state,
+                save=save_model,
+                is_experimental=True,
+            )
+
+    return base_model

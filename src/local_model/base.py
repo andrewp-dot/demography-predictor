@@ -575,6 +575,10 @@ class CustomModelBase(nn.Module):
 
         self.SCALER: MinMaxScaler = scaler
 
+    def set_scaler(self, scaler: MinMaxScaler) -> None:
+        if self.SCALER is None:
+            self.SCALER = scaler
+
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError("Forward method for your model is not implemented!")

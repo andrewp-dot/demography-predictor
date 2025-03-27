@@ -8,7 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
 from src.utils.log import setup_logging
-from src.utils.save_model import save_model, get_model
+from src.utils.save_model import save_model, get_model, save_experiment_model
 from src.local_model.base import LSTMHyperparameters, TrainingStats, EvaluateModel
 from src.local_model.base import CustomModelBase
 from src.local_model.model import BaseLSTM
@@ -314,7 +314,7 @@ class FineTunableLSTM(CustomModelBase):
         self.eval()
 
         # Scale data
-        scaled_input_data = self.SCALER.transform(input_data[FEATURES])
+        scaled_input_data = self.SCALER.transform(input_data[self.FEATURES])
 
         scaled_input_data_df = pd.DataFrame(scaled_input_data)
 
@@ -416,15 +416,31 @@ class FineTunableLSTM(CustomModelBase):
 
 
 def train_base_model(
-    hyperparameters: LSTMHyperparameters,
-    features: List[str],
+    base_model: BaseLSTM,
     evaluation_state_name: str,
+    save: bool = True,
+    is_experimental: bool = True,
 ) -> BaseLSTM:
+    """
+    Trains base model using all available data. This functions is used just to create base model
 
-    MODEL_NAME = f"base_model_{hyperparameters.hidden_size}.pkl"
+    Args:
+        base_model (BaseLSTM): Base model to train.
+        evaluation_state_name (str): State data used for performance evaluation.
+        save (bool, optional): If set to True, saves the trained base model, else it just trains the model. Defaults to True.
+        is_experimental (bool, optional): If the model is experimental and the save option is set to True, saves the model to directory, where the experimental trained models are available. Defaults to True.
+
+    Raises:
+        ValueError: If there is an existing model and it hase incompatibile input features, raises ValueError.
+
+    Returns:
+        out: BaseLSTM: Trained BaseLSTM model.
+    """
+
+    MODEL_NAME = f"base_model_{base_model.hyperparameters.hidden_size}.pkl"
 
     # Set features const
-    FEATURES = features
+    FEATURES = base_model.FEATURES
 
     try:
         model: BaseLSTM = get_model(MODEL_NAME)
@@ -447,7 +463,7 @@ def train_base_model(
     # Get training and test data
     train_data_dict, test_data_dict = all_states_loader.split_data(
         states_dict=all_states_dict,
-        sequence_len=hyperparameters.sequence_length,
+        sequence_len=base_model.hyperparameters.sequence_length,
         split_rate=0.8,
     )
 
@@ -455,13 +471,11 @@ def train_base_model(
     trainig_batches, target_batches, base_fitted_scaler = (
         all_states_loader.preprocess_train_data_batches(
             states_train_data_dict=train_data_dict,
-            hyperparameters=hyperparameters,
+            hyperparameters=base_model.hyperparameters,
             features=FEATURES,
         )
     )
 
-    # Create model
-    base_model = BaseLSTM(hyperparameters=hyperparameters, features=FEATURES)
     base_model.set_scaler(scaler=base_fitted_scaler)
 
     # Train model using whole dataset
@@ -493,6 +507,21 @@ def train_base_model(
     logger.info(
         f"[BaseModel]: Per features evaluation metrics:\n{model_evaluation.per_target_metrics}\n"
     )
+
+    if save:
+
+        if is_experimental:
+            logger.info("Saving experimental model...")
+            save_experiment_model(
+                model=base_model,
+                name=f"base_model_{base_model.hyperparameters.hidden_size}.pkl",
+            )
+        else:
+            logger.info("Saving model...")
+            save_model(
+                model=base_model,
+                name=f"base_model_{base_model.hyperparameters.hidden_size}.pkl",
+            )
 
     return base_model
 

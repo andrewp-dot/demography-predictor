@@ -26,7 +26,7 @@ from local_model_benchmark.experiments.model_experiments import (
     LSTMOptimalParameters,
     RNNvsStatisticalMethodsSingleFeature,
     RNNvsStatisticalMethods,
-    FinetuneBaseLSTM,
+    FineTuneLSTMExp,
 )
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -42,7 +42,7 @@ logger = logging.getLogger("benchmark")
 # TODO: doc comments
 
 # Setup logging if it is not
-setup_logging()
+# setup_logging()
 
 data_experiments: List[Experiment] = [
     AllStates(),
@@ -59,7 +59,7 @@ model_experiments: List[Experiment] = [
     LSTMOptimalParameters(),
     RNNvsStatisticalMethodsSingleFeature(),
     RNNvsStatisticalMethods(),
-    FinetuneBaseLSTM(),
+    FineTuneLSTMExp(),
 ]
 
 

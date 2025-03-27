@@ -4,13 +4,8 @@ import logging.config
 import yaml
 from colorama import Fore
 
-LOGGING_CONFIGURED = False
-
 
 def setup_logging() -> None:
-    # Create the directory for logs
-    if LOGGING_CONFIGURED:
-        return
 
     if not os.path.isdir("./logs"):
         os.makedirs("./logs")
@@ -22,7 +17,6 @@ def setup_logging() -> None:
 
         # Apply logging configuration
         logging.config.dictConfig(config)
-        LOGGING_CONFIGURED = True
     except Exception as e:
         print(f"Failed to setup logging: {e}!")
 
