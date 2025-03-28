@@ -3,10 +3,9 @@ from pydantic import Field, DirectoryPath
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 
-# from src.utils.log import setup_logging
 
-# # setup logging for sure
-# setup_logging()
+# Custom settings
+DATASET_VERSION: Literal["v0", "v1", "v2"] = "v2"
 
 
 def get_trained_models_dir() -> DirectoryPath:
@@ -24,7 +23,7 @@ class Config(BaseSettings):
     model_config: dict = SettingsConfigDict(frozen=True)
 
     # Dataset settings
-    selected_dataset: str = "dataset_v1"
+    selected_dataset: str = f"dataset_{DATASET_VERSION}"
     dataset_dir: str = os.path.join(".", "data_science", "datasets", selected_dataset)
     dataset_path: str = os.path.join(dataset_dir, f"{selected_dataset}.csv")
     states_data_dir: str = os.path.join(dataset_dir, "states")
@@ -54,10 +53,6 @@ def get_source_data_dir(
     data_science_root: DirectoryPath, dataset_version: str
 ) -> DirectoryPath:
     return os.path.join(data_science_root, "data", f"dataset_{dataset_version}")
-
-
-# Custom settings
-DATASET_VERSION: Literal["v0", "v1"] = "v1"
 
 
 class DatasetCreatorSettings(BaseSettings):
