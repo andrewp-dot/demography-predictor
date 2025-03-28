@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 
 # Custom imports
 from config import Config
-from src.api.models import Predict
+from src.api.models import PredictionRequest, PredictionResponse
 from src.utils.log import setup_logging
 from src.utils.save_model import get_model
 from src.predictors.predictor_base import DemographyPredictor
@@ -60,9 +60,33 @@ def get_info():
     return Info(avialable_models=LOADED_MODELS.keys()).model_dump()
 
 
-@app.post("/lakmoos-predict")
-def read_root():
-    return {"message": "Hello, FastAPI!"}
+@app.post("/predict")
+def model_predict(request: PredictionRequest):
+
+    # TODO: implement this:
+    # 1. Data preprocessing and check
+
+    # Preprocess data and checks, if the data are in a good format
+    logger.info(f"Data: {request.input_data}")
+
+    # 2. Model selection
+    try:
+        # predictions_df = LOADED_MODELS[request.model_key].predict()
+        model = LOADED_MODELS[request.model_key]
+    except KeyError as e:
+        # logger.error(f"The model '{str(e)}' does not exist!")
+        logger.error(str(e))
+
+    # 3. Prediction generation
+    # TODO:
+    # prediction_df = model.predict() ...
+
+    # 4. Response generation
+
+    # Convert prediction dataframe to the list of dicts..
+    return PredictionResponse(
+        state=request.state, predictions={"preds": ["This should be predictions..."]}
+    )
 
 
 def main():
