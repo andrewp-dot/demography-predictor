@@ -1,2 +1,3 @@
-﻿"INDICATOR_CODE","INDICATOR_NAME","SOURCE_NOTE","SOURCE_ORGANIZATION",
-"SE.PRM.ENRR","School enrollment, primary (% gross)","Gross enrollment ratio is the ratio of total enrollment, regardless of age, to the population of the age group that officially corresponds to the level of education shown. Primary education provides children with basic reading, writing, and mathematics skills along with an elementary understanding of such subjects as history, geography, natural science, social science, art, and music.","UNESCO Institute for Statistics (UIS). UIS.Stat Bulk Data Download Service. Accessed September 30, 2024. https://apiportal.uis.unesco.org/bdds.",
+version https://git-lfs.github.com/spec/v1
+oid sha256:d3de9f13bcf0db0589581d55c7a6a0f899df4377bc013bef2c7fb6d462e94e2c
+size 666

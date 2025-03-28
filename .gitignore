@@ -178,4 +178,6 @@ pyrightconfig.json
 # Custom ignores
 *.txt
 
+*.pkl
+
 ignore_*

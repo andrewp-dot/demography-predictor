@@ -1,2 +1,3 @@
-﻿"INDICATOR_CODE","INDICATOR_NAME","SOURCE_NOTE","SOURCE_ORGANIZATION",
-"SP.DYN.CDRT.IN","Death rate, crude (per 1,000 people)","Crude death rate indicates the number of deaths occurring during the year, per 1,000 population estimated at midyear. Subtracting the crude death rate from the crude birth rate provides the rate of natural increase, which is equal to the rate of population change in the absence of migration.","(1) United Nations Population Division. World Population Prospects: 2022 Revision; (2) Statistical databases and publications from national statistical offices; (3) Eurostat: Demographic Statistics; (4) United Nations Statistics Division. Population and Vital Statistics Reprot (various years).",
+version https://git-lfs.github.com/spec/v1
+oid sha256:fe386cfb740e5c43c3520e1ca8f905c818a7491ec6bee301ff21f05f2aaa3e7f
+size 725
