@@ -51,6 +51,12 @@ handlers:
     # level: INFO
     filename: logs/rnn_benchmark_experiments.log
 
+  api:
+    class: logging.FileHandler
+    formatter: default
+    # level: INFO
+    filename: logs/api.log
+
 # Logger(s) configuration
 loggers:
   local_model:
@@ -86,4 +92,9 @@ loggers:
   benchmark:
     level: INFO
     handlers: [console, rnn_benchmark]
+    propagate: no
+
+  api:
+    level: INFO
+    handlers: [console, api]
     propagate: no

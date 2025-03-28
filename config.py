@@ -1,7 +1,7 @@
 import os
-from pydantic import Field, DirectoryPath
+from pydantic import Field, DirectoryPath, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Literal
+from typing import Literal, Dict
 
 
 # Custom settings
@@ -9,7 +9,7 @@ DATASET_VERSION: Literal["v0", "v1", "v2"] = "v2"
 
 
 def get_trained_models_dir() -> DirectoryPath:
-    trained_models_dir = os.path.join(".", "trained_models")
+    trained_models_dir = os.path.join(os.path.abspath("."), "trained_models")
 
     if not os.path.isdir(trained_models_dir):
         os.makedirs(trained_models_dir)
@@ -20,7 +20,7 @@ def get_trained_models_dir() -> DirectoryPath:
 class Config(BaseSettings):
 
     # Configure settings config
-    model_config: dict = SettingsConfigDict(frozen=True)
+    model_config: dict = SettingsConfigDict(env_file=".env", frozen=True)
 
     # Dataset settings
     selected_dataset: str = f"dataset_{DATASET_VERSION}"
@@ -35,6 +35,20 @@ class Config(BaseSettings):
 
     # Model save dir
     trained_models_dir: str = Field(..., default_factory=get_trained_models_dir)
+
+    # API configs
+    api_host: str = Field(..., alias="API_HOST")
+    api_port: int = Field(..., alias="API_PORT")
+
+    # Load model configs
+
+    @computed_field
+    def prediction_models(self) -> Dict[str, str]:
+        return {
+            # "population_total",: "TODO"
+            "aging_Czechia": f"{self.trained_models_dir}/aging_Czechia.pkl",
+            # "gender": "TODO",
+        }
 
 
 def get_data_science_dir() -> DirectoryPath:

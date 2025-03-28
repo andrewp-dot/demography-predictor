@@ -8,6 +8,7 @@ from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 # Custom imports
 from src.utils.log import setup_logging
+from src.utils.save_model import save_model
 from src.predictors.predictor_base import DemographyPredictor
 from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
 from src.local_model.finetunable_model import FineTunableLSTM
@@ -187,11 +188,15 @@ if __name__ == "__main__":
 
     pred = predictor_v1(targets=targets)
 
+    # Save model
+    STATE = "Czechia"
+    save_model(model=pred, name=f"aging_{STATE}.pkl")
+
     # Print predictor
     print(pred)
 
     # Czech data
-    state_loader = StateDataLoader(state="Czechia")
+    state_loader = StateDataLoader(state=STATE)
 
     czech_data = state_loader.load_data()
 
