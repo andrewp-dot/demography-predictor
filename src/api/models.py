@@ -23,3 +23,7 @@ class PredictionRequest(BaseModel):
 class PredictionResponse(BaseModel):
     state: str
     predictions: List[Dict]
+
+
+class LakmoosPredictionResponse(PredictionResponse):
+    curve: List[Dict]

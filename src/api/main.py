@@ -1,7 +1,7 @@
 # Standard library imports
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from typing import Dict
+from typing import Dict, List
 import logging
 import pandas as pd
 
@@ -9,7 +9,13 @@ from contextlib import asynccontextmanager
 
 # Custom imports
 from config import Config
-from src.api.models import PredictionRequest, PredictionResponse
+from src.api.models import (
+    PredictionRequest,
+    PredictionResponse,
+    LakmoosPredictionResponse,
+)
+from src.api.distribution_curve import AgeDistributionCurve
+
 from src.utils.log import setup_logging
 from src.utils.save_model import get_model
 from src.predictors.predictor_base import DemographyPredictor
@@ -23,6 +29,12 @@ logger = logging.getLogger("api")
 
 
 LOADED_MODELS: Dict[str, DemographyPredictor] = {}
+
+AGING_COLUMNS: List[str] = [
+    "population ages 0-14",
+    "population ages 15-64",
+    "population ages 65 and above",
+]
 
 
 def load_models() -> None:
@@ -149,10 +161,34 @@ def model_lakmoos_predict(request: PredictionRequest):
     # Generate predictions
     prediction_df = predict_from_request(request=request)
 
-    # Process predictions
+    # If the output contains aging data
+    if set(AGING_COLUMNS).issubset(set(prediction_df.columns)):
+
+        # Create dict from the last record
+        desired_years_prediction = prediction_df.iloc[-1].to_dict()
+        pop_0_14 = desired_years_prediction[AGING_COLUMNS[0]]
+        pop_15_64 = desired_years_prediction[AGING_COLUMNS[1]]
+        pop_65_above = desired_years_prediction[AGING_COLUMNS[2]]
+
+        curve_creator = AgeDistributionCurve(
+            pop_0_14=pop_0_14, pop_15_64=pop_15_64, pop_65_above=pop_65_above
+        )
+
+        # Get the curve
+        curve_df = curve_creator.create_curve()
+
+        # Send response
+        return LakmoosPredictionResponse(
+            state=request.state,
+            predictions=prediction_df.to_dict(orient="records"),
+            curve=curve_df.to_dict(orient="records"),
+        )
+
+    # Calculate distribution curve parameters
 
     raise HTTPException(
-        status_code=500, detail="Prediction for lakmoos not implemented yet!"
+        status_code=500,
+        detail=f"Prediction for Lakmoos of '{request.model_key}' not implemented yet!",
     )
 
 
