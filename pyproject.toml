@@ -12,6 +12,7 @@ l-benchmark = "local_model_benchmark.benchmark:experiments"
 dataset-create = "data_science.preprocessors.dataset_preprocessor:main"
 cli = "src.cli.cli:cli"
 api = "src.api.main:main"
+client = "client.client:client"
 
 [tool.poetry.dependencies]
 python = "~3.11"

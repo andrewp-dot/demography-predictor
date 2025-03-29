@@ -109,12 +109,27 @@ def model_predict(request: PredictionRequest):
     return PredictionResponse(state=request.state, predictions=prediction_list)
 
 
-def main():
+@app.post("/lakmoos-predict")
+def model_lakmoos_predict(request: PredictionRequest):
+
+    # TODO: implemenet this using specification
+    # From the prediction make probablity curve for the target year, the probability curve will serve as an inputs for generators
+    # Decide of how many prediction curves will be the output, for example: aging_curve, gender_distribution_curve
+
+    raise HTTPException(
+        status_code=500, detail="Prediction for lakmoos not implemented yet!"
+    )
+
+
+def main(reload: bool = False):
     # Run API
     uvicorn.run(
-        "src.api.main:app", host=settings.api_host, port=settings.api_port, reload=True
+        "src.api.main:app",
+        host=settings.api_host,
+        port=settings.api_port,
+        reload=reload,
     )
 
 
 if __name__ == "__main__":
-    main()
+    main(reload=True)
