@@ -95,6 +95,6 @@ loggers:
     propagate: no
 
   api:
-    level: DEBUG
+    level: INFO
     handlers: [console, api]
     propagate: no

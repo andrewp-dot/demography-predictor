@@ -52,8 +52,11 @@ def predict(state: str, model_key: str, target_year: int):
         state=state.capitalize(), model_key=model_key, target_year=target_year
     )
 
-    prediction_df = pd.DataFrame(response.json()["predictions"])
-    print(prediction_df)
+    if response.status_code == 200:
+        prediction_df = pd.DataFrame(response.json()["predictions"])
+        print(prediction_df)
+    else:
+        print(response.text)
 
 
 if __name__ == "__main__":
