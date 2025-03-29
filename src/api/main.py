@@ -1,8 +1,9 @@
 # Standard library imports
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from typing import Dict
 import logging
+import pandas as pd
 
 from contextlib import asynccontextmanager
 
@@ -64,29 +65,48 @@ def get_info():
 def model_predict(request: PredictionRequest):
 
     # TODO: implement this:
-    # 1. Data preprocessing and check
+    logger.debug(f"Data: {request.input_data}")
 
-    # Preprocess data and checks, if the data are in a good format
-    logger.info(f"Data: {request.input_data}")
+    # 0. Create input dataframe and extract last and target year
+    input_df = pd.DataFrame(request.input_data)
 
-    # 2. Model selection
+    # Verify if the 'year' columns is in the data
+    if not "year" in input_df.columns:
+        raise HTTPException(
+            status_code=400, detail="The input data are not in appropriate format. "
+        )
+
+    LAST_YEAR = int(input_df[["year"]].iloc[-1].item())
+    TARGET_YEAR = request.target_year
+
+    # Check if the target year is greater then last year
+    if LAST_YEAR >= TARGET_YEAR:
+        raise HTTPException(
+            status_code=400,
+            detail="The last year in data is less or equal to target year. Nothing to predict.",
+        )
+
+    # 1. Model selection
     try:
-        # predictions_df = LOADED_MODELS[request.model_key].predict()
         model = LOADED_MODELS[request.model_key]
     except KeyError as e:
-        # logger.error(f"The model '{str(e)}' does not exist!")
         logger.error(str(e))
+        raise HTTPException(
+            status_code=404,
+            detail=f"Model with key '{request.model_key}' was not found.",
+        )
 
     # 3. Prediction generation
-    # TODO:
-    # prediction_df = model.predict() ...
+    prediction_df: pd.DataFrame = model.predict(
+        input_data=input_df, last_year=LAST_YEAR, target_year=TARGET_YEAR
+    )
 
     # 4. Response generation
+    # Convert prediction df to List[Dict]
+    prediction_list = prediction_df.to_dict(orient="records")
 
     # Convert prediction dataframe to the list of dicts..
-    return PredictionResponse(
-        state=request.state, predictions={"preds": ["This should be predictions..."]}
-    )
+    return PredictionResponse(state=request.state, predictions=prediction_list)
 
 
 def main():
