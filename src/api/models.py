@@ -26,4 +26,4 @@ class PredictionResponse(BaseModel):
 
 
 class LakmoosPredictionResponse(PredictionResponse):
-    curve: List[Dict]
+    distribution: List[Dict]

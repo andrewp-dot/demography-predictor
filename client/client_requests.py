@@ -14,7 +14,11 @@ from src.api.models import (
 settings = Config()
 
 BASE_URL: str = f"http://{settings.api_host}:{settings.api_port}"
-AVAILABLE_ENDPOINTS: Dict[str, str] = {"info": "/info", "predict": "/predict"}
+AVAILABLE_ENDPOINTS: Dict[str, str] = {
+    "info": "/info",
+    "predict": "/predict",
+    "lakmoos-predict": "/lakmoos-predict",
+}
 
 
 def send_info_request() -> requests.Response:
@@ -23,7 +27,7 @@ def send_info_request() -> requests.Response:
 
 
 def send_base_prediction_request(
-    state: str, model_key: str, target_year: int
+    state: str, model_key: str, target_year: int, lakmoos_predict: bool = False
 ) -> requests.Response:
 
     # Get headers
@@ -43,8 +47,13 @@ def send_base_prediction_request(
         model_key=model_key, state=state, input_data=input_data, target_year=target_year
     )
 
+    # Adjust endpoint due to needs
+    RQ_ENDPOINT = AVAILABLE_ENDPOINTS["predict"]
+    if lakmoos_predict:
+        RQ_ENDPOINT = AVAILABLE_ENDPOINTS["lakmoos-predict"]
+
     response = requests.post(
-        url=f"{BASE_URL}{AVAILABLE_ENDPOINTS['predict']}",
+        url=f"{BASE_URL}{RQ_ENDPOINT}",
         headers=headers,
         json=request.model_dump(),
     )

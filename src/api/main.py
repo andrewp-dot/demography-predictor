@@ -14,7 +14,7 @@ from src.api.models import (
     PredictionResponse,
     LakmoosPredictionResponse,
 )
-from src.api.distribution_curve import AgeDistributionCurve
+from src.api.distribution_curve import AgeDistribution
 
 from src.utils.log import setup_logging
 from src.utils.save_model import get_model
@@ -170,21 +170,19 @@ def model_lakmoos_predict(request: PredictionRequest):
         pop_15_64 = desired_years_prediction[AGING_COLUMNS[1]]
         pop_65_above = desired_years_prediction[AGING_COLUMNS[2]]
 
-        curve_creator = AgeDistributionCurve(
+        curve_creator = AgeDistribution(
             pop_0_14=pop_0_14, pop_15_64=pop_15_64, pop_65_above=pop_65_above
         )
 
         # Get the curve
-        curve_df = curve_creator.create_curve()
+        age_probabilities_df = curve_creator.get_age_probabilities()
 
         # Send response
         return LakmoosPredictionResponse(
             state=request.state,
             predictions=prediction_df.to_dict(orient="records"),
-            curve=curve_df.to_dict(orient="records"),
+            distribution=age_probabilities_df.to_dict(orient="records"),
         )
-
-    # Calculate distribution curve parameters
 
     raise HTTPException(
         status_code=500,

@@ -4,7 +4,7 @@ from typing import Tuple
 from scipy.stats import skewnorm
 
 
-class AgeDistributionCurve:
+class AgeDistribution:
 
     def __init__(
         self,
@@ -62,7 +62,7 @@ class AgeDistributionCurve:
 
         return mean_age, std_dev, skewness
 
-    def create_curve(self) -> pd.DataFrame:
+    def get_age_probabilities(self) -> pd.DataFrame:
         # Define skew-normal distribution parameters
         mean_age, std_dev, skewness = self.get_params_for_age_distribution_curve()
 
