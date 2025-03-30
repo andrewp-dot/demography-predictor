@@ -172,6 +172,7 @@ class FineTunableLSTM(CustomModelBase):
     ):
 
         # Ensure contiguous memory for faster execution
+        self.base_lstm.flatten_parameters()
         self.new_lstm.flatten_parameters()
 
         # Initialize hidden states

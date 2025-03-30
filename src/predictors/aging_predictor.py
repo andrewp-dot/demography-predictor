@@ -7,6 +7,7 @@ from xgboost import XGBRegressor
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 # Custom imports
+from config import Config
 from src.utils.log import setup_logging
 from src.utils.save_model import save_model
 from src.predictors.predictor_base import DemographyPredictor
@@ -18,24 +19,20 @@ from src.local_model.statistical_models import LocalARIMA
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.state_preprocessing import StateDataLoader
 
+# Get logger and settings
 logger = logging.getLogger("demograpy_predictor")
+settings = Config()
+
+# TODO:
+# Create predictor with BaseLSTM
+# Create predictor with FineTunableLSTM for One state
+# Create predictor with FineTunableLSTM for a group of states
 
 
-def create_local_model(features: List[str]):
+def create_local_model(features: List[str], hyperparameters: LSTMHyperparameters):
 
     states_loader = StatesDataLoader()
     state_dfs = states_loader.load_all_states()
-
-    # Define local model
-    hyperparameters = LSTMHyperparameters(
-        input_size=len(features),
-        hidden_size=512,
-        sequence_length=13,
-        learning_rate=0.0001,
-        epochs=30,
-        batch_size=16,  # Do not change this if you do not want to experience segfault
-        num_layers=4,
-    )
 
     # Train local model
     local_model = BaseLSTM(hyperparameters=hyperparameters, features=features)
@@ -67,25 +64,19 @@ def create_local_model(features: List[str]):
     return local_model
 
 
-def create_finetunable_model(features: List[str], state: str):
+def create_finetunable_model(
+    base_model: BaseLSTM,
+    hyperparameters: LSTMHyperparameters,
+    state: str,
+):
 
-    local_model = create_local_model(features=features)
-    BASE_HYPERPARAMETERS = local_model.hyperparameters
-
-    # Maybe finetune model
-    finetunable_hyperparameters = LSTMHyperparameters(
-        input_size=BASE_HYPERPARAMETERS.input_size,
-        hidden_size=256,
-        sequence_length=BASE_HYPERPARAMETERS.sequence_length,
-        learning_rate=0.001,
-        epochs=50,
-        batch_size=1,  # Do not change this if you do not want to experience segfault
-        num_layers=1,
-    )
-
+    # Create finetunable model
     finetunable_model = FineTunableLSTM(
-        base_model=local_model, hyperparameters=finetunable_hyperparameters
+        base_model=base_model, hyperparameters=hyperparameters
     )
+
+    # TODO: add data for finetuning..
+    # Preprocess data for finetuning
 
     # Preprocess state data
     state_loader = StateDataLoader(state=state)
@@ -97,9 +88,9 @@ def create_finetunable_model(features: List[str], state: str):
     train_input_batches, target_input_batches, _ = (
         state_loader.preprocess_training_data_batches(
             train_data_df=train_df,
-            hyperparameters=finetunable_hyperparameters,
-            features=local_model.FEATURES,
-            scaler=local_model.SCALER,
+            hyperparameters=hyperparameters,
+            features=base_model.FEATURES,
+            scaler=base_model.SCALER,
         )
     )
 
@@ -124,12 +115,7 @@ def predictor_v1(targets: List[str]) -> DemographyPredictor:
     whole_dataset_df = states_loader.merge_states(state_dfs=state_dfs)
 
     ## Targets
-    ALL_TARGETS = [
-        "population, total",
-        "population ages 15-64",
-        "population ages 0-14",
-        "population ages 65 and above",
-    ]
+    ALL_TARGETS = settings.ALL_POSSIBLE_TARGET_FEATURES
 
     # Features
     EXCLUDE_FEATURES = []
@@ -147,9 +133,38 @@ def predictor_v1(targets: List[str]) -> DemographyPredictor:
         feature for feature in GLOBAL_FEATURES if feature not in EXCLUDE_FOR_LOCAL
     ]
 
+    # Create or load base model
+    base_model_hyperparameters = LSTMHyperparameters(
+        input_size=len(LOCAL_FEATURES),
+        hidden_size=512,
+        sequence_length=10,
+        learning_rate=0.0001,
+        epochs=30,
+        batch_size=16,  # Do not change this if you do not want to experience segfault
+        num_layers=3,
+    )
+
     # Maybe use get model instead of manual training
-    local_model = create_local_model(features=LOCAL_FEATURES)
-    # local_model = create_finetunable_model(features=LOCAL_FEATURES, state="Czechia")
+    local_model = create_local_model(
+        features=LOCAL_FEATURES, hyperparameters=base_model_hyperparameters
+    )
+
+    # Maybe finetune model
+    # finetunable_hyperparameters = LSTMHyperparameters(
+    #     input_size=base_model_hyperparameters.input_size,
+    #     hidden_size=256,
+    #     sequence_length=base_model_hyperparameters.sequence_length,
+    #     learning_rate=0.0001,
+    #     epochs=50,
+    #     batch_size=1,  # Do not change this if you do not want to experience segfault
+    #     num_layers=1,
+    # )
+
+    # local_model = create_finetunable_model(
+    #     base_model=local_model,
+    #     hyperparameters=finetunable_hyperparameters,
+    #     state="Czechia",
+    # )
 
     # Define global model
     global_model: GlobalModel = GlobalModel(

@@ -32,8 +32,11 @@
     - print the table with header: `feature_name` | `best_model`
 7. The full model evaluation
 
+
 Bonus:
 1. Simple CLI for `lbenchmark`. For more info run `poetry run cli lbenchmark --help`
+2. Model inference (`API`) + simple client (can be used as `cookbook` for implementing request client)
+3. `API` endpoint for Lakmoos integration demo (distribution curve - generrator input?)
 
 ## Work in progress (WIP)
 1. Statistical model implementation (Grey model)
@@ -43,17 +46,17 @@ Bonus:
 
 
 ## TODO:
+0. Gender predictor, population total predictor..
 1. Experiments
     - Different Neural network architectures (not a just a pure LSTM)
     - (BONUS) LSTM and NN as a global model instead of local 
     - (fix) features for experiments -> use all or mostly the same experiments
 
-2. Predictions using the population from Lakmoos AI. –> find a call, data adapter for Clones -> Add to Poli's calendar
-43 Try predict population total using the population growth
-4. FineTune Experiments:
+2. Try predict population total using the population growth
+3. FineTune Experiments:
     - finetune model using 1 state
     - finetune model using similiar states
+4. Maybe saved model short description? Loss graph, evaluation -> ovearll metrics, by state metrics..
 
 ## Bonus
-1. Model inference (`API`)
-2. Maybe Docker appliaction?
+1. Maybe Docker appliaction?

@@ -1,7 +1,7 @@
 import os
 from pydantic import Field, DirectoryPath, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Literal, Dict
+from typing import Literal, Dict, List
 
 
 # Custom settings
@@ -41,7 +41,6 @@ class Config(BaseSettings):
     api_port: int = Field(..., alias="API_PORT")
 
     # Load model configs
-
     @computed_field
     def prediction_models(self) -> Dict[str, str]:
         return {
@@ -49,6 +48,16 @@ class Config(BaseSettings):
             "aging_Czechia": f"{self.trained_models_dir}/aging_Czechia.pkl",
             # "gender": "TODO",
         }
+
+    ALL_POSSIBLE_TARGET_FEATURES: List[str] = [
+        "population, total",
+        # "population growth",
+        "population ages 15-64",
+        "population ages 0-14",
+        "population ages 65 and above",
+        "population, female",
+        "population, male",
+    ]
 
 
 def get_data_science_dir() -> DirectoryPath:
