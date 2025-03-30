@@ -9,7 +9,11 @@ import pandas as pd
 
 # Custom imports
 from config import Config
-from client.client_requests import send_info_request, send_base_prediction_request
+from client.client_requests import (
+    send_info_request,
+    send_base_prediction_request,
+    send_lakmoos_prediction_request,
+)
 
 # Get settings
 settings = Config()
@@ -78,13 +82,29 @@ def predict(state: str, model_key: str, target_year: int):
     help="The year to the target data will be predicted.",
     required=True,
 )
-def lakmoos_predict(state: str, model_key: str, target_year: int):
+@click.option(
+    "--max-age",
+    type=int,
+    help="The estimated max age of human. Get the probability distribution to this age.",
+    required=False,  # Set this to optional
+    default=100,
+    show_default=True,  # Show default in help text
+)
+def lakmoos_predict(state: str, model_key: str, target_year: int, max_age: int):
+    """
+    Prediction for lakmoos prediction endpoint. Gets the predictions and also the distribution of the required parameter.
+
+    Args:
+        state (str): _description_
+        model_key (str): _description_
+        target_year (int): _description_
+    """
     # Send the lakmoos prediction request for getting distribution curve in the target year
-    response = send_base_prediction_request(
+    response = send_lakmoos_prediction_request(
         state=state.capitalize(),
         model_key=model_key,
         target_year=target_year,
-        lakmoos_predict=True,
+        max_age=max_age,
     )
 
     if response.status_code == 200:

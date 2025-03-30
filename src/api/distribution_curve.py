@@ -62,12 +62,26 @@ class AgeDistribution:
 
         return mean_age, std_dev, skewness
 
-    def get_age_probabilities(self) -> pd.DataFrame:
+    def get_age_probabilities(
+        self,
+        max_age: int = 100,
+    ) -> pd.DataFrame:
+        """
+        Based on created skewed normal distribution curve gets the probablity from age 0 to `max_age`.
+
+        Args:
+            max_age (int, optional): Gets the estimated max age of the people. Defaults to 100.
+
+        Returns:
+            out: pd.DataFrame: Dataframe with calculated distributions.
+        """
         # Define skew-normal distribution parameters
-        mean_age, std_dev, skewness = self.get_params_for_age_distribution_curve()
+        mean_age, std_dev, skewness = self.get_params_for_age_distribution_curve(
+            max_age=max_age
+        )
 
         # Generate age range
-        ages = np.arange(0, 101, 1)
+        ages = np.arange(0, max_age + 1, 1)  # from 0 to max_age (included)
 
         # Compute skew-normal probability density function (PDF)
         pdf = skewnorm.pdf(ages, skewness, loc=mean_age, scale=std_dev)

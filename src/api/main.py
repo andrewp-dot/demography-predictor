@@ -12,6 +12,7 @@ from config import Config
 from src.api.models import (
     PredictionRequest,
     PredictionResponse,
+    LakmoosPredictionRequest,
     LakmoosPredictionResponse,
 )
 from src.api.distribution_curve import AgeDistribution
@@ -152,7 +153,7 @@ def model_predict(request: PredictionRequest) -> PredictionResponse:
 
 
 @app.post("/lakmoos-predict")
-def model_lakmoos_predict(request: PredictionRequest):
+def model_lakmoos_predict(request: LakmoosPredictionRequest):
 
     # TODO: implemenet this using specification
     # From the prediction make probablity curve for the target year, the probability curve will serve as an inputs for generators
@@ -175,7 +176,9 @@ def model_lakmoos_predict(request: PredictionRequest):
         )
 
         # Get the curve
-        age_probabilities_df = curve_creator.get_age_probabilities()
+        age_probabilities_df = curve_creator.get_age_probabilities(
+            max_age=request.max_age
+        )
 
         # Send response
         return LakmoosPredictionResponse(

@@ -20,10 +20,15 @@ class PredictionRequest(BaseModel):
     # return_probability: bool
 
 
+class LakmoosPredictionRequest(PredictionRequest):
+    max_age: int = 100
+
+
 class PredictionResponse(BaseModel):
     state: str
     predictions: List[Dict]
 
 
 class LakmoosPredictionResponse(PredictionResponse):
+    max_age: int
     distribution: List[Dict]
