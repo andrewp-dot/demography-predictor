@@ -47,16 +47,17 @@ Bonus:
 
 ## TODO:
 0. Gender predictor, population total predictor..
-1. Experiments
+1. Better model evaluation saving... (Maybe saved model short description? Loss graph, evaluation -> ovearll metrics, by state metrics..)
+2. Experiments
     - Different Neural network architectures (not a just a pure LSTM)
     - (BONUS) LSTM and NN as a global model instead of local 
     - (fix) features for experiments -> use all or mostly the same experiments
 
-2. Try predict population total using the population growth
-3. FineTune Experiments:
+3. Try predict population total using the population growth
+4. FineTune Experiments:
     - finetune model using 1 state
     - finetune model using similiar states
-4. Maybe saved model short description? Loss graph, evaluation -> ovearll metrics, by state metrics..
+ 
 
 ## Bonus
 1. Maybe Docker appliaction?
