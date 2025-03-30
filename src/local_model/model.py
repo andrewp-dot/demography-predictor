@@ -102,6 +102,7 @@ class BaseLSTM(CustomModelBase):
         x: torch.Tensor,
         # hidden_state: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
     ) -> torch.Tensor:
+        self.lstm.flatten_parameters()  # # Fix for contiguous memory issue
 
         # Get the size of the batch
         batch_size = x.size(0)

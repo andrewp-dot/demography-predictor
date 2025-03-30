@@ -58,7 +58,6 @@ class FineTunableLSTM(CustomModelBase):
             param.requires_grad = False
 
         # Add new LSTM layers for fine-tuning
-        # TODO: add layer to get different number of neurons
         fine_tune_hidden_size = hyperparameters.hidden_size
 
         logger.debug(f"Base lstm hidden size: {base_model.lstm.hidden_size}")
@@ -171,6 +170,10 @@ class FineTunableLSTM(CustomModelBase):
         h_0: torch.Tensor | None = None,
         c_0: torch.Tensor | None = None,
     ):
+
+        # Ensure contiguous memory for faster execution
+        self.new_lstm.flatten_parameters()
+
         # Initialize hidden states
         self.base_h_0, self.base_c_0, self.h_0, self.c_0 = (
             self.__initialize_hidden_states(
