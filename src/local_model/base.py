@@ -1,12 +1,16 @@
+"""
+In this script you can find the basic implementation for the local models. The classes are used for model definition, training and evaluation.
+"""
+
 # Standard library imports
 import pandas as pd
 from abc import abstractmethod
-from typing import Tuple, Dict, List, Callable, Union
+from typing import Dict, List, Callable
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from sklearn.preprocessing import RobustScaler, MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
@@ -86,17 +90,15 @@ class TrainingStats:
 
     def __init__(self):
         self.losses = []
-        # self.mse = []
         self.epochs = []
 
     def create_plot(self) -> Figure:
         """
         Creates a figure of training statistics.
 
-        :returns: Figure: figure of training statistics.
+        Returns:
+            out: Figure: Figure of training statistics.
         """
-
-        # TODO: change the plot function, to plot multiple metrcis
 
         # Define figure parameters
         fig = plt.figure(figsize=(10, 5))
@@ -154,7 +156,7 @@ class BaseEvaluation:
         # Initialize metric values
         overall_metric_df = None
 
-        # Average MAE across all targets
+        # Average metric across all targets
         average_metric_value = metric(
             self.reference_values, self.predicted, multioutput="uniform_average"
         )
@@ -167,6 +169,10 @@ class BaseEvaluation:
         return overall_metric_df
 
     def get_overall_metrics(self) -> None:
+        """
+        Computes overall metrics for the model and saves it to the `overall_metrics` object property.
+        """
+
         # Get MAE
         overall_mae_df = self.get_overall_metric(mean_absolute_error, "mae")
 

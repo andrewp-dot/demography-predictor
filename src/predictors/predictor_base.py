@@ -45,29 +45,12 @@ class DemographyPredictor:
         # Features
         LOCAL_FEAUTRES = self.local_model.FEATURES
 
-        # Scale local model data
-        # scaled_data = self.local_model.SCALER.transform(data[LOCAL_FEAUTRES])
-        # scaled_data_df = pd.DataFrame(scaled_data, columns=LOCAL_FEAUTRES)
-
         # Predict features
         feature_predictions_df = self.local_model.predict(
             input_data=data[LOCAL_FEAUTRES],
             last_year=last_year,
             target_year=target_year,
         )
-
-        # feature_predictions_df = pd.DataFrame(
-        #     feature_predictions, columns=LOCAL_FEAUTRES
-        # )
-
-        # Unscale feature predictions
-        # feature_predictions_unscaled = self.local_model.SCALER.inverse_transform(
-        #     feature_predictions
-        # )
-
-        # feature_predictions_df = pd.DataFrame(
-        #     feature_predictions_unscaled, columns=LOCAL_FEAUTRES
-        # )
 
         # Add missing features
         GLOBAL_FEATURES = self.global_model.FEATURES
@@ -88,15 +71,6 @@ class DemographyPredictor:
             raise ValueError(
                 f"Missing features for global model: {set(adjust_for_gm_features_df.columns) ^ set(GLOBAL_FEATURES)}"
             )
-
-        # # Scale using global scaler
-        # scaled_feature_predictions = self.global_model.transform_columns(
-        #     data=adjust_for_gm_features_df, columns=GLOBAL_FEATURES
-        # )
-
-        # scaled_feature_predictions_df = pd.DataFrame(
-        #     scaled_feature_predictions, columns=feature_predictions_df.columns
-        # )
 
         preprocessed_for_gm = self.global_model.preprocess_data(
             data=adjust_for_gm_features_df

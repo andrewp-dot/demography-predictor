@@ -719,20 +719,14 @@ class CompareLSTMARIMAExperiment(BaseExperiment):
         for feature, df in arima_evaluation_dict.items():
 
             # Create new row data frame
-            new_row_dict = [
-                {
-                    "feature": feature,
-                    "mae": lstm_evaluation.get_metric_value(df, "mae"),
-                    "mse": lstm_evaluation.get_metric_value(df, "mse"),
-                    "rmse": lstm_evaluation.get_metric_value(df, "rmse"),
-                }
-            ]
-            new_row_df = pd.DataFrame(new_row_dict)
+            new_row_dict = {
+                "feature": feature,
+                "mae": lstm_evaluation.get_metric_value(df, "mae"),
+                "mse": lstm_evaluation.get_metric_value(df, "mse"),
+                "rmse": lstm_evaluation.get_metric_value(df, "rmse"),
+            }
 
-            # Append dataframe to the ARIMA comparable dict
-            arima_comparable_df = pd.concat(
-                [arima_comparable_df, new_row_df], ignore_index=True
-            )
+            arima_comparable_df.loc[len(arima_comparable_df)] = new_row_dict
 
         # Write the metrics to the readme
         lstm_comaparable_df = lstm_evaluation.per_target_metrics

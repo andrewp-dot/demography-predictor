@@ -4,11 +4,12 @@
 **Description:** Train and evaluate model on single state data using only stationary features.
 
 ## Hyperparameters
+
 ```
 Input size:         14
 Batch size:         1
 
-Hidden size:        128
+Hidden size:        256
 Sequence length:    10
 Layers:             3
 
@@ -17,6 +18,7 @@ Epochs:             10
 
 Bidirectional:      False
 ```
+
 ## Features
 ```
 year
@@ -34,6 +36,8 @@ rural population growth
 urban population
 population growth
 ```
+
+
 ## Loss graph
 
 
@@ -46,7 +50,7 @@ population growth
 ![Prediction of Czechia by the training data](./plots/evaluation.png)
 
 # Metric result
-{'mae': 1.9714626153682386,
- 'mse': 11.723333929540772,
- 'r2': -29.793421915023412,
- 'rmse': 2.1879336156295515}
+{'mae': 1.947342423652564,
+ 'mse': 11.342403564432024,
+ 'r2': -29.84284275862847,
+ 'rmse': 2.1629936609733944}

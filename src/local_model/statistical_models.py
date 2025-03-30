@@ -169,11 +169,15 @@ class LocalARIMA:
 
         # Create the arima model
         new_model = ARIMA(
-            endog=target_values, exog=exog_values, order=(self.p, self.d, self.q)
+            endog=target_values,
+            exog=exog_values,
+            order=(self.p, self.d, self.q),
+            enforce_stationarity=False,
+            enforce_invertibility=False,
         )
 
         # Fit the model
-        self.model = new_model.fit()
+        self.model = new_model.fit(method_kwargs={"maxiter": 1000})
         logger.info(f"ARIMA model fitted!")
 
     def predict(self, data: pd.DataFrame, steps: int) -> pd.DataFrame:
