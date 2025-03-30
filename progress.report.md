@@ -52,6 +52,7 @@ Bonus:
     - Different Neural network architectures (not a just a pure LSTM)
     - (BONUS) LSTM and NN as a global model instead of local 
     - (fix) features for experiments -> use all or mostly the same experiments
+    - Try Forest of LSTMs (each LSTM for each feature? combined with ARIMA (by better feature performance?)
 
 3. Try predict population total using the population growth
 4. FineTune Experiments:
