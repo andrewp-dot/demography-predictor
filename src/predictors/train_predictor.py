@@ -1,6 +1,7 @@
 # Standard library imports
 import logging
-from typing import List
+import pandas as pd
+from typing import List, Literal
 from xgboost import XGBRegressor
 from sklearn.preprocessing import MinMaxScaler
 
@@ -114,6 +115,12 @@ def predictor_v1(targets: List[str]) -> DemographyPredictor:
 
 
 def predictor_v2(targets: List[str]) -> DemographyPredictor:
+
+    if True == True:  # This condition here is just to confuse code highlighter
+        raise NotImplementedError(
+            "You should adjust this function to pass the training data for finetuning..."
+        )
+
     # Train local model
     states_loader = StatesDataLoader()
     state_dfs = states_loader.load_all_states()
@@ -196,86 +203,148 @@ def predictor_v2(targets: List[str]) -> DemographyPredictor:
     return predictor
 
 
-if __name__ == "__main__":
+def train(
+    model_name: str,
+    model_type: Literal["base", "finetunable-single-states", "finetunable-state-group"],
+    targets: List[str],
+) -> DemographyPredictor:
+    """
+    Trains and saves the predictor by the given parameters.
+
+    Args:
+        model_name (str): Name which is used to save model.
+        model_type (Literal[&quot;base&quot;, &quot;finetunable-single-state&quot;, &quot;inetunable-state-group&quot;): _description_
+        targets (List[str]): List of target features
+
+    Raises:
+        ValueError: If the prediction model has value 'None'.
+
+    Returns:
+        out: DemographyPredictor: The created model for predicting target demographic parameter(s).
+    """
+
     # Setup logging
     setup_logging()
 
-    # Create predictor
-    targets: List[str] = [
-        "population ages 15-64",
-        "population ages 0-14",
-        "population ages 65 and above",
-    ]
-    # targets: List[str] = ["population, total"]
+    # Select predictor
+    pred = None
+    if "base" == model_type:
+        pred = predictor_v1(targets=targets)
+    elif "finetunable-single-states" == model_type:
+        pred = predictor_v2(targets=targets)
+    elif "finetunable-state-group" == model_type:
+        pred = predictor_v2(targets=targets)
 
-    pred = predictor_v1(targets=targets)
+    # Log predictor
+    logger.info(f"Trained predictor: {pred}")
 
-    # Save model
-    STATE = "Czechia"
-    save_model(model=pred, name=f"aging_{STATE}.pkl")
+    if pred is None:
+        raise ValueError("The dmography prediction model cannot have the value 'None'.")
 
-    # Print predictor
-    print(pred)
+    # Adjust model name and save model
+    model_name = model_name if model_name.endswith(".pkl") else f"{model_name}.pkl"
+    save_model(model=pred, name=model_name)
 
+    return pred
+
+
+def evalulate_for_single_state(
+    predictor: DemographyPredictor, eval_state_name: str
+) -> None:
     # Czech data
-    state_loader = StateDataLoader(state=STATE)
+    state_loader = StateDataLoader(state=eval_state_name)
 
     czech_data = state_loader.load_data()
 
     train_df, test_df = state_loader.split_data(data=czech_data, split_rate=0.8)
-    target_year = test_df["year"].max()
 
-    # Validation data
-    evaluation = EvaluateModel(model=pred)
+    # Evaluate model
+    evaluation = EvaluateModel(model=predictor)
+    evaluation.eval(test_X=train_df, test_y=test_df)
 
-    # Get data from every state
+    # Print the metrics
+    print(evaluation.overall_metrics)
+
+
+def evalulate_for_every_state(predictor: DemographyPredictor) -> None:
     states_data_loader = StatesDataLoader()
     all_states_df = states_data_loader.load_all_states()
 
     train_dict, test_dict = states_data_loader.split_data(
         states_dict=all_states_df,
-        sequence_len=pred.local_model.hyperparameters.sequence_length,
+        sequence_len=predictor.local_model.hyperparameters.sequence_length,
     )
 
+    # Evaluate model
+    evaluation = EvaluateModel(model=predictor)
     evaluation.eval_for_every_state(
         X_test_states=train_dict,
         y_test_states=test_dict,
     )
 
     print(evaluation.all_states_evaluation)
-    exit()
 
-    YEARS = test_df["year"].values
 
-    test_y = test_df[targets]
+# def predict_and_plot(predictor: DemographyPredictor, test_X: pd.DataFrame, test_y) -> None:
+#     test_y = test_df[targets]
 
-    print(test_y.head())
 
-    # Get last year of predictions
-    last_year = train_df["year"].max()
+#     print(test_y.head())
 
-    predictions_df = pred.predict(input_data=train_df, target_year=target_year)
+#     # Get last year of predictions
+#     last_year = train_df["year"].max()
+#     YEARS = range(last_year)
 
-    print(predictions_df.head())
+#     predictions_df = pred.predict(input_data=train_df, target_year=target_year)
 
-    import matplotlib.pyplot as plt
+#     print(predictions_df.head())
 
-    fig, axes = plt.subplots(nrows=len(targets), ncols=1, figsize=(10, 8))
+#     import matplotlib.pyplot as plt
 
-    if len(targets) == 1:
-        axes = [axes]
+#     fig, axes = plt.subplots(nrows=len(targets), ncols=1, figsize=(10, 8))
 
-    for i, target in enumerate(targets):
-        axes[i].plot(YEARS, test_y[target], label="Reference data")
-        axes[i].plot(YEARS, predictions_df[target], label="Predicted data")
+#     if len(targets) == 1:
+#         axes = [axes]
 
-        axes[i].set_title(target)
-        axes[i].legend()
-        axes[i].grid()
+#     for i, target in enumerate(targets):
+#         axes[i].plot(YEARS, test_y[target], label="Reference data")
+#         axes[i].plot(YEARS, predictions_df[target], label="Predicted data")
 
-    fig.tight_layout()
-    fig.savefig(fname="test.png")
+#         axes[i].set_title(target)
+#         axes[i].legend()
+#         axes[i].grid()
 
-    predictions_df = pred.predict(input_data=train_df, target_year=2050)
+#     fig.tight_layout()
+#     fig.savefig(fname="test.png")
 
-    print(predictions_df)
+#     predictions_df = pred.predict(input_data=train_df, target_year=2050)
+
+#     print(predictions_df)
+
+
+if __name__ == "__main__":
+    # TODO: set this up to cli?
+
+    # Setup logging
+    setup_logging()
+
+    # Create predictor - more details are displayed in the functions predictor_vX, where X is int number
+    aging_targets: List[str] = [
+        "population ages 15-64",
+        "population ages 0-14",
+        "population ages 65 and above",
+    ]
+    gender_targets: List[str] = ["population, female", "population, male"]
+    population_total_targets: List[str] = [
+        "population, total"
+    ]  # Predicting this is really useless using this method
+
+    # Train the model
+    pred = train(
+        model_name="population_total_model.pkl",
+        model_type="base",
+        targets=population_total_targets,
+    )
+
+    # Evaluate the model
+    evalulate_for_every_state(predictor=pred)

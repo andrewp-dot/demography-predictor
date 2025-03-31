@@ -46,7 +46,7 @@ class Config(BaseSettings):
         return {
             # "population_total",: "TODO"
             "aging_Czechia": f"{self.trained_models_dir}/aging_Czechia.pkl",
-            # "gender": "TODO",
+            "gender_model": f"{self.trained_models_dir}/gender_model.pkl",
         }
 
     ALL_POSSIBLE_TARGET_FEATURES: List[str] = [
