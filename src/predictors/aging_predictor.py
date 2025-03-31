@@ -1,18 +1,20 @@
 # Standard library imports
-import pandas as pd
-from torch import nn
 import logging
-from typing import Union, List
+from typing import List
 from xgboost import XGBRegressor
-from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
 from config import Config
 from src.utils.log import setup_logging
 from src.utils.save_model import save_model
-from src.predictors.predictor_base import DemographyPredictor
+from src.predictors.predictor_base import (
+    DemographyPredictor,
+    create_local_model,
+    create_finetunable_model,
+)
 from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
-from src.local_model.finetunable_model import FineTunableLSTM
+
 from src.global_model.model import GlobalModel
 from src.local_model.statistical_models import LocalARIMA
 
@@ -23,98 +25,103 @@ from src.preprocessors.state_preprocessing import StateDataLoader
 logger = logging.getLogger("demograpy_predictor")
 settings = Config()
 
+
+# Note: this constatns may be configurable in the config.py file
+# Get all possible target features to exclude them from the input
+ALL_POSSIBLE_TARGETS = settings.ALL_POSSIBLE_TARGET_FEATURES
+
+# Features which are excluded for also for local and global model
+EXCLUDE_FEATURES = []
+
+# No need to predict the future values for these features
+EXCLUDE_FOR_LOCAL = ["year", "country name"]
+
+
 # TODO:
 # Create predictor with BaseLSTM
 # Create predictor with FineTunableLSTM for One state
 # Create predictor with FineTunableLSTM for a group of states
 
 
-def create_local_model(features: List[str], hyperparameters: LSTMHyperparameters):
+def predictor_v1(targets: List[str]) -> DemographyPredictor:
+    """
+    Demography predictor using BaseLSTM as the local model and XGBRegressor as global model
 
-    states_loader = StatesDataLoader()
-    state_dfs = states_loader.load_all_states()
+    Args:
+        targets (List[str]): The list of target features.
+
+    Returns:
+        out: DemographyPredictor: The created model for predicting target demographic parameter(s).
+    """
 
     # Train local model
-    local_model = BaseLSTM(hyperparameters=hyperparameters, features=features)
-
-    # Create train and test data dict
-    train_data_dict, test_data_dict = states_loader.split_data(
-        states_dict=state_dfs, sequence_len=hyperparameters.sequence_length
-    )
-
-    # Create batches
-    input_train_batches, target_train_batches, fitted_scaler = (
-        states_loader.preprocess_train_data_batches(
-            states_train_data_dict=train_data_dict,
-            hyperparameters=hyperparameters,
-            features=features,
-        )
-    )
-
-    # Set fitted scaler
-    local_model.set_scaler(scaler=fitted_scaler)
-
-    local_model.train_model(
-        batch_inputs=input_train_batches,
-        batch_targets=target_train_batches,
-        display_nth_epoch=1,
-        loss_function=nn.HuberLoss(),
-    )
-
-    return local_model
-
-
-def create_finetunable_model(
-    base_model: BaseLSTM,
-    hyperparameters: LSTMHyperparameters,
-    state: str,
-):
-
-    # Create finetunable model
-    finetunable_model = FineTunableLSTM(
-        base_model=base_model, hyperparameters=hyperparameters
-    )
-
-    # TODO: add data for finetuning..
-    # Preprocess data for finetuning
-
-    # Preprocess state data
-    state_loader = StateDataLoader(state=state)
-
-    czech_data = state_loader.load_data()
-
-    train_df, test_df = state_loader.split_data(data=czech_data, split_rate=0.8)
-
-    train_input_batches, target_input_batches, _ = (
-        state_loader.preprocess_training_data_batches(
-            train_data_df=train_df,
-            hyperparameters=hyperparameters,
-            features=base_model.FEATURES,
-            scaler=base_model.SCALER,
-        )
-    )
-
-    finetunable_model.train_model(
-        batch_inputs=train_input_batches,
-        batch_targets=target_input_batches,
-        display_nth_epoch=1,
-        loss_function=nn.HuberLoss(),
-    )
-
-    return finetunable_model
-
-
-def predictor_v1(targets: List[str]) -> DemographyPredictor:
-
-    # Train global model
-    ## Load data
     states_loader = StatesDataLoader()
     state_dfs = states_loader.load_all_states()
 
-    ## Merge data to single dataframe
+    # Merge data to single dataframe
     whole_dataset_df = states_loader.merge_states(state_dfs=state_dfs)
 
-    ## Targets
+    # Get global features
+    GLOBAL_FEATURES: List[str] = [
+        col
+        for col in whole_dataset_df.columns
+        if col not in ALL_POSSIBLE_TARGETS
+        and col not in EXCLUDE_FEATURES  # Exclude targets and some features
+    ]
+
+    # Get local features
+    LOCAL_FEATURES = [
+        feature for feature in GLOBAL_FEATURES if feature not in EXCLUDE_FOR_LOCAL
+    ]
+
+    # Create or load base model
+    base_model_hyperparameters = LSTMHyperparameters(
+        input_size=len(LOCAL_FEATURES),
+        hidden_size=512,
+        sequence_length=10,
+        learning_rate=0.0001,
+        epochs=30,
+        batch_size=16,  # Do not change this if you do not want to experience segfault
+        num_layers=3,
+    )
+
+    # Maybe use get model instead of manual training
+    local_model = create_local_model(
+        features=LOCAL_FEATURES, hyperparameters=base_model_hyperparameters
+    )
+
+    # Define global model
+    global_model: GlobalModel = GlobalModel(
+        model=XGBRegressor(),
+        features=GLOBAL_FEATURES,
+        targets=targets,
+        scaler=MinMaxScaler(),
+    )
+
+    X_train, X_test, y_train, y_test = global_model.create_train_test_data(
+        data=whole_dataset_df[GLOBAL_FEATURES + targets],
+        split_size=0.8,
+    )
+
+    global_model.train(X_train=X_train, y_train=y_train)
+
+    # Create predictor
+    predictor = DemographyPredictor(
+        "predictor_v1", local_model=local_model, global_model=global_model
+    )
+
+    return predictor
+
+
+def predictor_v2(targets: List[str]) -> DemographyPredictor:
+    # Train local model
+    states_loader = StatesDataLoader()
+    state_dfs = states_loader.load_all_states()
+
+    # Merge data to single dataframe
+    whole_dataset_df = states_loader.merge_states(state_dfs=state_dfs)
+
+    # Targets
     ALL_TARGETS = settings.ALL_POSSIBLE_TARGET_FEATURES
 
     # Features
@@ -149,22 +156,22 @@ def predictor_v1(targets: List[str]) -> DemographyPredictor:
         features=LOCAL_FEATURES, hyperparameters=base_model_hyperparameters
     )
 
-    # Maybe finetune model
-    # finetunable_hyperparameters = LSTMHyperparameters(
-    #     input_size=base_model_hyperparameters.input_size,
-    #     hidden_size=256,
-    #     sequence_length=base_model_hyperparameters.sequence_length,
-    #     learning_rate=0.0001,
-    #     epochs=50,
-    #     batch_size=1,  # Do not change this if you do not want to experience segfault
-    #     num_layers=1,
-    # )
+    # Get finetunable model model
+    finetunable_hyperparameters = LSTMHyperparameters(
+        input_size=base_model_hyperparameters.input_size,
+        hidden_size=256,
+        sequence_length=base_model_hyperparameters.sequence_length,
+        learning_rate=0.0001,
+        epochs=50,
+        batch_size=1,  # Do not change this if you do not want to experience segfault
+        num_layers=1,
+    )
 
-    # local_model = create_finetunable_model(
-    #     base_model=local_model,
-    #     hyperparameters=finetunable_hyperparameters,
-    #     state="Czechia",
-    # )
+    finetunable_local_model = create_finetunable_model(
+        base_model=local_model,
+        hyperparameters=finetunable_hyperparameters,
+        state="Czechia",
+    )
 
     # Define global model
     global_model: GlobalModel = GlobalModel(
@@ -183,7 +190,7 @@ def predictor_v1(targets: List[str]) -> DemographyPredictor:
 
     # Create predictor
     predictor = DemographyPredictor(
-        "predictor_v1", local_model=local_model, global_model=global_model
+        "predictor_v2", local_model=finetunable_local_model, global_model=global_model
     )
 
     return predictor

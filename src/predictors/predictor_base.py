@@ -1,14 +1,18 @@
 # Standard library imports
+from torch import nn
 import pandas as pd
 import logging
-from typing import Union
+from typing import Union, List
 
 # Custom imports
-from src.utils.log import setup_logging
+from src.local_model.base import LSTMHyperparameters
 from src.local_model.model import BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.global_model.model import GlobalModel
 from src.local_model.statistical_models import LocalARIMA
+
+from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
+from src.preprocessors.state_preprocessing import StateDataLoader
 
 # Get pre-configured logger
 logger = logging.getLogger("demograpy_predictor")
@@ -82,3 +86,78 @@ class DemographyPredictor:
         )
 
         return final_predictions
+
+
+def create_local_model(features: List[str], hyperparameters: LSTMHyperparameters):
+
+    states_loader = StatesDataLoader()
+    state_dfs = states_loader.load_all_states()
+
+    # Train local model
+    local_model = BaseLSTM(hyperparameters=hyperparameters, features=features)
+
+    # Create train and test data dict
+    train_data_dict, test_data_dict = states_loader.split_data(
+        states_dict=state_dfs, sequence_len=hyperparameters.sequence_length
+    )
+
+    # Create batches
+    input_train_batches, target_train_batches, fitted_scaler = (
+        states_loader.preprocess_train_data_batches(
+            states_train_data_dict=train_data_dict,
+            hyperparameters=hyperparameters,
+            features=features,
+        )
+    )
+
+    # Set fitted scaler
+    local_model.set_scaler(scaler=fitted_scaler)
+
+    local_model.train_model(
+        batch_inputs=input_train_batches,
+        batch_targets=target_train_batches,
+        display_nth_epoch=1,
+        loss_function=nn.HuberLoss(),
+    )
+
+    return local_model
+
+
+def create_finetunable_model(
+    base_model: BaseLSTM,
+    hyperparameters: LSTMHyperparameters,
+    state: str,
+):
+
+    # Create finetunable model
+    finetunable_model = FineTunableLSTM(
+        base_model=base_model, hyperparameters=hyperparameters
+    )
+
+    # TODO: add data for finetuning..
+    # Preprocess data for finetuning
+
+    # Preprocess state data
+    state_loader = StateDataLoader(state=state)
+
+    czech_data = state_loader.load_data()
+
+    train_df, test_df = state_loader.split_data(data=czech_data, split_rate=0.8)
+
+    train_input_batches, target_input_batches, _ = (
+        state_loader.preprocess_training_data_batches(
+            train_data_df=train_df,
+            hyperparameters=hyperparameters,
+            features=base_model.FEATURES,
+            scaler=base_model.SCALER,
+        )
+    )
+
+    finetunable_model.train_model(
+        batch_inputs=train_input_batches,
+        batch_targets=target_input_batches,
+        display_nth_epoch=1,
+        loss_function=nn.HuberLoss(),
+    )
+
+    return finetunable_model
