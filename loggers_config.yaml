@@ -28,7 +28,7 @@ handlers:
     formatter: default
     filename: logs/global_model.log
 
-  demograpy_predictor:
+  demography_predictor:
     class: logging.FileHandler
     formatter: default
     filename: logs/demography_predictor.log
@@ -69,9 +69,9 @@ loggers:
     handlers: [console, global_model]
     propagate: no
 
-  demograpy_predictor:
+  demography_predictor:
     level: INFO
-    handlers: [console, demograpy_predictor]
+    handlers: [console, demography_predictor]
     propagate: no
 
   finetuneable_local_model:

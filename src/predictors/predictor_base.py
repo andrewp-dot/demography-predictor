@@ -15,7 +15,7 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.state_preprocessing import StateDataLoader
 
 # Get pre-configured logger
-logger = logging.getLogger("demograpy_predictor")
+logger = logging.getLogger("demography_predictor")
 
 
 class DemographyPredictor:
@@ -81,11 +81,19 @@ class DemographyPredictor:
         )
 
         # Predict target variable using global model
-        final_predictions = self.global_model.predict_human_readable(
+        final_predictions_df = self.global_model.predict_human_readable(
             data=preprocessed_for_gm[GLOBAL_FEATURES]
         )
 
-        return final_predictions
+        # Add years to final predictions
+        PREDICTED_YEARS = list(range(last_year + 1, target_year + 1))
+        predicted_years_df = pd.DataFrame({"years": PREDICTED_YEARS})
+
+        years_final_predictions_df = pd.concat(
+            [predicted_years_df, final_predictions_df], axis=1
+        )
+
+        return years_final_predictions_df
 
 
 def create_local_model(features: List[str], hyperparameters: LSTMHyperparameters):

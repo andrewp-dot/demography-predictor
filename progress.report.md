@@ -46,7 +46,7 @@ Bonus:
 
 
 ## TODO:
-0. Gender predictor, population total predictor..
+0. Gender predictor, population total predictor..       DONE 
 1. Better model evaluation saving... (Maybe saved model short description? Loss graph, evaluation -> ovearll metrics, by state metrics..)
 2. Experiments
     - Different Neural network architectures (not a just a pure LSTM)
@@ -58,6 +58,16 @@ Bonus:
 4. FineTune Experiments:
     - finetune model using 1 state
     - finetune model using similiar states
+5. Single feature predicting model (rnn + ARIMA + GM). 2 Types of models:
+    - ML based model (multifeature prediction)
+        - keep context predictions? 
+
+    - Statistical model (and ML single srquence feature prediction model )
+        - in case of statistical methods it needs to be trained for a single state
+        - in case of ML Single feature models -> needs to be 
+
+    - Bonus:
+        New type of local model: Ensembled local model (like the forest of neural networks? averaging ARIMA and LSTM?...)
  
 
 ## Bonus

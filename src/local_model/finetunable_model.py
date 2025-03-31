@@ -311,7 +311,8 @@ class FineTunableLSTM(CustomModelBase):
             target_year - last_year
         )  # To include also the target year
 
-        logger.info(f"Last recorder year: {last_year}")
+        logger.info(f"Last recorded year: {last_year}")
+        logger.info(f"Target year: {target_year}")
         logger.info(f"To predict years: {to_predict_years_num}")
 
         # Put the model into the evaluation mode

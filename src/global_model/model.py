@@ -194,7 +194,6 @@ class GlobalModel:
         states_dfs: Dict[str, pd.DataFrame],
         states_loader: StatesDataLoader,
         split_size: float,
-        fitted_scaler: MinMaxScaler,
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
         From the given dataframe creates and scales the data using fitted scaler. Splits the dataframes by time: train data are first `len(X) * split_size` occurences, test data are the rest.
@@ -206,7 +205,7 @@ class GlobalModel:
             fitted_scaler (MinMaxScaler): Scaler used to scale the other features from the previous prediction model.
 
         Returns:
-            Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: _description_
+            out: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: X_train, X_test, y_train, y_test
         """
 
         # Split by time series, sequence len is equal to 1 in order to include all states
@@ -388,7 +387,7 @@ class GlobalModel:
         # )
 
         # Create df again
-        predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
+        # predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
 
         return predictions_df
 

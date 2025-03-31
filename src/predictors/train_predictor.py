@@ -23,7 +23,7 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.state_preprocessing import StateDataLoader
 
 # Get logger and settings
-logger = logging.getLogger("demograpy_predictor")
+logger = logging.getLogger("demography_predictor")
 settings = Config()
 
 
@@ -99,8 +99,14 @@ def predictor_v1(targets: List[str]) -> DemographyPredictor:
         scaler=MinMaxScaler(),
     )
 
-    X_train, X_test, y_train, y_test = global_model.create_train_test_data(
-        data=whole_dataset_df[GLOBAL_FEATURES + targets],
+    # X_train, X_test, y_train, y_test = global_model.create_train_test_timeseries(
+    #     data=whole_dataset_df[GLOBAL_FEATURES + targets],
+    #     split_size=0.8,
+    # )
+
+    X_train, X_test, y_train, y_test = global_model.create_train_test_timeseries(
+        states_dfs=state_dfs,
+        states_loader=states_loader,
         split_size=0.8,
     )
 
@@ -341,9 +347,9 @@ if __name__ == "__main__":
 
     # Train the model
     pred = train(
-        model_name="population_total_model.pkl",
+        model_name="aging_model.pkl",
         model_type="base",
-        targets=population_total_targets,
+        targets=aging_targets,
     )
 
     # Evaluate the model

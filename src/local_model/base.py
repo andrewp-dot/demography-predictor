@@ -430,7 +430,7 @@ class EvaluateModel(BaseEvaluation):
 
         # Get predicted years
         self.predicted_years = list(
-            range(last_year + 1, target_year + 1)
+            range(last_year + 1, target_year)
         )  # values are predicted from next year after last year and for the target year (+ 1 to include target year)
         logger.debug(f"[Eval]: predicting values from {last_year} to {target_year}...")
 
@@ -444,7 +444,7 @@ class EvaluateModel(BaseEvaluation):
             last_year=last_year,
             target_year=target_year,
         )
-        self.predicted = predictions_df
+        self.predicted = predictions_df[self.model.TARGETS]
 
         logger.critical(self.predicted)
 
