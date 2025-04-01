@@ -1,7 +1,7 @@
 # Standard library imports
 import logging
 import pandas as pd
-from typing import List, Literal
+from typing import List, Literal, Union, Dict
 from xgboost import XGBRegressor
 from sklearn.preprocessing import MinMaxScaler
 
@@ -44,7 +44,7 @@ EXCLUDE_FOR_LOCAL = ["year", "country name"]
 # Create predictor with FineTunableLSTM for a group of states
 
 
-def predictor_v1(targets: List[str]) -> DemographyPredictor:
+def predictor_base_lstm(targets: List[str]) -> DemographyPredictor:
     """
     Demography predictor using BaseLSTM as the local model and XGBRegressor as global model
 
@@ -120,7 +120,9 @@ def predictor_v1(targets: List[str]) -> DemographyPredictor:
     return predictor
 
 
-def predictor_v2(targets: List[str]) -> DemographyPredictor:
+def predictor_finetuned(
+    targets: List[str], finetuning_data: Union[pd.DataFrame, Dict[str, pd.DataFrame]]
+) -> DemographyPredictor:
 
     if True == True:  # This condition here is just to confuse code highlighter
         raise NotImplementedError(
@@ -183,7 +185,7 @@ def predictor_v2(targets: List[str]) -> DemographyPredictor:
     finetunable_local_model = create_finetunable_model(
         base_model=local_model,
         hyperparameters=finetunable_hyperparameters,
-        state="Czechia",
+        finetuning_data=finetuning_data,
     )
 
     # Define global model
@@ -211,8 +213,9 @@ def predictor_v2(targets: List[str]) -> DemographyPredictor:
 
 def train(
     model_name: str,
-    model_type: Literal["base", "finetunable-single-states", "finetunable-state-group"],
+    model_type: Literal["base", "finetunable"],
     targets: List[str],
+    finetuning_data: Union[pd.DataFrame, Dict[str, pd.DataFrame]] | None = None,
 ) -> DemographyPredictor:
     """
     Trains and saves the predictor by the given parameters.
@@ -235,11 +238,13 @@ def train(
     # Select predictor
     pred = None
     if "base" == model_type:
-        pred = predictor_v1(targets=targets)
-    elif "finetunable-single-states" == model_type:
-        pred = predictor_v2(targets=targets)
-    elif "finetunable-state-group" == model_type:
-        pred = predictor_v2(targets=targets)
+        pred = predictor_base_lstm(targets=targets)
+    elif "finetunable" == model_type:
+        if finetuning_data is None:
+            raise ValueError(
+                f"Model is type is set to '{model_type}', but no data for finetuning provided!"
+            )
+        pred = predictor_finetuned(targets=targets, finetuning_data=finetuning_data)
 
     # Log predictor
     logger.info(f"Trained predictor: {pred}")
@@ -345,11 +350,23 @@ if __name__ == "__main__":
         "population, total"
     ]  # Predicting this is really useless using this method
 
+    # Get the finetuning data
+    states_loader = StatesDataLoader()
+
+    # Define the group of states
+    STATES_GROUP: List[str] = []
+    group_states_dict = states_loader.load_states(states=STATES_GROUP)
+
+    # Single state finetuning
+    state_loader = StateDataLoader(state="Czechia")
+    state_data_df = state_loader.load_data()
+
     # Train the model
     pred = train(
         model_name="aging_model.pkl",
-        model_type="base",
+        model_type="finetunable",
         targets=aging_targets,
+        finetuning_data=group_states_dict,
     )
 
     # Evaluate the model

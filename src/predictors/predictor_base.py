@@ -2,7 +2,7 @@
 from torch import nn
 import pandas as pd
 import logging
-from typing import Union, List
+from typing import Union, List, Dict
 
 # Custom imports
 from src.local_model.base import LSTMHyperparameters
@@ -134,7 +134,7 @@ def create_local_model(features: List[str], hyperparameters: LSTMHyperparameters
 def create_finetunable_model(
     base_model: BaseLSTM,
     hyperparameters: LSTMHyperparameters,
-    state: str,
+    finetuning_data: Union[pd.DataFrame, Dict[str, pd.DataFrame]],
 ):
 
     # Create finetunable model
@@ -143,24 +143,56 @@ def create_finetunable_model(
     )
 
     # TODO: add data for finetuning..
-    # Preprocess data for finetuning
 
-    # Preprocess state data
-    state_loader = StateDataLoader(state=state)
+    # By the type preprocess data
+    # If the finetuning data are in the format of state: datframe pair -> maybe use just isinstance(dict)
+    if isinstance(finetuning_data, dict) and all(
+        isinstance(k, str) and isinstance(v, pd.DataFrame)
+        for k, v in finetuning_data.items()
+    ):
+        states_loader = StatesDataLoader()
+        training_data = states_loader.load_states(states=list(finetuning_data.keys()))
 
-    czech_data = state_loader.load_data()
-
-    train_df, test_df = state_loader.split_data(data=czech_data, split_rate=0.8)
-
-    train_input_batches, target_input_batches, _ = (
-        state_loader.preprocess_training_data_batches(
-            train_data_df=train_df,
-            hyperparameters=hyperparameters,
-            features=base_model.FEATURES,
-            scaler=base_model.SCALER,
+        train_input_batches, target_input_batches, _ = (
+            states_loader.preprocess_train_data_batches(
+                states_train_data_dict=training_data,
+                hyperparameters=hyperparameters,
+                features=base_model.FEATURES,
+            )
         )
-    )
 
+    elif isinstance(finetuning_data, pd.DataFrame):
+
+        # Get state
+        if "country name" not in finetuning_data.columns:
+            raise ValueError(
+                "No country name provided in a single state data finetuning."
+            )
+
+        if finetuning_data.loc["country"].nunique() != 1:
+            raise ValueError(
+                "There are multiple countries in the dataframe. For state group finetuning please use Dict[str, pd.DataFrame] format."
+            )
+
+        # Get the first state
+        state = finetuning_data.loc[0, "country name"].item()
+
+        # Preprocess state data
+        state_loader = StateDataLoader(state=state)
+        state_data = state_loader.load_data()
+
+        train_df, test_df = state_loader.split_data(data=state_data, split_rate=0.8)
+
+        train_input_batches, target_input_batches, _ = (
+            state_loader.preprocess_training_data_batches(
+                train_data_df=train_df,
+                hyperparameters=hyperparameters,
+                features=base_model.FEATURES,
+                scaler=base_model.SCALER,
+            )
+        )
+
+    # Finetune model based on given data
     finetunable_model.train_model(
         batch_inputs=train_input_batches,
         batch_targets=target_input_batches,
