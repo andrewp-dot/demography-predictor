@@ -469,6 +469,8 @@ class EvaluateModel(BaseEvaluation):
         columns = ["state", "mae", "mse", "rmse", "r2"]
         all_evaluation_df: pd.DataFrame = pd.DataFrame(columns=columns)
 
+        new_rows = []
+
         for state in X_test_states.keys():
 
             # Get X_test and y_test for state
@@ -495,11 +497,10 @@ class EvaluateModel(BaseEvaluation):
                     }
                 ]
             )
+            new_rows.append(new_row)
 
-            # Add evaluation to the states
-            all_evaluation_df = pd.concat(
-                [all_evaluation_df, new_row], ignore_index=True
-            )
+        # Add evaluation to the states
+        all_evaluation_df = pd.concat(new_rows, ignore_index=True)
 
         # Save the evaluation
         self.all_states_evaluation = all_evaluation_df

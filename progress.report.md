@@ -50,7 +50,7 @@ Bonus:
 
 
 ## TODO:
-1. Demography predictor training script for multiple models:
+1. Model comparation script:
     - Better model evaluation saving... (Maybe saved model short description? Loss graph, evaluation -> ovearll metrics, by state metrics..) -> model evaluation comparison
 
 2. Experiments

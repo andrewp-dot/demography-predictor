@@ -14,15 +14,16 @@ from src.predictors.predictor_base import DemographyPredictor
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
-# Set the comparation state
-COMPARE_BY: Literal["state", "all-states"] = "state"
-
 logger = logging.getLogger("model_compare")
 
+# TODO:
+# Compare LocalModels
 
-def compare_by_states(
+
+# Compare demography predictors
+def compare_demography_predictors_by_states(
     models: List[str], states: List[str] | None = None
-) -> Dict[str, pd.DataFrame]:
+) -> pd.DataFrame:
 
     # Check if there is something to compare
     if len(models) <= 1:
@@ -60,6 +61,7 @@ def compare_by_states(
     else:
         states_data_dict = states_loaders.load_states(states=states)
 
+    # Getnerate evaluation for every model
     for model_name, model in to_compare_models.items():
         # Preprocess data for the model - suppoorts different sequence length
         train_data_dict, test_data_dict = states_loaders.split_data(
@@ -76,28 +78,45 @@ def compare_by_states(
         model_evaluations[model_name] = model_evaluation.all_states_evaluation
 
     # Compare evaluations
-    for model_name, eval_df in model_evaluations.items():
-        print(f"Evaluation for: {model_name}:")
-        print(eval_df.head())
+    # Convert evaluations (Dict[str, pd.DataFrame]) into a single DataFrame
+    df_list = []
+    for model, df in model_evaluations.items():
+        df["model"] = model  # Add model name to DataFrame
+        df_list.append(df)
 
-        print()
+    # Concatenate all models into a single DataFrame
+    df_all = pd.concat(df_list, ignore_index=True)
 
-    return model_evaluations
+    # Define ranking function
+    def rank_models(df) -> pd.DataFrame:
+        """Ranks models based on best metric scores."""
+        df["rank"] = (
+            df["mae"].rank(ascending=True)  # Lower MAE is better
+            + df["mse"].rank(ascending=True)  # Lower MSE is better
+            + df["rmse"].rank(ascending=True)  # Lower RMSE is better
+            + df["r2"].rank(ascending=False)  # Higher R² is better
+        )
+        return df.sort_values("rank", ascending=True)
+
+    # Rank models
+    df_ranked = rank_models(df_all)
+
+    return df_ranked
 
 
 if __name__ == "__main__":
     # Setup logging
-
     setup_logging()
 
     aging_comparation_models: List[str] = [
+        "aging_Czechia.pkl",
         "aging_Czechia_model.pkl",
         "aging_rich_group_model.pkl",
         "aging_model.pkl",
     ]
 
     # Get models
-    compare_by_states(
+    compare_demography_predictors_by_states(
         models=aging_comparation_models,
-        states=["Czechia"],
+        states=["Czechia", "Afghanistan", "United States"],
     )
