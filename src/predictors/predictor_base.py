@@ -164,24 +164,24 @@ def create_finetunable_model(
     elif isinstance(finetuning_data, pd.DataFrame):
 
         # Get state
-        if "country name" not in finetuning_data.columns:
+        if not ("country name" in finetuning_data.columns):
             raise ValueError(
                 "No country name provided in a single state data finetuning."
             )
 
-        if finetuning_data.loc["country"].nunique() != 1:
+        if finetuning_data["country name"].nunique() != 1:
             raise ValueError(
                 "There are multiple countries in the dataframe. For state group finetuning please use Dict[str, pd.DataFrame] format."
             )
 
-        # Get the first state
-        state = finetuning_data.loc[0, "country name"].item()
-
         # Preprocess state data
-        state_loader = StateDataLoader(state=state)
-        state_data = state_loader.load_data()
+        state_loader = StateDataLoader(
+            state=""
+        )  # Do not need to load the data here, this instance is used just for data preprocessing
 
-        train_df, test_df = state_loader.split_data(data=state_data, split_rate=0.8)
+        train_df, test_df = state_loader.split_data(
+            data=finetuning_data, split_rate=0.8
+        )
 
         train_input_batches, target_input_batches, _ = (
             state_loader.preprocess_training_data_batches(

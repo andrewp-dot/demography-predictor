@@ -124,11 +124,6 @@ def predictor_finetuned(
     targets: List[str], finetuning_data: Union[pd.DataFrame, Dict[str, pd.DataFrame]]
 ) -> DemographyPredictor:
 
-    if True == True:  # This condition here is just to confuse code highlighter
-        raise NotImplementedError(
-            "You should adjust this function to pass the training data for finetuning..."
-        )
-
     # Train local model
     states_loader = StatesDataLoader()
     state_dfs = states_loader.load_all_states()
@@ -354,7 +349,51 @@ if __name__ == "__main__":
     states_loader = StatesDataLoader()
 
     # Define the group of states
-    STATES_GROUP: List[str] = []
+    STATES_GROUP: List[str] = [
+        "Australia",
+        "Austria",
+        "Bahamas, The",
+        "Bahrain",
+        "Belgium",
+        "Brunei Darussalam",
+        "Canada",
+        "Cyprus",
+        "Czechia",
+        "Denmark",
+        "Estonia",
+        "Finland",
+        "France",
+        "Germany",
+        "Hong Kong SAR, China",
+        "Iceland",
+        "Ireland",
+        "Israel",
+        "Italy",
+        "Japan",
+        "Korea, Rep.",
+        "Kuwait",
+        "Latvia",
+        "Lithuania",
+        "Luxembourg",
+        "Malta",
+        "Netherlands",
+        "New Zealand",
+        "Norway",
+        "Oman",
+        "Poland",
+        "Portugal",
+        "Qatar",
+        "Saudi Arabia",
+        "Singapore",
+        "Slovak Republic",
+        "Slovenia",
+        "Spain",
+        "Sweden",
+        "Switzerland",
+        "United Arab Emirates",
+        "United Kingdom",
+        "United States",
+    ]
     group_states_dict = states_loader.load_states(states=STATES_GROUP)
 
     # Single state finetuning
@@ -363,10 +402,10 @@ if __name__ == "__main__":
 
     # Train the model
     pred = train(
-        model_name="aging_model.pkl",
+        model_name="aging_Czechia_model.pkl",
         model_type="finetunable",
         targets=aging_targets,
-        finetuning_data=group_states_dict,
+        finetuning_data=state_data_df,
     )
 
     # Evaluate the model
