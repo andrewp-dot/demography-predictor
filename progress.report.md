@@ -31,6 +31,10 @@
     - fix experiment, use one neural network and N ARIMAS for comparision
     - print the table with header: `feature_name` | `best_model`
 7. The full model evaluation
+8. Demography predictor training script for multiple models:
+    - base LSTM as local model
+    - finetunable LSTM with custom data (single state, multiple states data)
+    - choose from possible targets
 
 
 Bonus:
@@ -46,8 +50,9 @@ Bonus:
 
 
 ## TODO:
-0. Gender predictor, population total predictor..       DONE 
-1. Better model evaluation saving... (Maybe saved model short description? Loss graph, evaluation -> ovearll metrics, by state metrics..)
+1. Demography predictor training script for multiple models:
+    - Better model evaluation saving... (Maybe saved model short description? Loss graph, evaluation -> ovearll metrics, by state metrics..) -> model evaluation comparison
+
 2. Experiments
     - Different Neural network architectures (not a just a pure LSTM)
     - (BONUS) LSTM and NN as a global model instead of local 
@@ -55,9 +60,10 @@ Bonus:
     - Try Forest of LSTMs (each LSTM for each feature? combined with ARIMA (by better feature performance?))
 
 3. Try predict population total using the population growth
-4. FineTune Experiments:
-    - finetune model using 1 state
-    - finetune model using similiar states
+4. Rework experiments:
+    - More comparision experiments
+    
+    
 5. Single feature predicting model (rnn + ARIMA + GM). 2 Types of models:
     - ML based model (multifeature prediction)
         - keep context predictions? 

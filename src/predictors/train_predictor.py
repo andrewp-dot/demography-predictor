@@ -384,7 +384,7 @@ if __name__ == "__main__":
         "Portugal",
         "Qatar",
         "Saudi Arabia",
-        "Singapore",
+        # "Singapore",
         "Slovak Republic",
         "Slovenia",
         "Spain",

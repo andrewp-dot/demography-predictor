@@ -98,3 +98,8 @@ loggers:
     level: INFO
     handlers: [console, api]
     propagate: no
+
+  model_compare:
+    level: INFO
+    handlers: [console]
+    propagate: no
