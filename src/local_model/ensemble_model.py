@@ -164,10 +164,32 @@ def train_models_for_ensemble_model(
     return trained_models
 
 
-if __name__ == "__main__":
-    # Setup logging
-    setup_logging()
+def train_arima_models_for_ensemble_model(
+    features: List[str], state: str
+) -> Dict[str, LocalARIMA]:
+    # raise NotImplementedError("ARIMA models support not implemented yet.")
 
+    # Load state data
+    state_loader = StateDataLoader(state=state)
+    state_data = state_loader.load_data()
+
+    # Train and save models
+    trained_models: Dict[str, LocalARIMA] = {}
+    for feature in features:
+
+        # Create ARIMA
+        arima = LocalARIMA(p=1, d=1, q=1, features=[], target=feature, index="year")
+
+        # Train model
+        arima.train_model(data=state_data)
+
+        # Save trained model
+        trained_models[feature] = arima
+
+    return trained_models
+
+
+def main():
     FEATURES: List = [
         col.lower()
         for col in [
@@ -218,3 +240,13 @@ if __name__ == "__main__":
     # Test print
     print(pred_df)
     print(f"\nShape of the df: {pred_df.shape}")
+
+
+if __name__ == "__main__":
+    # Setup logging
+    setup_logging()
+
+    # TODO:
+    # 1. evaluate predictions
+    # 2. try using some arima models and evalute (train_arima_models_for_ensemble_model)..
+    main()
