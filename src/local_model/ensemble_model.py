@@ -1,12 +1,20 @@
 # Standard library imports
 import pandas as pd
+import logging
 from typing import Dict, Union, List
 
 # Custom library imports
+from src.utils.log import setup_logging
 from src.local_model.base import CustomModelBase
-from src.local_model.model import BaseLSTM
+from src.local_model.model import BaseLSTM, LSTMHyperparameters
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.statistical_models import LocalARIMA
+
+from src.preprocessors.state_preprocessing import StateDataLoader
+from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
+
+# Get logger
+logger = logging.getLogger("local_model")
 
 
 class EnsembleModel(CustomModelBase):
@@ -50,7 +58,9 @@ class PureEnsembleModel:
                 "Missing column: 'year'. Cannot find out how many years to predict"
             )
 
-        last_year = input_data.sort_values(by="year", ascending=True)[-1].item()
+        last_year = (
+            input_data.sort_values(by="year", ascending=True)["year"].iloc[-1].item()
+        )
 
         # Preprocess data
         years_to_predict = range(last_year + 1, target_year + 1)
@@ -90,6 +100,9 @@ class PureEnsembleModel:
                     timestep_predictions = pd.concat(
                         [timestep_predictions, feature_prediction_df], axis=1
                     )
+                    logger.critical(timestep_predictions.shape)
+
+            # Save predictions for every year
             if prediction_df is None:
                 prediction_df = timestep_predictions
             else:
@@ -99,13 +112,109 @@ class PureEnsembleModel:
 
 
 def train_models_for_ensemble_model(
-    features: List[str],
+    features: List[str], hyperaparameters: LSTMHyperparameters
 ) -> Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]]:
-    # Basically function for training multiple models
-    pass
+
+    # Load data for training
+    states_loader = StatesDataLoader()
+    states_data_dict = states_loader.load_all_states()
+
+    # Ensure the input / output size will be 1
+    ADJUSTED_PARAMS = hyperaparameters
+    ADJUSTED_PARAMS.input_size = 1  # Predict 1 target at the time
+
+    # Split data
+    train_dict, _ = states_loader.split_data(
+        states_dict=states_data_dict, sequence_len=ADJUSTED_PARAMS.sequence_length
+    )
+
+    # Train and save models
+    trained_models: Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]] = {}
+    for feature in features:
+
+        logger.info(f"Training for predicting feature: {feature}")
+
+        # Set feature as a target
+        target = feature
+
+        # Preprocess data for feature
+        input_batches, target_batches, scaler = (
+            states_loader.preprocess_train_data_batches(
+                states_train_data_dict=train_dict,
+                hyperparameters=ADJUSTED_PARAMS,
+                features=[target],
+            )
+        )
+
+        # Create RNN
+        rnn = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=[target])
+
+        # Set scaler
+        rnn.set_scaler(scaler=scaler)
+
+        # Train model
+        rnn.train_model(
+            batch_inputs=input_batches,
+            batch_targets=target_batches,
+            display_nth_epoch=1,
+        )
+
+        trained_models[target] = rnn
+
+    return trained_models
 
 
 if __name__ == "__main__":
-    raise NotImplementedError(
-        "Find out, whether it is useful to create an ensemble model!"
+    # Setup logging
+    setup_logging()
+
+    FEATURES: List = [
+        col.lower()
+        for col in [
+            # "year",
+            "Fertility rate, total",
+            "Population, total",
+            "Net migration",
+            "Arable land",
+            "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            "Rural population",
+            "Rural population growth",
+            "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            "Adolescent fertility rate",
+            "Life expectancy at birth, total",
+        ]
+    ]
+
+    HYPERPARAMETERS = LSTMHyperparameters(
+        input_size=1,
+        hidden_size=256,
+        sequence_length=10,
+        learning_rate=0.0001,
+        epochs=1,
+        batch_size=16,
+        num_layers=3,
+        bidirectional=False,
     )
+
+    trained_models = train_models_for_ensemble_model(
+        features=FEATURES, hyperaparameters=HYPERPARAMETERS
+    )
+
+    # Create pure ensemble model
+    em = PureEnsembleModel(feature_models=trained_models)
+
+    # Load states data
+    state_loader = StateDataLoader(state="Finland")
+    state_data = state_loader.load_data()
+
+    # Try to predict something
+    pred_df = em.predict(input_data=state_data, target_year=2035)
+
+    # Test print
+    print(pred_df)
+    print(f"\nShape of the df: {pred_df.shape}")
