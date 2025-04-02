@@ -36,6 +36,10 @@
     - finetunable LSTM with custom data (single state, multiple states data)
     - choose from possible targets
 
+<!-- The newest -->
+9. Model comparation script:
+    - Better model evaluation saving... (Maybe saved model short description? Loss graph, evaluation -> ovearll metrics, by state metrics..) -> model evaluation comparison
+
 
 Bonus:
 1. Simple CLI for `lbenchmark`. For more info run `poetry run cli lbenchmark --help`
@@ -46,25 +50,22 @@ Bonus:
 1. Statistical model implementation (Grey model)
 2. Experiments:
     - None
-3. Different model for experiment fix. -> think about it, how you can do it better
+3. New type of local model: Ensembled local model (like the forest of neural networks? averaging ARIMA and LSTM?...)
 
 
 ## TODO:
-1. Model comparation script:
-    - Better model evaluation saving... (Maybe saved model short description? Loss graph, evaluation -> ovearll metrics, by state metrics..) -> model evaluation comparison
-
-2. Experiments
+1. Experiments
     - Different Neural network architectures (not a just a pure LSTM)
     - (BONUS) LSTM and NN as a global model instead of local 
     - (fix) features for experiments -> use all or mostly the same experiments
     - Try Forest of LSTMs (each LSTM for each feature? combined with ARIMA (by better feature performance?))
 
-3. Try predict population total using the population growth
-4. Rework experiments:
+2. Try predict population total using the population growth
+3. Rework experiments:
     - More comparision experiments
     
     
-5. Single feature predicting model (rnn + ARIMA + GM). 2 Types of models:
+4. Single feature predicting model (rnn + ARIMA + GM). 2 Types of models:
     - ML based model (multifeature prediction)
         - keep context predictions? 
 
