@@ -567,15 +567,18 @@ if __name__ == "__main__":
         num_layers=3,
     )
 
+    base_model = BaseLSTM(hyperparameters=hyperparameters, features=FEATURES)
+
     # Create and train base model
     base_model = train_base_model(
-        hyperparameters=hyperparameters,
-        features=FEATURES,
+        base_model=base_model,
         evaluation_state_name=EVLAUATION_STATE_NAME,
+        is_experimental=False,
+        save=False,
     )
 
-    # Save base model
-    save_model(base_model, f"base_model_{base_model.hyperparameters.hidden_size}.pkl")
+    # Custom save base model
+    save_model(base_model, f"test_base_model.pkl")
 
     # Create finetunable model
     finetunable_hyperparameters = LSTMHyperparameters(
@@ -606,7 +609,7 @@ if __name__ == "__main__":
         train_data_df=train_state_data_df,
         hyperparameters=finetunable_hyperparameters,
         features=FEATURES,
-        scaler=base_model.scaler,
+        scaler=base_model.SCALER,
     )
 
     logger.info("Finetuning model...")
@@ -634,5 +637,5 @@ if __name__ == "__main__":
 
     # Save model
     save_model(
-        finetunable_local_model, f"finetunable_model_{EVLAUATION_STATE_NAME}.pkl"
+        finetunable_local_model, f"test_finetunable_model_{EVLAUATION_STATE_NAME}.pkl"
     )
