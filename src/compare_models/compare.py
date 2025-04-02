@@ -2,7 +2,7 @@
 import pandas as pd
 import logging
 
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Literal
 
 # Custom imports
 from src.utils.log import setup_logging
@@ -39,7 +39,9 @@ def rank_models(evaluation_dfs: List[pd.DataFrame]) -> pd.DataFrame:
             df["mae"].rank(ascending=True)  # Lower MAE is better
             + df["mse"].rank(ascending=True)  # Lower MSE is better
             + df["rmse"].rank(ascending=True)  # Lower RMSE is better
-            + (df["r2"].rank(ascending=False))  # Higher R² is better
+            + (
+                df["r2"].rank(ascending=False) if "r2" in df.columns else 0
+            )  # Higher R² is better
         )
         return df.sort_values("rank", ascending=True)
 
@@ -55,8 +57,25 @@ def rank_models(evaluation_dfs: List[pd.DataFrame]) -> pd.DataFrame:
 
 # Compare models predictors
 def compare_models_by_states(
-    models: List[str], states: List[str] | None = None
+    models: List[str],
+    states: List[str] | None = None,
+    by: Literal["overall-metrics", "per-features"] = "overall-metrics",
 ) -> pd.DataFrame:
+    """
+    Compares model performance by metrics. Returns ranking dataframe.
+
+    Args:
+        models (List[str]): _description_
+        states (List[str] | None, optional): _description_. Defaults to None.
+        by (Literal[&quot;overall-metrics&quot;, &quot;per-features&quot;, optional): Overall-metrics -> compares model performance by the overall metrics for state.
+            "per-features" is options mainly for LSTM predictor models, gives information about model performance per feature. Defaults to "overall-metrics".
+
+    Raises:
+        ValueError: If the models are not comparable.
+
+    Returns:
+        out: pd.DataFrame: Ranking dataframe.
+    """
 
     # Check if there is something to compare
     if len(models) <= 1:
@@ -110,21 +129,43 @@ def compare_models_by_states(
         )
 
         model_evaluation = EvaluateModel(model=model)
-        model_evaluation.eval_for_every_state(
-            X_test_states=train_data_dict, y_test_states=test_data_dict
-        )
 
         # Save the evaluation
-        model_evaluations[model_name] = model_evaluation.all_states_evaluation
+        if "overall-metrics" == by:
+            model_evaluation.eval_for_every_state(
+                X_test_states=train_data_dict, y_test_states=test_data_dict
+            )
+            model_evaluations[model_name] = model_evaluation.all_states_evaluation
 
-        # TODO: do this for the rest of this 2 evaluations
-        # model_evaluation.eval(
-        #     test_X=train_data_dict["Czechia"], test_y=test_data_dict["Czechia"]
-        # )
-        # model_evaluation.get_overall_metrics()
-        # print(model_evaluation.overall_metrics.head())
-        # model_evaluation.get_feature_specific_metrics(model.FEATURES)
-        # print(model_evaluation.per_target_metrics.head())
+        elif "per-features" == by:
+
+            states_evaluation_for_model: pd.DataFrame | None = None
+            for state in train_data_dict.keys():
+
+                # Get per target per state evaluation
+                model_evaluation.eval(
+                    test_X=train_data_dict[state], test_y=test_data_dict[state]
+                )
+                model_evaluation.get_feature_specific_metrics(model.FEATURES)
+
+                model_evaluation.per_target_metrics["state"] = state
+
+                # Init dataframe if none
+                if states_evaluation_for_model is None:
+                    states_evaluation_for_model = model_evaluation.per_target_metrics
+
+                # Concat dataframe if exists
+                else:
+                    states_evaluation_for_model = pd.concat(
+                        [
+                            states_evaluation_for_model,
+                            model_evaluation.per_target_metrics,
+                        ],
+                        axis=0,
+                    )
+
+            # Save all states
+            model_evaluations[model_name] = states_evaluation_for_model
 
     # Compare evaluations
     # Convert evaluations (Dict[str, pd.DataFrame]) into a single DataFrame
@@ -181,8 +222,6 @@ if __name__ == "__main__":
         "aging_model.pkl",
     ]
 
-    # TODO:
-    # Train and try to evaluate local predictor models
     # Local predictor models
     local_predictor_models: List[str] = [
         "test_base_model.pkl",
@@ -190,10 +229,29 @@ if __name__ == "__main__":
     ]
 
     # Get models
+
+    # Example 1: comparing local predictor models using per feature metrics
     ranked_models = compare_models_by_states(
         models=local_predictor_models,
         states=["Czechia", "Afghanistan", "United States", "Croatia"],
+        by="per-features",
     )
 
+    print(
+        ranked_models[
+            (ranked_models["state"] == "Croatia")
+            & (ranked_models["feature"].isin(["fertility rate, total", "arable land"]))
+        ]
+    )
+
+    # # Example 2: comparing demographic predictor by specified states
+    # ranked_models = compare_models_by_states(
+    #     models=local_predictor_models,
+    #     states=["Czechia", "Afghanistan", "United States", "Croatia"],
+    #     by="overall-metrics",
+    # )
+
+    # # Display
     # print(ranked_models[ranked_models["state"] == "Czechia"])
-    print(ranked_models)
+
+    # print(ranked_models[ranked_models["state"] == "Afghanistan"])
