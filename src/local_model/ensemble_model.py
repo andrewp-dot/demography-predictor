@@ -248,5 +248,6 @@ if __name__ == "__main__":
 
     # TODO:
     # 1. evaluate predictions
-    # 2. try using some arima models and evalute (train_arima_models_for_ensemble_model)..
+    # 2. try using some arima models and evalute (train_arima_models_for_ensemble_model)...
+    # 3. Support creating ensemble model using dict with types or predefined models to train
     main()
