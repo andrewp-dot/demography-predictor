@@ -21,7 +21,7 @@ from sklearn.metrics import (
 from config import Config
 from src.utils.log import setup_logging
 from src.preprocessors.state_preprocessing import StateDataLoader
-from base import BaseEvaluation
+from src.evaluation import BaseEvaluation
 
 # Get logger
 logger = logging.getLogger("local_model")
@@ -38,42 +38,6 @@ class EvaluateARIMA(BaseEvaluation):
 
         # Get evaluation data
         self.model: LocalARIMA = arima
-
-    def __get_metric(
-        self,
-        metric: Callable,
-        metric_key: str = "",
-    ) -> Tuple[pd.DataFrame, pd.DataFrame | None]:
-        """
-        Computes and saves given metric.
-
-        Args:
-            metric (Callable): Function for metric computation.
-            features (List[str]): Key of the metric which can be accasible in `EvaluateModel.metrics` dict (`{metric_key}`, `{metric_key}_per_target` if per target is available).
-                If not given, the name of the function is used. Defaults to "".
-            metric_key (str, optional): _description_. Defaults to "".
-
-        Returns:
-            out: Tuple[pd.DataFrame, pd.DataFrame | None]: metric value for all targets, metric values for each target separately.
-        """
-
-        # Adjust metric key if not given
-        metric_key = metric_key or metric.__name__
-
-        # Initialize metric values
-        overall_metric_df = None
-
-        # Average MAE across all targets
-        average_metric_value = metric(
-            self.reference_values, self.predicted, multioutput="uniform_average"
-        )
-
-        # Get overall metric dataframe
-        overall_metric_df = pd.DataFrame(
-            {"metric": metric_key, "value": [average_metric_value]}
-        )
-
-        return overall_metric_df
 
     def eval(
         self,

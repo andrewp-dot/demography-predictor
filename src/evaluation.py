@@ -367,7 +367,7 @@ class EvaluateModel(BaseEvaluation):
         self,
         test_X: pd.DataFrame,
         test_y: pd.DataFrame,
-    ) -> None:
+    ) -> pd.DataFrame:
         """
         Basic evaluation function. Evaluates for all targets together.
 
@@ -384,7 +384,7 @@ class EvaluateModel(BaseEvaluation):
         self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
 
         # Get overall metrics for model
-        self.get_overall_metrics()
+        return self.get_overall_metrics()
 
     def eval_per_target(
         self,

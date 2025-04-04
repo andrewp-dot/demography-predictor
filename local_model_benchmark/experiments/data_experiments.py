@@ -10,19 +10,20 @@ import pprint
 from abc import abstractmethod
 
 from typing import List, Dict
+from sklearn.preprocessing import MinMaxScaler
+
+# Custom imports
 from src.utils.log import setup_logging
 from local_model_benchmark.config import (
     LocalModelBenchmarkSettings,
     get_core_parameters,
 )
-from sklearn.preprocessing import MinMaxScaler
-
-# Custom imports
 from local_model_benchmark.experiments.base_experiment import BaseExperiment, Experiment
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
+from src.local_model.model import LSTMHyperparameters, BaseLSTM
+from src.evaluation import EvaluateModel
 
 
 settings = LocalModelBenchmarkSettings()

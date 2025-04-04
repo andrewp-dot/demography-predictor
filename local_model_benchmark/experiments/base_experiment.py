@@ -61,9 +61,9 @@ class BaseExperiment:
         self.readme_path: str | None = None
 
         # Create directories
-        self.setup_directories()
+        self.__setup_directories()
 
-    def setup_directories(self) -> None:
+    def __setup_directories(self) -> None:
         """
         Creates directories for the experiment. (If directories do not exist)
         """
