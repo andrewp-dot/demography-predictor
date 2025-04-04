@@ -5,7 +5,7 @@ import logging
 from typing import Union, List, Dict
 
 # Custom imports
-from src.local_model.base import LSTMHyperparameters
+from base import LSTMHyperparameters
 from src.local_model.model import BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.global_model.model import GlobalModel

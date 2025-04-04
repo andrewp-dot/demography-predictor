@@ -5,8 +5,9 @@ from typing import Dict, Union, List
 
 # Custom library imports
 from src.utils.log import setup_logging
-from src.local_model.base import CustomModelBase
-from src.local_model.model import BaseLSTM, LSTMHyperparameters
+from src.utils.save_model import save_model, get_model
+from base import CustomModelBase
+from src.local_model.model import BaseLSTM, LSTMHyperparameters, EvaluateModel
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.statistical_models import LocalARIMA
 
@@ -15,24 +16,6 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 # Get logger
 logger = logging.getLogger("local_model")
-
-
-class EnsembleModel(CustomModelBase):
-
-    # TODO: implement this
-    def __init__(self, features, targets, hyperparameters, scaler, *args, **kwargs):
-        super().__init__(features, targets, hyperparameters, scaler, *args, **kwargs)
-
-        # Hyperparameters will be used constantly for local models -> maybe I will use really class model
-
-        # Model is a dictionary -> each feature has its own preidctor
-        self.model: Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]] = {}
-
-    def predict(self, input_data, last_year, target_year):
-        return super().predict(input_data, last_year, target_year)
-
-    def train_model(self, batch_inputs, batch_targets, display_nth_epoch=10):
-        return super().train_model(batch_inputs, batch_targets, display_nth_epoch)
 
 
 class PureEnsembleModel:
@@ -50,65 +33,47 @@ class PureEnsembleModel:
             feature_models
         )
 
-    def predict(self, input_data: pd.DataFrame, target_year: int) -> pd.DataFrame:
-
-        # Get last year
-        if "year" not in input_data.columns:
-            raise ValueError(
-                "Missing column: 'year'. Cannot find out how many years to predict"
-            )
-
-        last_year = (
-            input_data.sort_values(by="year", ascending=True)["year"].iloc[-1].item()
-        )
+    def predict(
+        self, input_data: pd.DataFrame, last_year: int, target_year: int
+    ) -> pd.DataFrame:
 
         # Preprocess data
         years_to_predict = range(last_year + 1, target_year + 1)
 
-        # Init prediction df
-        prediction_df: pd.DataFrame | None = None
+        timestep_predictions: pd.DataFrame | None = None
 
-        for year in years_to_predict:
+        # Predict each feature for every year
+        for feature in self.FEATURES:
 
-            timestep_predictions: pd.DataFrame | None = None
+            current_model = self.model[feature]
+            # By type
+            if isinstance(current_model, LocalARIMA):
+                feature_prediction_df = current_model.predict(
+                    data=input_data, steps=years_to_predict
+                )
 
-            # Predict each feature for every year
-            for feature in self.FEATURES:
+            if isinstance(current_model, BaseLSTM) or isinstance(
+                current_model, FineTunableLSTM
+            ):
+                # Predict featue for X years
+                feature_prediction_df = current_model.predict(
+                    input_data=input_data,
+                    last_year=last_year,
+                    target_year=target_year,
+                )
 
-                current_model = self.model[feature]
-                # By type
-                if isinstance(current_model, LocalARIMA):
-                    feature_prediction_df = current_model.predict(
-                        data=input_data, steps=years_to_predict
-                    )
-
-                if isinstance(current_model, BaseLSTM) or isinstance(
-                    current_model, FineTunableLSTM
-                ):
-                    feature_prediction_df = current_model.predict(
-                        input_data=input_data,
-                        last_year=last_year,
-                        target_year=target_year,
-                    )
-
-                # Rows - years
-                # Columns -> features
-                if timestep_predictions is None:
-                    timestep_predictions = feature_prediction_df
-                else:
-                    # Concat by columns
-                    timestep_predictions = pd.concat(
-                        [timestep_predictions, feature_prediction_df], axis=1
-                    )
-                    logger.critical(timestep_predictions.shape)
-
-            # Save predictions for every year
-            if prediction_df is None:
-                prediction_df = timestep_predictions
+            # Rows - years
+            # Columns -> features
+            if timestep_predictions is None:
+                timestep_predictions = feature_prediction_df
             else:
-                prediction_df = pd.concat([prediction_df, timestep_predictions], axis=0)
+                # Concat by columns
+                timestep_predictions = pd.concat(
+                    [timestep_predictions, feature_prediction_df], axis=1
+                )
 
-        return prediction_df
+        # return prediction_df
+        return timestep_predictions
 
 
 def train_models_for_ensemble_model(
@@ -189,14 +154,22 @@ def train_arima_models_for_ensemble_model(
     return trained_models
 
 
-def main():
+def train_model(sequence_length: int) -> PureEnsembleModel:
+    MODEL_NAME: str = "ensemble_model.pkl"
+
+    try:
+        return get_model(name=MODEL_NAME)
+    except Exception as e:
+        logger.warning(f"Excpetion: {str(e)}")
+        logger.warning(f"Training new ensemble model: {MODEL_NAME}")
+
     FEATURES: List = [
         col.lower()
         for col in [
             # "year",
             "Fertility rate, total",
-            "Population, total",
-            "Net migration",
+            # "Population, total",
+            # "Net migration",
             "Arable land",
             "Birth rate, crude",
             "GDP growth",
@@ -215,9 +188,9 @@ def main():
     HYPERPARAMETERS = LSTMHyperparameters(
         input_size=1,
         hidden_size=256,
-        sequence_length=10,
+        sequence_length=sequence_length,
         learning_rate=0.0001,
-        epochs=1,
+        epochs=10,
         batch_size=16,
         num_layers=3,
         bidirectional=False,
@@ -230,24 +203,81 @@ def main():
     # Create pure ensemble model
     em = PureEnsembleModel(feature_models=trained_models)
 
+    # Save model
+    save_model(model=em, name=MODEL_NAME)
+
     # Load states data
     state_loader = StateDataLoader(state="Finland")
     state_data = state_loader.load_data()
 
+    last_year = (
+        state_data.sort_values(by="year", ascending=True)["year"].iloc[-1].item()
+    )
+
     # Try to predict something
-    pred_df = em.predict(input_data=state_data, target_year=2035)
+    pred_df = em.predict(input_data=state_data, last_year=last_year, target_year=2035)
 
     # Test print
     print(pred_df)
     print(f"\nShape of the df: {pred_df.shape}")
+
+    return em
 
 
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
+    SEQUENCE_LENGTH = 10
     # TODO:
-    # 1. evaluate predictions
+    # 1. evaluate predictions           DONE
     # 2. try using some arima models and evalute (train_arima_models_for_ensemble_model)...
     # 3. Support creating ensemble model using dict with types or predefined models to train
-    main()
+    em = train_model(sequence_length=SEQUENCE_LENGTH)
+
+    # Eval model
+    # Load states data
+
+    evaluation_states: List[str] = ["Czechia", "Finland", "Croatia", "United States"]
+
+    # state_loader = StateDataLoader(state="Finland")
+    # state_data = state_loader.load_data()
+
+    states_loader = StatesDataLoader()
+    eval_states_data = states_loader.load_states(states=evaluation_states)
+
+    state_train_data_dict, state_test_data_dict = states_loader.split_data(
+        states_dict=eval_states_data, sequence_len=SEQUENCE_LENGTH
+    )
+    # train_df, test_df = state_loader.split_data(data=state_data)
+
+    em_evaluation = EvaluateModel(model=em)
+    # em_evaluation.eval(test_X=train_df, test_y=test_df)
+    em_evaluation.eval_for_every_state(
+        X_test_states=state_train_data_dict, y_test_states=state_test_data_dict
+    )
+
+    print(em_evaluation.overall_metrics)
+    print(em_evaluation.per_target_metrics)
+    print(em_evaluation.all_states_evaluation)
+
+    # Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]] = {
+    #     "feature": BaseLSTM(hyperaparameters=LSTMHyperparameters(...), features=["feature"])
+    # }
+
+
+#     [{'best_model': 'BaseLSTM', 'feature': 'fertility rate, total'},
+#  {'best_model': 'BaseLSTM', 'feature': 'population, total'},
+#  {'best_model': 'ARIMA', 'feature': 'net migration'},
+#  {'best_model': 'BaseLSTM', 'feature': 'arable land'},
+#  {'best_model': 'BaseLSTM', 'feature': 'birth rate, crude'},
+#  {'best_model': 'ARIMA', 'feature': 'gdp growth'},
+#  {'best_model': 'ARIMA', 'feature': 'death rate, crude'},
+#  {'best_model': 'BaseLSTM', 'feature': 'agricultural land'},
+#  {'best_model': 'ARIMA', 'feature': 'rural population'},
+#  {'best_model': 'ARIMA', 'feature': 'rural population growth'},
+#  {'best_model': 'BaseLSTM', 'feature': 'age dependency ratio'},
+#  {'best_model': 'ARIMA', 'feature': 'urban population'},
+#  {'best_model': 'BaseLSTM', 'feature': 'population growth'},
+#  {'best_model': 'BaseLSTM', 'feature': 'adolescent fertility rate'},
+#  {'best_model': 'BaseLSTM', 'feature': 'life expectancy at birth, total'}]

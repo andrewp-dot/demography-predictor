@@ -21,7 +21,7 @@ from sklearn.metrics import (
 from config import Config
 from src.utils.log import setup_logging
 from src.preprocessors.state_preprocessing import StateDataLoader
-from src.local_model.base import BaseEvaluation
+from base import BaseEvaluation
 
 # Get logger
 logger = logging.getLogger("local_model")

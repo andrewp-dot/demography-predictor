@@ -8,7 +8,7 @@ import logging
 # Custom libraries imports
 from config import Config
 from src.utils.log import setup_logging
-from src.local_model.base import LSTMHyperparameters
+from base import LSTMHyperparameters
 
 logger = logging.getLogger("data_preprocessing")
 

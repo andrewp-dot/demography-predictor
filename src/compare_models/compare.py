@@ -8,7 +8,7 @@ from typing import List, Dict, Union, Literal
 from src.utils.log import setup_logging
 from src.utils.save_model import get_model
 
-from src.local_model.base import EvaluateModel, CustomModelBase
+from base import EvaluateModel, CustomModelBase
 from src.local_model.finetunable_model import FineTunableLSTM
 
 from src.predictors.predictor_base import DemographyPredictor

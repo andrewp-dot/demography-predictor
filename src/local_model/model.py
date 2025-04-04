@@ -9,7 +9,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 # Custom imports
-from src.local_model.base import (
+from base import (
     CustomModelBase,
     LSTMHyperparameters,
     EvaluateModel,
