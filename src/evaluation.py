@@ -1,7 +1,7 @@
 # Standard library imports
 import pandas as pd
 from abc import abstractmethod
-from typing import Dict, List, Callable
+from typing import Dict, List, Callable, Tuple
 from torch import nn
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -32,7 +32,7 @@ class BaseEvaluation:
 
         # Define metric dataframes
         self.per_target_metrics: pd.DataFrame | None = None
-        # self.overall_metrics: pd.DataFrame | None = None
+        self.overall_metrics: pd.DataFrame | None = None
 
     def get_overall_metric(
         self,
@@ -64,15 +64,16 @@ class BaseEvaluation:
         )
 
         # Get overall metric dataframe
-        overall_metric_df = pd.DataFrame(
-            {"metric": metric_key, "value": [average_metric_value]}
-        )
+        overall_metric_df = pd.DataFrame({metric_key: [average_metric_value]})
 
         return overall_metric_df
 
-    def get_overall_metrics(self) -> None:
+    def get_overall_metrics(self) -> pd.DataFrame:
         """
-        Computes overall metrics for the model and saves it to the `overall_metrics` object property.
+        Computes overall metrics for the model.
+
+        Returns:
+            out: pd.DataFrame: The dataframe for overall (all targets included) metrics.
         """
 
         # Get MAE
@@ -88,16 +89,15 @@ class BaseEvaluation:
         overall_r2_df = self.get_overall_metric(r2_score, "r2")
 
         # Get overall dataframe
-        self.overall_metrics = pd.concat(
+        return pd.concat(
             [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
-            axis=0,
-            ignore_index=True,
+            axis=1,
         )
 
-    def get_feautre_specific_metric(
+    def get_single_target_specific_metric(
         self,
         metric: Callable,
-        features: List[str],
+        targets: List[str],
         metric_key: str = "",
     ) -> pd.DataFrame:
         """
@@ -105,9 +105,9 @@ class BaseEvaluation:
 
         Args:
             metric (Callable): Function for metric computation.
-            features (List[str]): Key of the metric which can be accasible in `EvaluateModel.metrics` dict (`{metric_key}`, `{metric_key}_per_target` if per target is available).
-                If not given, the name of the function is used. Defaults to "".
-            metric_key (str, optional): _description_. Defaults to "".
+            targets (List[str]): List of predicted targets.
+            metric_key (str, optional): Key of the metric which can be accasible in `EvaluateModel.metrics` dict (`{metric_key}`, `{metric_key}_per_target` if per target is available).
+                If not given, the name of the function is used.. Defaults to "".
 
         Returns:
             out: pd.DataFrame: metric value for all targets, metric values for each target separately.
@@ -115,108 +115,130 @@ class BaseEvaluation:
 
         # Adjust metric key if not given
         metric_key = metric_key or metric.__name__
-        FEATURES = features
+        TARGETS = targets
 
         # Initialize metric values
         separate_target_metric_values_df = None
 
-        # TODO: fix this for r2
-        if metric != r2_score:
+        if metric == r2_score:
+            # Compute r2 for each target separately
+            metric_per_target_values = [
+                r2_score(self.reference_values[:, i], self.predicted[:, i])
+                for i in range(self.reference_values.shape[1])
+            ]
+
+        else:
             # Compute metric for each target separately
             metric_per_target_values = metric(
                 self.reference_values, self.predicted, multioutput="raw_values"
             )
 
-            # Get metric values for separate targets
-            metric_per_target_values_dict = {
-                "feature": FEATURES,
-                metric_key: metric_per_target_values,
-            }
+        # Get metric values for separate targets
+        metric_per_target_values_dict = {
+            "target": TARGETS,
+            metric_key: metric_per_target_values,
+        }
 
-            separate_target_metric_values_df = pd.DataFrame(
-                metric_per_target_values_dict
-            )
+        separate_target_metric_values_df = pd.DataFrame(metric_per_target_values_dict)
 
         return separate_target_metric_values_df
 
-    def get_feature_specific_metrics(self, features: List[str]) -> None:
+    def get_target_specific_metrics(self, targets: List[str]) -> pd.DataFrame:
         """
-        Creates and saves evaluation dataframe for every predicted features. Saves as a property 'per_target_metrics' of the class.
+        Creates and saves evaluation dataframe for every predicted targets.
 
         Args:
-            features (List[str]): List of features used for evaluation.
+            targets (List[str]): List of features used for evaluation.
+
+        Returns:
+            out: pd.DataFrame: The dataframe with evaluation metrics per target.
         """
 
         # Set features constant
-        FEATURES = features
+        TARGETS = targets
 
         # Get MAE
-        mae_per_target_df = self.get_feautre_specific_metric(
-            mean_absolute_error, FEATURES, "mae"
+        mae_per_target_df = self.get_single_target_specific_metric(
+            mean_absolute_error, TARGETS, "mae"
         )
 
         # Get MSE
-        mse_per_target_df = self.get_feautre_specific_metric(
-            mean_squared_error, FEATURES, "mse"
+        mse_per_target_df = self.get_single_target_specific_metric(
+            mean_squared_error, TARGETS, "mse"
         )
 
         # Get RMSE
-        rmse_per_target_df = self.get_feautre_specific_metric(
-            root_mean_squared_error, FEATURES, "rmse"
+        rmse_per_target_df = self.get_single_target_specific_metric(
+            root_mean_squared_error, TARGETS, "rmse"
         )
 
         # Get R^2
-        # _ = self.get_feautre_specific_metric(r2_score, FEATURES, "r2")
+        r2_per_target_df = self.get_single_target_specific_metric(
+            r2_score, TARGETS, "r2"
+        )
 
         # Create per target dataframe
-        mae_mse_df = pd.merge(
-            left=mae_per_target_df, right=mse_per_target_df, on="feature"
-        )
-        self.per_target_metrics = pd.merge(
-            left=mae_mse_df, right=rmse_per_target_df, on="feature"
-        )
+        to_merge_dfs: List[pd.DataFrame] = [
+            mae_per_target_df,
+            mse_per_target_df,
+            rmse_per_target_df,
+            r2_per_target_df,
+        ]
 
-    def to_readable_dict(self) -> Dict[str, float]:
+        # Merge dataframes
+        per_target_metrics_df = to_merge_dfs[0]
+        for df in to_merge_dfs[1:]:
+            per_target_metrics_df = pd.merge(
+                left=per_target_metrics_df, right=df, on="feature"
+            )
+
+        return per_target_metrics_df
+
+    def get_last_and_target_year(
+        self, test_X: pd.DataFrame, test_y: pd.DataFrame
+    ) -> Tuple[int, int]:
         """
-        Converts the overall metrics dataframe to readable dict.
-
-        Returns:
-            out: Dict[str, float]: Readable dict, the metric names are the keys and the values are the corresponding metric value.
-        """
-
-        # Get the overall metrics
-        df = self.overall_metrics
-
-        # Convert the metrics dataframe
-        result = dict(zip(df["metric"], df["value"]))
-
-        return result
-
-    def get_metric_value(self, evaluation_df: pd.DataFrame, metric: str) -> float:
-        """
-        From the evaluation dict in format of the overall metrics dataframe (columns: metric | value) extracts the value of the given metric.
+        If possible extracts the last and target years from the given (validation) data.
 
         Args:
-            evaluation_df (pd.DataFrame): Evaluation dataframe compatibile with the overall metrics dataframe.
-            metric (str): Metric which you want to extract.
+            test_X (pd.DataFrame): Validation input data.
+            test_y (pd.DataFrame): Validation output data.
+
+        Raises:
+            ValueError: If the "year" column is missing in `test_X` data.
+            ValueError: If the "year" column is missing in `test_y` data.
 
         Returns:
-            out: float: The value of the given metric.
+            Tuple[int, int]: last_year, target_year
         """
-        return evaluation_df.loc[evaluation_df["metric"] == metric, "value"].values[0]
+
+        if "year" not in test_X.columns:
+            raise ValueError("Could not find out the last year for input data.")
+
+        # Get the last year and get the number of years
+        X_years = test_X[["year"]]
+        last_year = int(X_years.iloc[-1].item())
+
+        if "year" not in test_y.columns:
+            raise ValueError("Could not find out the target year for test data.")
+
+        # # Get the prediction year
+        y_target_years = test_y[["year"]]
+        target_year = int(y_target_years.iloc[-1].item())
+
+        return last_year, target_year
 
     @abstractmethod
     def eval(
         self,
         test_X: pd.DataFrame,
         test_y: pd.DataFrame,
-        features: list[str],
         *args,
         **kwargs,
     ) -> None:
         raise NotImplementedError()
 
-    def plot_single_feautre_prediction(self, feature: str) -> Figure:
+    def plot_single_target_prediction(self, target: str) -> Figure:
         """
         Creates figure for a specified feature prediction.
 
@@ -230,14 +252,14 @@ class BaseEvaluation:
 
         plt.plot(
             YEARS,
-            self.reference_values[feature],
+            self.reference_values[target],
             label=f"Reference values",
             color="b",
         )
 
         plt.plot(
             YEARS,
-            self.predicted[feature],
+            self.predicted[target],
             label=f"Predicted",
             color="r",
         )
@@ -308,22 +330,16 @@ class EvaluateModel(BaseEvaluation):
         self.model: CustomModelBase = model
         self.all_states_evaluation: pd.DataFrame = None
 
-    def eval(
-        self,
-        test_X: pd.DataFrame,
-        test_y: pd.DataFrame,
-    ):
+    def __get_refference_and_predicted_data(
+        self, test_X: pd.DataFrame, test_y: pd.DataFrame
+    ) -> None:
         # Get features and targets
         FEATURES = self.model.FEATURES
         TARGETS = self.model.TARGETS
 
-        # Get the last year and get the number of years
-        X_years = test_X[["year"]]
-        last_year = int(X_years.iloc[-1].item())
-
-        # # Get the prediction year
-        y_target_years = test_y[["year"]]
-        target_year = int(y_target_years.iloc[-1].item())
+        last_year, target_year = self.get_last_and_target_year(
+            test_X=test_X, test_y=test_y
+        )
 
         # Get predicted years
         self.predicted_years = list(
@@ -347,18 +363,66 @@ class EvaluateModel(BaseEvaluation):
 
         self.reference_values = test_y
 
-        # Get metrics for time series model
-        if FEATURES == TARGETS:
-            self.get_feature_specific_metrics(features=FEATURES)
+    def eval(
+        self,
+        test_X: pd.DataFrame,
+        test_y: pd.DataFrame,
+    ) -> None:
+        """
+        Basic evaluation function. Evaluates for all targets together.
+
+        Args:
+            test_X (pd.DataFrame): Test input data.
+            test_y (pd.DataFrame): Test output data.
+
+         Returns:
+            out: pd.DataFrame: Evaluation dataframe with overall metrics.
+
+        """
+
+        # Make predictions and save reference data
+        self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
 
         # Get overall metrics for model
         self.get_overall_metrics()
+
+    def eval_per_target(
+        self,
+        test_X: pd.DataFrame,
+        test_y: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """
+        Basic evaluation function. Evaluates accuracy per each target separately.
+
+        Args:
+            test_X (pd.DataFrame): Test input data.
+            test_y (pd.DataFrame): Test output data.
+
+        Returns:
+            out: pd.DataFrame: Evaluation dataframe with metrics per target.
+
+        """
+        # Make predictions and save reference data
+        self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
+
+        # Get metrics for per target evaluation
+        return self.get_target_specific_metrics(targets=self.model.TARGETS)
 
     def eval_for_every_state(
         self,
         X_test_states: Dict[str, pd.DataFrame],
         y_test_states: Dict[str, pd.DataFrame],
-    ) -> None:
+    ) -> pd.DataFrame:
+        """
+        Overall evaluation metrics per state data.
+
+        Args:
+            X_test_states (Dict[str, pd.DataFrame]): The `key` is the state name and `value` is the current state input data.
+            y_test_states (Dict[str, pd.DataFrame]): The `key` is the state name and `value` is the current state validation data.
+
+        Returns:
+            out: pd.DataFrame: Evaluation dataframe for every state.
+        """
 
         # Create empty dataframe
         # state | mae | mse | rmse | r2
@@ -376,78 +440,19 @@ class EvaluateModel(BaseEvaluation):
 
             # Run evaluation (Maybe create new evaluation?)
             current_state_evaluation = EvaluateModel(self.model)
-            current_state_evaluation.eval(test_X=test_X, test_y=test_y)
-
-            # Get the evaluation state
-            m = current_state_evaluation.overall_metrics
-
-            # Get metrics
-            new_row = pd.DataFrame(
-                [
-                    {
-                        "state": state,
-                        "mae": self.get_metric_value(m, "mae"),
-                        "mse": self.get_metric_value(m, "mse"),
-                        "rmse": self.get_metric_value(m, "rmse"),
-                        "r2": self.get_metric_value(m, "r2"),
-                    }
-                ]
+            state_overall_metrics = current_state_evaluation.eval(
+                test_X=test_X, test_y=test_y
             )
-            new_rows.append(new_row)
+
+            state_overall_metrics["state"] = state
+
+            new_rows.append(state_overall_metrics)
 
         # Add evaluation to the states
         all_evaluation_df = pd.concat(new_rows, ignore_index=True)
 
         # Save the evaluation
-        self.all_states_evaluation = all_evaluation_df
-
-    def is_new_better(self, new_model_evaluation: "EvaluateModel") -> bool:
-        """
-        Compares 2 model evaluations.
-
-        Args:
-            new_model_evaluation (EvaluateModel): _description_
-
-        Returns:
-            out: bool: True if the new model evaluation is better according to metrics. False, if the old model is better or has same performance as the new one.
-        """
-
-        # Votes sums
-        votes: List[bool] = []
-
-        # Compare by error metrics -> the lower, the better
-        # error_metrics: List[str] = ["mae", "mse", "rmse"]
-        error_metrics: List[str] = []
-
-        for metric in error_metrics:
-
-            # Old model metric
-            current_model_metric_value = self.overall_metrics.loc[
-                self.overall_metrics["metric"] == metric, "value"
-            ].values[0]
-
-            # New model metric
-            new_model_metric_value = new_model_evaluation.overall_metrics.loc[
-                new_model_evaluation.overall_metrics["metric"] == metric, "value"
-            ].values[0]
-
-            # Add vote if the new model has lower error metric
-            votes.append(current_model_metric_value > new_model_metric_value)
-
-        # Compare by r2 -> the higher, the better
-        current_model_r2_score = self.overall_metrics.loc[
-            self.overall_metrics["metric"] == "r2", "value"
-        ].values[0]
-
-        new_model_r2_score = new_model_evaluation.overall_metrics.loc[
-            new_model_evaluation.overall_metrics["metric"] == "r2", "value"
-        ].values[0]
-
-        # Add vote if new model has greater r2 score
-        votes.append(current_model_r2_score < new_model_r2_score)
-
-        # The model is better if it outperforms the model in more then half metrics
-        return sum(votes) / len(votes) > 0.5
+        return all_evaluation_df
 
 
 if __name__ == "__main__":
