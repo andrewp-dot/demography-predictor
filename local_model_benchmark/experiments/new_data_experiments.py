@@ -1,7 +1,7 @@
 # Standard library imports
 import logging
 import pandas as pd
-from typing import List
+from typing import List, Dict
 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -38,8 +38,35 @@ class DataUsedForTraining(BaseExperiment):
     Models are compared by evaluation on the specific (chosen) state data used for training for the first model.
     """
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters()
-    FEATURES: List[str] = []
+    FEATURES: List[str] = [
+        col.lower()
+        for col in [
+            "year",
+            "Fertility rate, total",
+            # "Population, total",
+            "Net migration",
+            "Arable land",
+            "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            "Rural population",
+            "Rural population growth",
+            "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            "Adolescent fertility rate",
+            "Life expectancy at birth, total",
+        ]
+    ]
+
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        input_size=len(FEATURES)
+    )
+
+    MULTISTATE_BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        input_size=len(FEATURES), batch_size=16
+    )
 
     def __train_by_single_state(
         self,
@@ -88,7 +115,8 @@ class DataUsedForTraining(BaseExperiment):
     ) -> CustomModelBase:
 
         model_group_states = BaseLSTM(
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS, features=self.FEATURES
+            hyperparameters=self.MULTISTATE_BASE_LSTM_HYPERPARAMETERS,
+            features=self.FEATURES,
         )
 
         # Preprocess data
@@ -126,7 +154,8 @@ class DataUsedForTraining(BaseExperiment):
     ) -> CustomModelBase:
 
         model_all_states = BaseLSTM(
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS, features=self.FEATURES
+            hyperparameters=self.MULTISTATE_BASE_LSTM_HYPERPARAMETERS,
+            features=self.FEATURES,
         )
 
         # Preprocess data
@@ -162,16 +191,18 @@ class DataUsedForTraining(BaseExperiment):
         )
         return model_all_states
 
-    def run(self, state: str, state_group: List[str], split_rate: float):
+    def run(self, state: str, state_group: List[str], split_rate: float = 0.8):
 
-        # TODO: figure out what to do with this readme notes etc.
+        # TODO:
+        # 1. figure out what to do with this readme notes etc.
+        # 2. plot predictions?
         # Create readme
         self.create_readme()
-        # self.readme_add_params()
-        # self.readme_add_features()
+
+        COMPARATION_MODELS_DICT: Dict[str, BaseLSTM] = {}
 
         # Train model using one state
-        trained_on_single_state_data = self.__train_by_single_state(
+        COMPARATION_MODELS_DICT["single_state_model"] = self.__train_by_single_state(
             state=state,
             split_rate=split_rate,
             display_nth_epoch=1,
@@ -180,41 +211,95 @@ class DataUsedForTraining(BaseExperiment):
         # Train model using group of states
         # Get one loader for multiple states to save memmory
         states_loader = StatesDataLoader()
-        trained_on_group_of_states = self.__train_group_of_states(
-            states=state_group, states_loader=states_loader, split_rate=split_rate
+        COMPARATION_MODELS_DICT["group_states_model"] = self.__train_group_of_states(
+            states=state_group,
+            states_loader=states_loader,
+            split_rate=split_rate,
+            display_nth_epoch=1,
         )
 
         # Train model using  all states data
-        trained_on_all_states = self.__train_all_states(
-            states_loader=states_loader, split_rate=split_rate
-        )
-
-        # Compare model performance
-        single_state_model_evaluation = EvaluateModel(
-            model=trained_on_single_state_data
-        )
-        group_state_model_evaluation = EvaluateModel(model=trained_on_group_of_states)
-        all_states_model_evaluation = EvaluateModel(model=trained_on_all_states)
-
-        # Prepare evaluation data
-        eval_state_loader = StateDataLoader(state=state)
-        eval_state_df = eval_state_loader.load_data()
-        test_X, test_y = eval_state_loader.split_data(
-            data=eval_state_df, split_rate=split_rate
-        )
-
-        # Evaluate models - overall performance
-        single_state_eval_df = single_state_model_evaluation.eval(
-            test_X=test_X, test_y=test_y
-        )
-        group_state_eval_df = group_state_model_evaluation.eval(
-            test_X=test_X, test_y=test_y
-        )
-        all_states_eval_df = all_states_model_evaluation.eval(
-            test_X=test_X, test_y=test_y
+        COMPARATION_MODELS_DICT["all_states_model"] = self.__train_all_states(
+            states_loader=states_loader,
+            split_rate=split_rate,
+            display_nth_epoch=1,
         )
 
         # Evaluate models - per-target-performance
-        single_state_model_evaluation.eval_per_target(test_X=test_X, test_y=test_y)
-        group_state_model_evaluation.eval_per_target(test_X=test_X, test_y=test_y)
-        all_states_model_evaluation.eval_per_target(test_X=test_X, test_y=test_y)
+        per_target_metrics_df = compare_models_by_states(
+            models=COMPARATION_MODELS_DICT, states=[state], by="per-features"
+        )
+        overall_metrics_df = compare_models_by_states(
+            models=COMPARATION_MODELS_DICT, states=[state], by="overall-metrics"
+        )
+
+        # Print results to the readme
+        self.readme_add_section(
+            title="## Per target metrics - model comparision",
+            text=f"```\n{per_target_metrics_df}\n```\n\n",
+        )
+
+        self.readme_add_section(
+            title="## Overall metrics - model comparision",
+            text=f"```\n{overall_metrics_df}\n```\n\n",
+        )
+
+
+if __name__ == "__main__":
+
+    # Setup logging
+    setup_logging()
+
+    # States divided to this categories by GPT
+    RICH: List[str] = [
+        "Australia",
+        "Austria",
+        "Bahamas, The",
+        "Bahrain",
+        "Belgium",
+        "Brunei Darussalam",
+        "Canada",
+        "Cyprus",
+        "Czechia",
+        "Denmark",
+        "Estonia",
+        "Finland",
+        "France",
+        "Germany",
+        "Hong Kong SAR, China",
+        "Iceland",
+        "Ireland",
+        "Israel",
+        "Italy",
+        "Japan",
+        "Korea, Rep.",
+        "Kuwait",
+        "Latvia",
+        "Lithuania",
+        "Luxembourg",
+        "Malta",
+        "Netherlands",
+        "New Zealand",
+        "Norway",
+        "Oman",
+        "Poland",
+        "Portugal",
+        "Qatar",
+        "Saudi Arabia",
+        "Singapore",
+        "Slovak Republic",
+        "Slovenia",
+        "Spain",
+        "Sweden",
+        "Switzerland",
+        "United Arab Emirates",
+        "United Kingdom",
+        "United States",
+    ]
+
+    exp = DataUsedForTraining(
+        name="Data sample used for training.",
+        description="Trains base LSTM models using data in 3 categories: single state data, group of states (e.g. by wealth divided states) and with all available states data.",
+    )
+
+    exp.run(state="Czechia", state_group=RICH)

@@ -238,7 +238,7 @@ if __name__ == "__main__":
     print(
         ranked_models[
             (ranked_models["state"] == "Croatia")
-            & (ranked_models["target"].isin(["fertility rate, total", "arable land"]))
+            # & (ranked_models["target"].isin(["fertility rate, total", "arable land"]))
         ]
     )
 

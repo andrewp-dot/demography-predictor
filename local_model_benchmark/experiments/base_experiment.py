@@ -32,23 +32,16 @@ class BaseExperiment:
 
     def __init__(
         self,
-        model: Union[BaseLSTM, FineTunableLSTM],
         name: str,
         description: str,
-        features: List[str],
     ):
         """
         Initializes the base attributes for the experiment.
 
         Args:
-            model (CustomModelBase): Model used for the experiment.
             name (str): Name of the experiment.
             description (str): Brief description of the experiment.
-            features (List[str]): List of features used in the experiment (the model is trained for the specified features).
         """
-        # Model
-        self.model: BaseLSTM = model
-        self.FEATURES: List[str] = features
 
         # Initiliallize base experiment settings
         self.name: str = name
