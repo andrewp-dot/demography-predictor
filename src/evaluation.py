@@ -123,7 +123,7 @@ class BaseEvaluation:
         if metric == r2_score:
             # Compute r2 for each target separately
             metric_per_target_values = [
-                r2_score(self.reference_values[:, i], self.predicted[:, i])
+                r2_score(self.reference_values.iloc[:, i], self.predicted.iloc[:, i])
                 for i in range(self.reference_values.shape[1])
             ]
 
@@ -189,7 +189,7 @@ class BaseEvaluation:
         per_target_metrics_df = to_merge_dfs[0]
         for df in to_merge_dfs[1:]:
             per_target_metrics_df = pd.merge(
-                left=per_target_metrics_df, right=df, on="feature"
+                left=per_target_metrics_df, right=df, on="target"
             )
 
         return per_target_metrics_df
