@@ -68,6 +68,9 @@ class DataUsedForTraining(BaseExperiment):
         input_size=len(FEATURES), batch_size=16
     )
 
+    def __init__(self, description: str):
+        super().__init__(name=self.__class__.__name__, description=description)
+
     def __train_by_single_state(
         self,
         state: str,
@@ -298,7 +301,6 @@ if __name__ == "__main__":
     ]
 
     exp = DataUsedForTraining(
-        name="Data sample used for training.",
         description="Trains base LSTM models using data in 3 categories: single state data, group of states (e.g. by wealth divided states) and with all available states data.",
     )
 

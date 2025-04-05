@@ -80,7 +80,10 @@ class PureEnsembleModel:
 
 
 def train_models_for_ensemble_model(
-    features: List[str], hyperaparameters: LSTMHyperparameters
+    features: List[str],
+    hyperaparameters: LSTMHyperparameters,
+    split_rate: float = 0.8,
+    display_nth_epoch: int = 10,
 ) -> Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]]:
 
     # Load data for training
@@ -93,7 +96,9 @@ def train_models_for_ensemble_model(
 
     # Split data
     train_dict, _ = states_loader.split_data(
-        states_dict=states_data_dict, sequence_len=ADJUSTED_PARAMS.sequence_length
+        states_dict=states_data_dict,
+        sequence_len=ADJUSTED_PARAMS.sequence_length,
+        split_rate=split_rate,
     )
 
     # Train and save models
@@ -124,7 +129,7 @@ def train_models_for_ensemble_model(
         rnn.train_model(
             batch_inputs=input_batches,
             batch_targets=target_batches,
-            display_nth_epoch=1,
+            display_nth_epoch=display_nth_epoch,
         )
 
         trained_models[target] = rnn
