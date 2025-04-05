@@ -359,6 +359,133 @@ class FineTunedModels(BaseExperiment):
         )
 
 
+class CompareWithStatisticalModels(BaseExperiment):
+    """
+    In this experiment the statistical models (ARIMA(1,1,1) and GM(1,1) models) are compared with BaseLSTM model.
+    """
+
+    FEATURES: List[str] = [
+        col.lower()
+        for col in [
+            "year",
+            "Fertility rate, total",
+            # "Population, total",
+            "Net migration",
+            "Arable land",
+            "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            "Rural population",
+            "Rural population growth",
+            "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            "Adolescent fertility rate",
+            "Life expectancy at birth, total",
+        ]
+    ]
+
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        input_size=len(FEATURES), batch_size=16, hidden_size=256
+    )
+
+    FINETUNE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        input_size=len(FEATURES),
+        hidden_size=124,
+        batch_size=1,
+        num_layers=1,
+        epochs=BASE_LSTM_HYPERPARAMETERS.epochs * 3,
+    )
+
+    def __init__(self, description: str):
+        super().__init__(name=self.__class__.__name__, description=description)
+
+    def __train_base_lstm_model(
+        self,
+        states_loader: StatesDataLoader,
+        split_rate: float,
+        display_nth_epoch: int = 10,
+    ) -> BaseLSTM:
+
+        model_all_states = BaseLSTM(
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            features=self.FEATURES,
+        )
+
+        # Preprocess data
+        states_data_dict = states_loader.load_all_states()
+
+        states_loader.split_data(
+            states_dict=states_data_dict,
+            sequence_len=model_all_states.hyperparameters.sequence_length,
+            split_rate=split_rate,
+        )
+
+        train_states_dict, _ = states_loader.split_data(
+            states_dict=states_data_dict,
+            sequence_len=model_all_states.hyperparameters.sequence_length,
+            split_rate=split_rate,
+        )
+
+        train_batches, target_batches, scaler = (
+            states_loader.preprocess_train_data_batches(
+                states_train_data_dict=train_states_dict,
+                hyperparameters=model_all_states.hyperparameters,
+                features=model_all_states.FEATURES,
+            )
+        )
+
+        # Set fitted scaler
+        model_all_states.set_scaler(scaler=scaler)
+
+        model_all_states.train_model(
+            batch_inputs=train_batches,
+            batch_targets=target_batches,
+            display_nth_epoch=display_nth_epoch,
+        )
+        return model_all_states
+
+    def __train_ensemble_model(
+        self, split_rate: float, display_nth_epoch=10
+    ) -> PureEnsembleModel:
+
+        feature_models = train_models_for_ensemble_model(
+            features=self.FEATURES,
+            hyperaparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            split_rate=split_rate,
+            display_nth_epoch=display_nth_epoch,
+        )
+
+        ensemble_model = PureEnsembleModel(feature_models=feature_models)
+
+        return ensemble_model
+
+    def run(self, state: str, split_rate: float = 0.8):
+        # Create readme
+        self.create_readme()
+
+        TO_COMPARE_MODELS: Dict[str, Union[BaseLSTM, PureEnsembleModel]] = {}
+
+        # Get data loader
+        states_loader: StatesDataLoader = StatesDataLoader()
+
+        # Train base lstm
+        TO_COMPARE_MODELS["base-lstm"] = self.__train_base_lstm_model(
+            states_loader=states_loader, split_rate=split_rate, display_nth_epoch=1
+        )
+
+        TO_COMPARE_MODELS["ensemble-lstm"] = self.__train_ensemble_model(
+            split_rate=split_rate, display_nth_epoch=1
+        )
+
+        # TODO: statistical models in here
+
+        # TODO: train ARIMA
+
+        # TODO: train GM model
+
+
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
