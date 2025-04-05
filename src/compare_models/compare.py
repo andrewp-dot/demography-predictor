@@ -6,9 +6,10 @@ from typing import List, Dict, Union, Literal
 
 # Custom imports
 from src.utils.log import setup_logging
-from src.utils.save_model import get_model
+from src.utils.save_model import get_model, get_multiple_models
 
-from base import EvaluateModel, CustomModelBase
+from src.base import CustomModelBase
+from src.evaluation import EvaluateModel
 from src.local_model.finetunable_model import FineTunableLSTM
 
 from src.predictors.predictor_base import DemographyPredictor
@@ -57,7 +58,7 @@ def rank_models(evaluation_dfs: List[pd.DataFrame]) -> pd.DataFrame:
 
 # Compare models predictors
 def compare_models_by_states(
-    models: List[str],
+    models: Dict[str, Union[DemographyPredictor, CustomModelBase]],
     states: List[str] | None = None,
     by: Literal["overall-metrics", "per-features"] = "overall-metrics",
 ) -> pd.DataFrame:
@@ -82,21 +83,17 @@ def compare_models_by_states(
         logger.warning("No models to compare.")
         return {}
 
-    # For every model get evaluation
-    to_compare_models: Dict[str, Union[DemographyPredictor, CustomModelBase]] = {
-        model_name: get_model(model_name) for model_name in models
-    }
-
     # Check if the models has same features and targets
     # first_model_features: List[str] = to_compare_models[models[0]].FEATURES
-    first_model_targets: List[str] = to_compare_models[models[0]].TARGETS
+    model_names: List[str] = list(models.keys())
+    first_model_targets: List[str] = models[model_names[0]].TARGETS
 
-    for model_name in models[1:]:
+    for model_name in model_names[1:]:
         # Get next model
-        model = to_compare_models[model_name]
+        model = models[model_name]
 
         # Check if they have the same targets
-        if model.TARGETS != first_model_targets:
+        if models[model_name].TARGETS != first_model_targets:
             raise ValueError(
                 f"The model '{model_name}' has different features then the first model"
             )
@@ -114,7 +111,7 @@ def compare_models_by_states(
         states_data_dict = states_loaders.load_states(states=states)
 
     # Getnerate evaluation for every model
-    for model_name, model in to_compare_models.items():
+    for model_name, model in models.items():
         # Preprocess data for the model - suppoorts different sequence length, by type
 
         # Adjust hyperparameters by the model type
@@ -132,10 +129,9 @@ def compare_models_by_states(
 
         # Save the evaluation
         if "overall-metrics" == by:
-            model_evaluation.eval_for_every_state(
+            model_evaluations[model_name] = model_evaluation.eval_for_every_state(
                 X_test_states=train_data_dict, y_test_states=test_data_dict
             )
-            model_evaluations[model_name] = model_evaluation.all_states_evaluation
 
         elif "per-features" == by:
 
@@ -146,20 +142,21 @@ def compare_models_by_states(
                 model_evaluation.eval(
                     test_X=train_data_dict[state], test_y=test_data_dict[state]
                 )
-                model_evaluation.get_feature_specific_metrics(model.FEATURES)
-
-                model_evaluation.per_target_metrics["state"] = state
+                per_target_metrics = model_evaluation.get_target_specific_metrics(
+                    model.FEATURES
+                )
+                per_target_metrics["state"] = state
 
                 # Init dataframe if none
                 if states_evaluation_for_model is None:
-                    states_evaluation_for_model = model_evaluation.per_target_metrics
+                    states_evaluation_for_model = per_target_metrics
 
                 # Concat dataframe if exists
                 else:
                     states_evaluation_for_model = pd.concat(
                         [
                             states_evaluation_for_model,
-                            model_evaluation.per_target_metrics,
+                            per_target_metrics,
                         ],
                         axis=0,
                     )
@@ -215,7 +212,7 @@ if __name__ == "__main__":
     setup_logging()
 
     # Demography predictor models
-    aging_comparation_models: List[str] = [
+    aging_comparation_model_names: List[str] = [
         "aging_Czechia.pkl",
         "aging_Czechia_model.pkl",
         "aging_rich_group_model.pkl",
@@ -223,16 +220,17 @@ if __name__ == "__main__":
     ]
 
     # Local predictor models
-    local_predictor_models: List[str] = [
+    local_predictor_model_names: List[str] = [
         "test_base_model.pkl",
         "test_finetunable_model_Croatia.pkl",
     ]
 
     # Get models
+    to_compare_models = get_multiple_models(names=local_predictor_model_names)
 
     # Example 1: comparing local predictor models using per feature metrics
     ranked_models = compare_models_by_states(
-        models=local_predictor_models,
+        models=to_compare_models,
         states=["Czechia", "Afghanistan", "United States", "Croatia"],
         by="per-features",
     )
@@ -246,7 +244,7 @@ if __name__ == "__main__":
 
     # # Example 2: comparing demographic predictor by specified states
     # ranked_models = compare_models_by_states(
-    #     models=local_predictor_models,
+    #     models=to_compare_models,
     #     states=["Czechia", "Afghanistan", "United States", "Croatia"],
     #     by="overall-metrics",
     # )

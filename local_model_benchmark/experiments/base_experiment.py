@@ -7,7 +7,7 @@ from typing import List, Union
 from src.local_model.model import CustomModelBase
 from src.local_model.model import BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
-from base import LSTMHyperparameters
+from src.base import LSTMHyperparameters
 
 # Get settings
 settings = LocalModelBenchmarkSettings()

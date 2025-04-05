@@ -6,8 +6,11 @@ from typing import Dict, Union, List
 # Custom library imports
 from src.utils.log import setup_logging
 from src.utils.save_model import save_model, get_model
-from base import CustomModelBase
-from src.local_model.model import BaseLSTM, LSTMHyperparameters, EvaluateModel
+
+from src.base import LSTMHyperparameters
+from src.evaluation import EvaluateModel
+
+from src.local_model.model import BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.statistical_models import LocalARIMA
 

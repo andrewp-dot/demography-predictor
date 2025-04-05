@@ -1,8 +1,9 @@
 import os
 import joblib
-from typing import Any
+from typing import Any, List, Dict
 
 from config import Config
+
 
 settings = Config()
 
@@ -26,6 +27,24 @@ def get_model(name: str) -> Any:
         raise ValueError(f"The specified model '{name}' does not exist!")
 
     return joblib.load(MODEL_PATH)
+
+
+def get_multiple_models(names: List[str]) -> Dict[str, Any]:
+    """
+    Get the model objects from the specified directory in the config file.
+
+    Args:
+        names (List[str]): List of the model names to get.
+
+    Returns:
+        out: Dict[str, Any]: Dictionary of the multiple models. The `key` is the model name and `value` is the model object.
+    """
+    # For every model get evaluation
+    loaded_models: Dict[str, Any] = {
+        model_name: get_model(model_name) for model_name in names
+    }
+
+    return loaded_models
 
 
 def save_model(model, name: str) -> None:

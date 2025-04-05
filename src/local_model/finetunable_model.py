@@ -9,8 +9,8 @@ from sklearn.preprocessing import MinMaxScaler
 # Custom imports
 from src.utils.log import setup_logging
 from src.utils.save_model import save_model, get_model, save_experiment_model
-from base import LSTMHyperparameters, TrainingStats, EvaluateModel
-from base import CustomModelBase
+from src.base import LSTMHyperparameters, TrainingStats, CustomModelBase
+from src.evaluation import EvaluateModel
 from src.local_model.model import BaseLSTM
 
 from src.preprocessors.state_preprocessing import StateDataLoader

@@ -9,7 +9,7 @@ from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 from config import Config
 from src.utils.log import setup_logging
 from src.preprocessors.state_preprocessing import StateDataLoader
-from base import LSTMHyperparameters
+from src.base import LSTMHyperparameters
 
 
 settings = Config()

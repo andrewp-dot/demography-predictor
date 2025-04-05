@@ -3,7 +3,7 @@ from pydantic import DirectoryPath, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Dict
 
-from base import LSTMHyperparameters
+from src.base import LSTMHyperparameters
 
 
 def get_experiment_result_dir() -> DirectoryPath:
