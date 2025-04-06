@@ -7,10 +7,12 @@ from typing import List, Dict, Union, Literal
 # Custom imports
 from src.utils.log import setup_logging
 from src.utils.save_model import get_model, get_multiple_models
+from src.utils.constants import get_core_hyperparameters
 
 from src.base import CustomModelBase
 from src.evaluation import EvaluateModel
 from src.local_model.finetunable_model import FineTunableLSTM
+from src.local_model.ensemble_model import PureEnsembleModel
 
 from src.predictors.predictor_base import DemographyPredictor
 
@@ -116,7 +118,12 @@ def compare_models_by_states(
 
         # Adjust hyperparameters by the model type
         if isinstance(model, DemographyPredictor):
-            model_sequence_len = model.local_model.hyperparameters.sequence_length
+            if isinstance(model.local_model, PureEnsembleModel):
+                model_sequence_len = get_core_hyperparameters(
+                    input_size=1
+                ).sequence_length
+            else:
+                model_sequence_len = model.local_model.hyperparameters.sequence_length
         elif isinstance(model, CustomModelBase):
             model_sequence_len = model.hyperparameters.sequence_length
 
@@ -213,10 +220,10 @@ if __name__ == "__main__":
 
     # Demography predictor models
     aging_comparation_model_names: List[str] = [
-        "aging_Czechia.pkl",
-        "aging_Czechia_model.pkl",
-        "aging_rich_group_model.pkl",
-        "aging_model.pkl",
+        "aging_base_model.pkl",
+        "aging_ensemble_arima_Czechia.pkl",
+        "aging_ensemble_lstm.pkl",
+        "aging_finetunable_Czechia_model.pkl",
     ]
 
     # Local predictor models
@@ -226,30 +233,31 @@ if __name__ == "__main__":
     ]
 
     # Get models
-    to_compare_models = get_multiple_models(names=local_predictor_model_names)
+    to_compare_models = get_multiple_models(names=aging_comparation_model_names)
 
-    # Example 1: comparing local predictor models using per feature metrics
-    ranked_models = compare_models_by_states(
-        models=to_compare_models,
-        states=["Czechia", "Afghanistan", "United States", "Croatia"],
-        by="per-features",
-    )
+    COMPARATION_STATES = ["Czechia", "Afghanistan", "United States", "Croatia"]
 
-    print(
-        ranked_models[
-            (ranked_models["state"] == "Croatia")
-            # & (ranked_models["target"].isin(["fertility rate, total", "arable land"]))
-        ]
-    )
-
-    # # Example 2: comparing demographic predictor by specified states
+    # # Example 1: comparing local predictor models using per feature metrics
     # ranked_models = compare_models_by_states(
     #     models=to_compare_models,
-    #     states=["Czechia", "Afghanistan", "United States", "Croatia"],
-    #     by="overall-metrics",
+    #     states=COMPARATION_STATES,
+    #     by="per-features",
     # )
 
-    # # Display
-    # print(ranked_models[ranked_models["state"] == "Czechia"])
+    # print(
+    #     ranked_models[
+    #         (ranked_models["state"] == "Croatia")
+    #         # & (ranked_models["target"].isin(["fertility rate, total", "arable land"]))
+    #     ]
+    # )
 
-    # print(ranked_models[ranked_models["state"] == "Afghanistan"])
+    # # Example 2: comparing demographic predictor by specified states
+    ranked_models = compare_models_by_states(
+        models=to_compare_models,
+        states=COMPARATION_STATES,
+        by="overall-metrics",
+    )
+
+    # Display
+    for state in COMPARATION_STATES:
+        print(ranked_models[ranked_models["state"] == state])

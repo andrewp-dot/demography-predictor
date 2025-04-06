@@ -45,9 +45,10 @@ class Config(BaseSettings):
     def prediction_models(self) -> Dict[str, str]:
         return {
             # "population_total",: "TODO"
-            "aging_Czechia": f"{self.trained_models_dir}/aging_Czechia.pkl",
-            "gender_model": f"{self.trained_models_dir}/gender_model.pkl",
-            "aging_model": f"{self.trained_models_dir}/aging_model.pkl",
+            "aging_base_model": f"{self.trained_models_dir}/aging_base_model.pkl",
+            "aging_ensemble_arima_Czechia": f"{self.trained_models_dir}/aging_ensemble_arima_Czechia.pkl",
+            "aging_ensemble_lstm": f"{self.trained_models_dir}/aging_ensemble_lstm.pkl",
+            "aging_finetunable_Czechia_model": f"{self.trained_models_dir}/aging_finetunable_Czechia_model.pkl",
         }
 
     ALL_POSSIBLE_TARGET_FEATURES: List[str] = [

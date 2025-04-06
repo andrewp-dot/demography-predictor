@@ -21,6 +21,7 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 logger = logging.getLogger("local_model")
 
 
+# TODO: add hyperparameters or something...
 class PureEnsembleModel:
 
     def __init__(

@@ -39,6 +39,9 @@
 <!-- The newest -->
 9. Model comparation script:
     - Better model evaluation saving... (Maybe saved model short description? Loss graph, evaluation -> ovearll metrics, by state metrics..) -> model evaluation comparison
+10. Ensemble model (local model, which predicts each feature indepentetly)
+    - pure LSTM (LSTM for each feature)
+    - pure ARIMA (ARIMA model for state for each feature)
 
 
 Bonus:
@@ -50,7 +53,6 @@ Bonus:
 1. Statistical model implementation (Grey model)
 2. Experiments:
     - None
-3. New type of local model: Ensembled local model (like the forest of neural networks? averaging ARIMA and LSTM?...)
 
 
 ## TODO:
@@ -61,21 +63,23 @@ Bonus:
     - Try Forest of LSTMs (each LSTM for each feature? combined with ARIMA (by better feature performance?))
 
 2. Try predict population total using the population growth
-3. Rework experiments:
-    - More comparision experiments
     
+
+## TO DISCUSS:
+1. Low accuracy of my model. To try:
+    - better data preprocessing (logaritmic standardization for features like `net migration` and `age dependency ratio`)
+    - improve training of the model:
+        - bidirectional LSTM
+        - train on prediction multiple future values at once (instead of just `X(t + 1)` predict `X(t + 1), X(t + 2), X(t + 3) ...` )
+2. What if everything fails?
+3. Structure of my bachelor thesis:
+    - Theory
+    - Data preprocessing (Mainly this)
+    - Method selection (Mainly this -> 2 types -> RNN method selection and Target variables method selection)
+    - Model design (Do I need to rewrite it?)
+    - Experiments (I have some, do I need to write new ones, or just use existing and change method selection?)
+
     
-4. Single feature predicting model (rnn + ARIMA + GM). 2 Types of models:
-    - ML based model (multifeature prediction)
-        - keep context predictions? 
-
-    - Statistical model (and ML single srquence feature prediction model )
-        - in case of statistical methods it needs to be trained for a single state
-        - in case of ML Single feature models -> needs to be 
-
-    - Bonus:
-        New type of local model: Ensembled local model (like the forest of neural networks? averaging ARIMA and LSTM?...)
- 
 
 ## Bonus
 1. Maybe Docker appliaction?

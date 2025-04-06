@@ -15,9 +15,15 @@ from src.predictors.predictor_base import (
     create_finetunable_model,
 )
 from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
+from src.utils.constants import get_core_hyperparameters
 
 from src.global_model.model import GlobalModel
 from src.local_model.statistical_models import LocalARIMA
+from src.local_model.ensemble_model import (
+    PureEnsembleModel,
+    train_models_for_ensemble_model,
+    train_arima_models_for_ensemble_model,
+)
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -38,10 +44,31 @@ EXCLUDE_FEATURES = []
 EXCLUDE_FOR_LOCAL = ["year", "country name"]
 
 
-# TODO:
-# Create predictor with BaseLSTM
-# Create predictor with FineTunableLSTM for One state
-# Create predictor with FineTunableLSTM for a group of states
+def predictor_global_xgboost(
+    features: List[str], targets: List[str], state_dfs: Dict[str, pd.DataFrame]
+) -> GlobalModel:
+    # Define global model
+    global_model: GlobalModel = GlobalModel(
+        model=XGBRegressor(),
+        features=features,
+        targets=targets,
+        scaler=MinMaxScaler(),
+    )
+
+    # X_train, X_test, y_train, y_test = global_model.create_train_test_timeseries(
+    #     data=whole_dataset_df[GLOBAL_FEATURES + targets],
+    #     split_size=0.8,
+    # )
+
+    X_train, X_test, y_train, y_test = global_model.create_train_test_timeseries(
+        states_dfs=state_dfs,
+        states_loader=states_loader,
+        split_size=0.8,
+    )
+
+    global_model.train(X_train=X_train, y_train=y_train)
+
+    return global_model
 
 
 def predictor_base_lstm(targets: List[str]) -> DemographyPredictor:
@@ -76,14 +103,9 @@ def predictor_base_lstm(targets: List[str]) -> DemographyPredictor:
     ]
 
     # Create or load base model
-    base_model_hyperparameters = LSTMHyperparameters(
+    base_model_hyperparameters = get_core_hyperparameters(
         input_size=len(LOCAL_FEATURES),
-        hidden_size=512,
-        sequence_length=10,
-        learning_rate=0.0001,
-        epochs=30,
-        batch_size=16,  # Do not change this if you do not want to experience segfault
-        num_layers=3,
+        batch_size=16,
     )
 
     # Maybe use get model instead of manual training
@@ -91,26 +113,10 @@ def predictor_base_lstm(targets: List[str]) -> DemographyPredictor:
         features=LOCAL_FEATURES, hyperparameters=base_model_hyperparameters
     )
 
-    # Define global model
-    global_model: GlobalModel = GlobalModel(
-        model=XGBRegressor(),
-        features=GLOBAL_FEATURES,
-        targets=targets,
-        scaler=MinMaxScaler(),
+    # Train global
+    global_model = predictor_global_xgboost(
+        features=GLOBAL_FEATURES, targets=targets, state_dfs=state_dfs
     )
-
-    # X_train, X_test, y_train, y_test = global_model.create_train_test_timeseries(
-    #     data=whole_dataset_df[GLOBAL_FEATURES + targets],
-    #     split_size=0.8,
-    # )
-
-    X_train, X_test, y_train, y_test = global_model.create_train_test_timeseries(
-        states_dfs=state_dfs,
-        states_loader=states_loader,
-        split_size=0.8,
-    )
-
-    global_model.train(X_train=X_train, y_train=y_train)
 
     # Create predictor
     predictor = DemographyPredictor(
@@ -150,15 +156,8 @@ def predictor_finetuned(
         feature for feature in GLOBAL_FEATURES if feature not in EXCLUDE_FOR_LOCAL
     ]
 
-    # Create or load base model
-    base_model_hyperparameters = LSTMHyperparameters(
-        input_size=len(LOCAL_FEATURES),
-        hidden_size=512,
-        sequence_length=10,
-        learning_rate=0.0001,
-        epochs=30,
-        batch_size=16,  # Do not change this if you do not want to experience segfault
-        num_layers=3,
+    base_model_hyperparameters = get_core_hyperparameters(
+        input_size=len(LOCAL_FEATURES), batch_size=16
     )
 
     # Maybe use get model instead of manual training
@@ -167,11 +166,10 @@ def predictor_finetuned(
     )
 
     # Get finetunable model model
-    finetunable_hyperparameters = LSTMHyperparameters(
+    finetunable_hyperparameters = get_core_hyperparameters(
         input_size=base_model_hyperparameters.input_size,
         hidden_size=256,
         sequence_length=base_model_hyperparameters.sequence_length,
-        learning_rate=0.0001,
         epochs=50,
         batch_size=1,  # Do not change this if you do not want to experience segfault
         num_layers=1,
@@ -183,20 +181,10 @@ def predictor_finetuned(
         finetuning_data=finetuning_data,
     )
 
-    # Define global model
-    global_model: GlobalModel = GlobalModel(
-        model=XGBRegressor(),
-        features=GLOBAL_FEATURES,
-        targets=targets,
-        scaler=MinMaxScaler(),
+    # Train global model
+    global_model = predictor_global_xgboost(
+        features=GLOBAL_FEATURES, targets=targets, state_dfs=state_dfs
     )
-
-    X_train, X_test, y_train, y_test = global_model.create_train_test_data(
-        data=whole_dataset_df[GLOBAL_FEATURES + targets],
-        split_size=0.8,
-    )
-
-    global_model.train(X_train=X_train, y_train=y_train)
 
     # Create predictor
     predictor = DemographyPredictor(
@@ -206,10 +194,81 @@ def predictor_finetuned(
     return predictor
 
 
+def ensemble_predictor(
+    targets: List[str],
+    type: Literal["pure-lstm", "pure-arima"],
+    arima_state: str | None = None,
+) -> DemographyPredictor:
+
+    # Train local model
+    states_loader = StatesDataLoader()
+    state_dfs = states_loader.load_all_states()
+
+    # Merge data to single dataframe
+    whole_dataset_df = states_loader.merge_states(state_dfs=state_dfs)
+
+    # Targets
+    ALL_TARGETS = settings.ALL_POSSIBLE_TARGET_FEATURES
+
+    # Features
+    EXCLUDE_FEATURES = []
+
+    EXCLUDE_FOR_LOCAL = ["year", "country name"]
+
+    GLOBAL_FEATURES: List[str] = [
+        col
+        for col in whole_dataset_df.columns
+        if col not in ALL_TARGETS
+        and col not in EXCLUDE_FEATURES  # Exclude targets and some features
+    ]
+
+    LOCAL_FEATURES = [
+        feature for feature in GLOBAL_FEATURES if feature not in EXCLUDE_FOR_LOCAL
+    ]
+
+    if type == "pure-lstm":
+        models_for_ensemble_models = train_models_for_ensemble_model(
+            features=LOCAL_FEATURES,
+            hyperaparameters=get_core_hyperparameters(input_size=1, batch_size=16),
+        )
+    elif type == "pure-arima" and arima_state is not None:
+        models_for_ensemble_models = train_arima_models_for_ensemble_model(
+            features=LOCAL_FEATURES, state=arima_state
+        )
+    else:
+        if type == "pure-arima" and arima_state is None:
+            raise ValueError("Missing state for the pure arima ensemble model!")
+        raise ValueError("Invalid type for pure ensemble model.")
+
+    # Create ensemble model
+    ensemble_model = PureEnsembleModel(feature_models=models_for_ensemble_models)
+
+    # Train global model
+    global_model = predictor_global_xgboost(
+        features=GLOBAL_FEATURES, targets=targets, state_dfs=state_dfs
+    )
+
+    # Get predictor
+    demography_predictor = DemographyPredictor(
+        name="Predictor v3", local_model=ensemble_model, global_model=global_model
+    )
+
+    return demography_predictor
+
+
+def ensemble_combined_predictor(
+    targets: List[str], lstm_features: List[str], arima_features: List[str]
+) -> DemographyPredictor:
+    raise NotImplementedError(
+        "The combined ensemble model for predictor is not implemented yet!"
+    )
+
+
 def train(
     model_name: str,
-    model_type: Literal["base", "finetunable"],
+    model_type: Literal["base", "finetunable", "ensemble-lstm", "ensemble-arima"],
     targets: List[str],
+    arima_state: str | None = None,
     finetuning_data: Union[pd.DataFrame, Dict[str, pd.DataFrame]] | None = None,
 ) -> DemographyPredictor:
     """
@@ -240,6 +299,13 @@ def train(
                 f"Model is type is set to '{model_type}', but no data for finetuning provided!"
             )
         pred = predictor_finetuned(targets=targets, finetuning_data=finetuning_data)
+    elif "ensemble-lstm" == model_type:
+        pred = ensemble_predictor(targets=targets, type="pure-lstm")
+
+    elif "ensemble-arima" == model_type:
+        pred = ensemble_predictor(
+            targets=targets, type="pure-arima", arima_state=arima_state
+        )
 
     # Log predictor
     logger.info(f"Trained predictor: {pred}")
@@ -266,66 +332,34 @@ def evalulate_for_single_state(
 
     # Evaluate model
     evaluation = EvaluateModel(model=predictor)
-    evaluation.eval(test_X=train_df, test_y=test_df)
+    overall_metrics = evaluation.eval(test_X=train_df, test_y=test_df)
 
     # Print the metrics
-    print(evaluation.overall_metrics)
+    print(overall_metrics)
 
 
 def evalulate_for_every_state(predictor: DemographyPredictor) -> None:
     states_data_loader = StatesDataLoader()
     all_states_df = states_data_loader.load_all_states()
 
+    if isinstance(predictor.local_model, PureEnsembleModel):
+        SEQUENCE_LENGTH = get_core_hyperparameters(input_size=1).sequence_length
+    else:
+        SEQUENCE_LENGTH = predictor.local_model.hyperparameters.sequence_length
+
     train_dict, test_dict = states_data_loader.split_data(
         states_dict=all_states_df,
-        sequence_len=predictor.local_model.hyperparameters.sequence_length,
+        sequence_len=SEQUENCE_LENGTH,
     )
 
     # Evaluate model
     evaluation = EvaluateModel(model=predictor)
-    evaluation.eval_for_every_state(
+    all_states_eval_df = evaluation.eval_for_every_state(
         X_test_states=train_dict,
         y_test_states=test_dict,
     )
 
-    print(evaluation.all_states_evaluation)
-
-
-# def predict_and_plot(predictor: DemographyPredictor, test_X: pd.DataFrame, test_y) -> None:
-#     test_y = test_df[targets]
-
-
-#     print(test_y.head())
-
-#     # Get last year of predictions
-#     last_year = train_df["year"].max()
-#     YEARS = range(last_year)
-
-#     predictions_df = pred.predict(input_data=train_df, target_year=target_year)
-
-#     print(predictions_df.head())
-
-#     import matplotlib.pyplot as plt
-
-#     fig, axes = plt.subplots(nrows=len(targets), ncols=1, figsize=(10, 8))
-
-#     if len(targets) == 1:
-#         axes = [axes]
-
-#     for i, target in enumerate(targets):
-#         axes[i].plot(YEARS, test_y[target], label="Reference data")
-#         axes[i].plot(YEARS, predictions_df[target], label="Predicted data")
-
-#         axes[i].set_title(target)
-#         axes[i].legend()
-#         axes[i].grid()
-
-#     fig.tight_layout()
-#     fig.savefig(fname="test.png")
-
-#     predictions_df = pred.predict(input_data=train_df, target_year=2050)
-
-#     print(predictions_df)
+    print(all_states_eval_df)
 
 
 if __name__ == "__main__":
@@ -397,16 +431,45 @@ if __name__ == "__main__":
     group_states_dict = states_loader.load_states(states=STATES_GROUP)
 
     # Single state finetuning
-    state_loader = StateDataLoader(state="Czechia")
+    STATE = "Czechia"
+    state_loader = StateDataLoader(state=STATE)
     state_data_df = state_loader.load_data()
 
-    # Train the model
+    # Train base model as local model
     pred = train(
-        model_name="aging_Czechia_model.pkl",
+        model_name="aging_base_model.pkl",
+        model_type="base",
+        targets=aging_targets,
+        finetuning_data=state_data_df,
+    )
+
+    evalulate_for_every_state(predictor=pred)
+
+    # # Train finetunable model as local model
+    pred = train(
+        model_name=f"aging_finetunable_{STATE}_model.pkl",
         model_type="finetunable",
         targets=aging_targets,
         finetuning_data=state_data_df,
     )
 
-    # Evaluate the model
+    evalulate_for_every_state(predictor=pred)
+
+    # Train ensemble pure lstm model as local model
+    pred = train(
+        model_name="aging_ensemble_lstm.pkl",
+        model_type="ensemble-lstm",
+        targets=aging_targets,
+    )
+
+    evalulate_for_every_state(predictor=pred)
+
+    # Train ensemble pure arima model as local model
+    pred = train(
+        model_name=f"aging_ensemble_arima_{STATE}.pkl",
+        model_type="ensemble-arima",
+        targets=aging_targets,
+        arima_state=STATE,
+    )
+
     evalulate_for_every_state(predictor=pred)
