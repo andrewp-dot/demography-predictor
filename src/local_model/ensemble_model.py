@@ -52,7 +52,7 @@ class PureEnsembleModel:
             # By type
             if isinstance(current_model, LocalARIMA):
                 feature_prediction_df = current_model.predict(
-                    data=input_data, steps=years_to_predict
+                    data=input_data, steps=len(years_to_predict)
                 )
 
             if isinstance(current_model, BaseLSTM) or isinstance(
@@ -84,7 +84,7 @@ def train_models_for_ensemble_model(
     hyperaparameters: LSTMHyperparameters,
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
-) -> Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]]:
+) -> Dict[str, Union[BaseLSTM, FineTunableLSTM]]:
 
     # Load data for training
     states_loader = StatesDataLoader()
@@ -138,13 +138,15 @@ def train_models_for_ensemble_model(
 
 
 def train_arima_models_for_ensemble_model(
-    features: List[str], state: str
+    features: List[str], state: str, split_rate: float = 0.8
 ) -> Dict[str, LocalARIMA]:
-    # raise NotImplementedError("ARIMA models support not implemented yet.")
 
     # Load state data
     state_loader = StateDataLoader(state=state)
     state_data = state_loader.load_data()
+
+    # Split data
+    train_df, _ = state_loader.split_data(data=state_data, split_rate=split_rate)
 
     # Train and save models
     trained_models: Dict[str, LocalARIMA] = {}
@@ -154,7 +156,7 @@ def train_arima_models_for_ensemble_model(
         arima = LocalARIMA(p=1, d=1, q=1, features=[], target=feature, index="year")
 
         # Train model
-        arima.train_model(data=state_data)
+        arima.train_model(data=train_df)
 
         # Save trained model
         trained_models[feature] = arima

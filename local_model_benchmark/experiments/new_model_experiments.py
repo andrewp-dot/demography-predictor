@@ -24,6 +24,7 @@ from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import (
     PureEnsembleModel,
     train_models_for_ensemble_model,
+    train_arima_models_for_ensemble_model,
 )
 
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -461,6 +462,15 @@ class CompareWithStatisticalModels(BaseExperiment):
 
         return ensemble_model
 
+    def __train_arima_ensemble_model(
+        self, split_rate: float, state: str
+    ) -> PureEnsembleModel:
+        feature_models = train_arima_models_for_ensemble_model(
+            features=self.FEATURES, state=state
+        )
+        ensemble_model = PureEnsembleModel(feature_models=feature_models)
+        return ensemble_model
+
     def run(self, state: str, split_rate: float = 0.8):
         # Create readme
         self.create_readme()
@@ -482,8 +492,30 @@ class CompareWithStatisticalModels(BaseExperiment):
         # TODO: statistical models in here
 
         # TODO: train ARIMA
+        TO_COMPARE_MODELS["ensemble-arima"] = self.__train_arima_ensemble_model(
+            split_rate=split_rate, state=state
+        )
 
         # TODO: train GM model
+
+        # Evaluate models - per-target-performance
+        per_target_metrics_df = compare_models_by_states(
+            models=TO_COMPARE_MODELS, states=[state], by="per-features"
+        )
+        overall_metrics_df = compare_models_by_states(
+            models=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
+        )
+
+        # Print results to the readme
+        self.readme_add_section(
+            title="## Per target metrics - model comparision",
+            text=f"```\n{per_target_metrics_df}\n```\n\n",
+        )
+
+        self.readme_add_section(
+            title="## Overall metrics - model comparision",
+            text=f"```\n{overall_metrics_df}\n```\n\n",
+        )
 
 
 if __name__ == "__main__":
@@ -542,8 +574,12 @@ if __name__ == "__main__":
     # )
     # exp_1.run(state="Czechia", split_rate=0.8)
 
-    exp_2 = FineTunedModels(
-        description="See if finetuning the model helps the model to be more accurate."
-    )
+    # exp_2 = FineTunedModels(
+    #     description="See if finetuning the model helps the model to be more accurate."
+    # )
 
-    exp_2.run(state="Czechia", state_group=RICH, split_rate=0.8)
+    # exp_2.run(state="Czechia", state_group=RICH, split_rate=0.8)
+    exp_3 = CompareWithStatisticalModels(
+        description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
+    )
+    exp_3.run(state="Czechia", split_rate=0.8)
