@@ -8,7 +8,7 @@ Long term experiment
 
 Accuracy experiment
 
-**hypothesis**: Model can predict the development of the population accuratly.(How accurate)
+**hypothesis**: Model can predict the development of the population accuratly. (How accurate)
 
 # Experiment 3
 
@@ -21,3 +21,12 @@ Method comparision
 Context keeping
 
 **hypothesis**: The longer sequence is passed to the model, the better performance it has.
+
+# Experiment 5
+
+Different type of train and validation
+
+**hypothesis**: Model can genralize populations and predict unseen populations (accuretly)?.
+
+# Ppl
+Michal (?) Hradiš

@@ -357,6 +357,7 @@ class StatesDataLoader:
         states_train_data_dict: Dict[str, pd.DataFrame],
         hyperparameters: LSTMHyperparameters,
         features: List[str],
+        scaler: MinMaxScaler | None,
     ) -> Tuple[
         torch.Tensor,
         torch.Tensor,
@@ -365,9 +366,13 @@ class StatesDataLoader:
         # Set features const
         FEATURES = features
 
+        selected_scaler = MinMaxScaler()
+        if scaler is not None:
+            selected_scaler = scaler
+
         # Scale data
         scaled_train_data, all_states_scaler = self.scale_data(
-            states_train_data_dict, scaler=MinMaxScaler(), features=FEATURES
+            states_train_data_dict, scaler=selected_scaler, features=FEATURES
         )
 
         # Create input and target sequences

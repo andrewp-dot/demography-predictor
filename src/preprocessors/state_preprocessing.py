@@ -42,6 +42,7 @@ class StateDataLoader:
         data: pd.DataFrame,
         features: List[str],
         scaler: Union[RobustScaler, StandardScaler, MinMaxScaler],
+        to_normalize_features: List[str] = None,  # TODO:
     ) -> Tuple[pd.DataFrame, Union[RobustScaler, StandardScaler, MinMaxScaler]]:
         """
         Scales the data using the specified scaler.
@@ -57,6 +58,10 @@ class StateDataLoader:
 
         # Copy data to avoid inplace edits
         to_scale_data = data.copy()
+
+        # TODO: add normalization for some features
+        if to_normalize_features is not None:
+            pass
 
         # Scale data
         scaled_data = scaler.fit_transform(to_scale_data[FEATURES])

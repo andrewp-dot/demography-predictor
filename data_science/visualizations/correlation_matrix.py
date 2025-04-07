@@ -28,4 +28,8 @@ print(corr_matrix)
 plt.figure(figsize=(10, 8))
 sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5)
 plt.title("Correlation Matrix Heatmap")
-plt.show()
+
+plt.savefig("feature_correlation_matrix.png")
+# plt.show()
+
+# Save figure
