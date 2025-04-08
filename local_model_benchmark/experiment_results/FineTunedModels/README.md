@@ -6,60 +6,60 @@
 ## Per target metrics - model comparision
 ```
                              target           mae           mse          rmse            r2    state                   model   rank
-4                 birth rate, crude  3.524216e-01  1.534165e-01  3.916842e-01 -4.753118e+00  Czechia               base-lstm   17.0
-31            fertility rate, total  2.011391e-01  4.117035e-02  2.029048e-01 -1.039226e+01  Czechia  group-states-finetuned   18.0
-39          rural population growth  4.728296e-01  7.386692e-01  8.594586e-01 -4.991583e-02  Czechia  group-states-finetuned   19.0
-12                population growth  7.139292e-01  7.382620e-01  8.592218e-01 -1.997823e-01  Czechia               base-lstm   24.0
-14  life expectancy at birth, total  7.640634e-01  6.790136e-01  8.240228e-01 -3.653731e-01  Czechia               base-lstm   24.0
-8                  rural population  5.710985e-01  4.693335e-01  6.850792e-01 -8.660418e+00  Czechia               base-lstm   27.0
-6                 death rate, crude  1.030492e+00  1.344427e+00  1.159494e+00 -6.700549e-02  Czechia               base-lstm   31.0
-9           rural population growth  1.038426e+00  1.123808e+00  1.060098e+00 -5.973380e-01  Czechia               base-lstm   33.0
-1             fertility rate, total  5.050863e-01  2.559855e-01  5.059501e-01 -6.983382e+01  Czechia               base-lstm   34.0
-30                             year  1.197108e+00  1.521017e+00  1.233295e+00  4.785086e-01  Czechia  group-states-finetuned   34.0
-27                population growth  1.044200e+00  1.310483e+00  1.144763e+00 -1.129724e+00  Czechia  single-state-finetuned   37.0
-0                              year  1.828730e+00  3.444079e+00  1.855823e+00 -1.808270e-01  Czechia               base-lstm   47.0
-42                population growth  2.046524e+00  4.819497e+00  2.195335e+00 -6.832378e+00  Czechia  group-states-finetuned   57.0
-5                        gdp growth  2.049742e+00  1.290748e+01  3.592698e+00 -8.185685e-02  Czechia               base-lstm   58.0
-11                 urban population  1.315225e+00  1.753765e+00  1.324298e+00 -3.509822e+01  Czechia               base-lstm   59.0
-41                 urban population  1.296500e+00  1.799507e+00  1.341457e+00 -3.603975e+01  Czechia  group-states-finetuned   61.0
-44  life expectancy at birth, total  2.485692e+00  7.969043e+00  2.822949e+00 -1.502430e+01  Czechia  group-states-finetuned   68.0
-7                 agricultural land  2.500488e+00  6.600135e+00  2.569073e+00 -2.002657e+02  Czechia               base-lstm   77.0
-28        adolescent fertility rate  3.427165e+00  1.505352e+01  3.879886e+00 -2.283188e+01  Czechia  single-state-finetuned   80.0
-3                       arable land  3.362448e+00  1.165000e+01  3.413209e+00 -1.798756e+03  Czechia               base-lstm   89.0
-35                       gdp growth  5.552198e+00  4.136852e+01  6.431837e+00 -2.467355e+00  Czechia  group-states-finetuned   91.0
-34                birth rate, crude  3.828930e+00  1.472724e+01  3.837608e+00 -5.512714e+02  Czechia  group-states-finetuned   91.0
-24          rural population growth  4.718083e+00  2.358354e+01  4.856289e+00 -3.252074e+01  Czechia  single-state-finetuned   93.0
-40             age dependency ratio  5.910759e+00  3.676077e+01  6.063066e+00 -7.862894e+00  Czechia  group-states-finetuned   93.0
-38                 rural population  4.264426e+00  1.821571e+01  4.267987e+00 -3.739390e+02  Czechia  group-states-finetuned   94.0
-25             age dependency ratio  5.231343e+00  5.339305e+01  7.307055e+00 -1.187288e+01  Czechia  single-state-finetuned   99.0
-16            fertility rate, total  4.279585e+00  1.834188e+01  4.282743e+00 -5.074387e+03  Czechia  single-state-finetuned  107.0
-29  life expectancy at birth, total  6.390550e+00  5.070345e+01  7.120636e+00 -1.009554e+02  Czechia  single-state-finetuned  110.0
-33                      arable land  5.439392e+00  2.960378e+01  5.440935e+00 -4.572356e+03  Czechia  group-states-finetuned  113.0
-15                             year  9.643289e+00  9.312084e+01  9.649914e+00 -3.092714e+01  Czechia  single-state-finetuned  113.0
-10             age dependency ratio  1.008132e+01  1.055228e+02  1.027243e+01 -2.444119e+01  Czechia               base-lstm  115.0
-21                death rate, crude  1.312015e+01  1.770110e+02  1.330455e+01 -1.394849e+02  Czechia  single-state-finetuned  125.0
-37                agricultural land  9.142399e+00  8.508100e+01  9.223936e+00 -2.593475e+03  Czechia  group-states-finetuned  126.0
-43        adolescent fertility rate  1.871403e+01  3.507082e+02  1.872720e+01 -5.542214e+02  Czechia  group-states-finetuned  133.0
-36                death rate, crude  2.825526e+01  7.993452e+02  2.827269e+01 -6.334010e+02  Czechia  group-states-finetuned  140.0
-13        adolescent fertility rate  3.066639e+01  9.440672e+02  3.072568e+01 -1.493594e+03  Czechia               base-lstm  144.0
-18                      arable land  2.620674e+01  6.882152e+02  2.623386e+01 -1.063183e+05  Czechia  single-state-finetuned  148.0
-19                birth rate, crude  3.166162e+01  1.002547e+03  3.166303e+01 -3.759453e+04  Czechia  single-state-finetuned  153.0
-20                       gdp growth  6.983434e+01  4.897694e+03  6.998353e+01 -4.095064e+02  Czechia  single-state-finetuned  155.0
-22                agricultural land  3.956950e+01  1.566685e+03  3.958137e+01 -4.777376e+04  Czechia  single-state-finetuned  157.0
-26                 urban population  6.534473e+01  4.270981e+03  6.535274e+01 -8.790976e+04  Czechia  single-state-finetuned  161.0
-2                     net migration  6.432976e+04  4.404080e+09  6.636324e+04 -2.092780e+03  Czechia               base-lstm  164.0
-23                 rural population  6.685604e+01  4.472578e+03  6.687734e+01 -9.205930e+04  Czechia  single-state-finetuned  165.0
-17                    net migration  1.054710e+06  1.432970e+12  1.197067e+06 -6.812591e+05  Czechia  single-state-finetuned  176.0
-32                    net migration  1.921612e+06  3.705908e+12  1.925074e+06 -1.761856e+06  Czechia  group-states-finetuned  180.0
+31            fertility rate, total  1.107800e-01  1.286622e-02  1.134294e-01 -2.560216e+00  Czechia  group-states-finetuned   13.0
+7                 agricultural land  2.055820e-01  7.628507e-02  2.761975e-01 -1.326250e+00  Czechia               base-lstm   14.0
+34                birth rate, crude  4.621003e-01  2.487916e-01  4.987901e-01 -8.329684e+00  Czechia  group-states-finetuned   24.0
+12                population growth  6.583757e-01  6.939387e-01  8.330298e-01 -1.277504e-01  Czechia               base-lstm   30.0
+4                 birth rate, crude  4.931853e-01  3.384846e-01  5.817943e-01 -1.169317e+01  Czechia               base-lstm   32.0
+9           rural population growth  5.571689e-01  8.415187e-01  9.173433e-01 -1.961022e-01  Czechia               base-lstm   32.0
+38                 rural population  5.885501e-01  3.470806e-01  5.891355e-01 -6.144055e+00  Czechia  group-states-finetuned   33.0
+6                 death rate, crude  9.402090e-01  1.381701e+00  1.175458e+00 -9.658819e-02  Czechia               base-lstm   36.0
+8                  rural population  5.725187e-01  4.919633e-01  7.014009e-01 -9.126215e+00  Czechia               base-lstm   37.0
+1             fertility rate, total  5.193876e-01  2.716440e-01  5.211948e-01 -7.416666e+01  Czechia               base-lstm   40.0
+40             age dependency ratio  1.223419e+00  1.924603e+00  1.387301e+00  5.359849e-01  Czechia  group-states-finetuned   43.0
+11                 urban population  8.902539e-01  8.245876e-01  9.080681e-01 -1.597271e+01  Czechia               base-lstm   47.0
+14  life expectancy at birth, total  1.185875e+00  1.654575e+00  1.286303e+00 -2.327051e+00  Czechia               base-lstm   47.0
+0                              year  1.785183e+00  3.244129e+00  1.801147e+00 -1.122728e-01  Czechia               base-lstm   50.0
+24          rural population growth  1.659458e+00  3.851502e+00  1.962524e+00 -4.474377e+00  Czechia  single-state-finetuned   58.0
+41                 urban population  1.195280e+00  1.512445e+00  1.229815e+00 -3.013106e+01  Czechia  group-states-finetuned   59.0
+42                population growth  1.963683e+00  4.351401e+00  2.086001e+00 -6.071654e+00  Czechia  group-states-finetuned   63.0
+5                        gdp growth  2.541093e+00  1.236437e+01  3.516301e+00 -3.633545e-02  Czechia               base-lstm   65.0
+30                             year  2.540828e+00  6.480972e+00  2.545775e+00 -1.222048e+00  Czechia  group-states-finetuned   67.0
+39          rural population growth  2.132565e+00  5.327304e+00  2.308095e+00 -6.572025e+00  Czechia  group-states-finetuned   68.0
+33                      arable land  2.289880e+00  5.586077e+00  2.363488e+00 -8.619682e+02  Czechia  group-states-finetuned   90.0
+27                population growth  3.727106e+00  1.402796e+01  3.745392e+00 -2.179746e+01  Czechia  single-state-finetuned   92.0
+28        adolescent fertility rate  4.590522e+00  2.288228e+01  4.783542e+00 -3.522593e+01  Czechia  single-state-finetuned   98.0
+35                       gdp growth  1.086188e+01  1.292935e+02  1.137073e+01 -9.836901e+00  Czechia  group-states-finetuned  101.0
+44  life expectancy at birth, total  4.596185e+00  2.331759e+01  4.828829e+00 -4.588743e+01  Czechia  group-states-finetuned  102.0
+3                       arable land  3.497197e+00  1.250094e+01  3.535667e+00 -1.930215e+03  Czechia               base-lstm  102.0
+10             age dependency ratio  1.038195e+01  1.117582e+02  1.057158e+01 -2.594453e+01  Czechia               base-lstm  102.0
+16            fertility rate, total  3.589461e+00  1.289929e+01  3.591558e+00 -3.568365e+03  Czechia  single-state-finetuned  106.0
+25             age dependency ratio  1.435011e+01  2.282395e+02  1.510760e+01 -5.402776e+01  Czechia  single-state-finetuned  117.0
+29  life expectancy at birth, total  1.336971e+01  1.860861e+02  1.364134e+01 -3.731853e+02  Czechia  single-state-finetuned  117.0
+15                             year  1.477821e+01  2.187126e+02  1.478894e+01 -7.398718e+01  Czechia  single-state-finetuned  117.0
+21                death rate, crude  1.678275e+01  2.853354e+02  1.689187e+01 -2.254566e+02  Czechia  single-state-finetuned  128.0
+37                agricultural land  1.511021e+01  2.358836e+02  1.535850e+01 -7.192077e+03  Czechia  group-states-finetuned  134.0
+13        adolescent fertility rate  2.673087e+01  7.172990e+02  2.678244e+01 -1.134587e+03  Czechia               base-lstm  139.0
+36                death rate, crude  2.983569e+01  8.905685e+02  2.984239e+01 -7.058004e+02  Czechia  group-states-finetuned  142.0
+43        adolescent fertility rate  2.709303e+01  7.349852e+02  2.711061e+01 -1.162587e+03  Czechia  group-states-finetuned  143.0
+18                      arable land  2.014990e+01  4.077210e+02  2.019210e+01 -6.298601e+04  Czechia  single-state-finetuned  143.0
+19                birth rate, crude  3.125165e+01  9.770244e+02  3.125739e+01 -3.663741e+04  Czechia  single-state-finetuned  153.0
+2                     net migration  1.987699e+04  3.980488e+08  1.995116e+04 -1.882397e+02  Czechia               base-lstm  157.0
+22                agricultural land  3.756686e+01  1.412009e+03  3.757670e+01 -4.305704e+04  Czechia  single-state-finetuned  157.0
+20                       gdp growth  9.960781e+01  9.946817e+03  9.973373e+01 -8.327050e+02  Czechia  single-state-finetuned  158.0
+26                 urban population  5.970845e+01  3.567514e+03  5.972867e+01 -7.343011e+04  Czechia  single-state-finetuned  162.0
+23                 rural population  6.633277e+01  4.401996e+03  6.634754e+01 -9.060648e+04  Czechia  single-state-finetuned  166.0
+32                    net migration  2.446491e+06  6.022703e+12  2.454120e+06 -2.863302e+06  Czechia  group-states-finetuned  176.0
+17                    net migration  2.859006e+06  8.451165e+12  2.907089e+06 -4.017837e+06  Czechia  single-state-finetuned  180.0
 ```
 
 
 ## Overall metrics - model comparision
 ```
              mae           mse           rmse             r2    state                   model  rank
-0    4292.435692  2.936054e+08    4428.165357    -381.978323  Czechia               base-lstm   4.0
-1   70337.140677  9.553133e+10   79827.898450  -70582.558634  Czechia  single-state-finetuned   8.0
-2  128113.402905  2.470606e+11  128344.303073 -118080.827435  Czechia  group-states-finetuned  12.0
+0    1328.529778  2.653664e+07    1333.637894    -226.277843  Czechia               base-lstm   4.0
+2  163106.070496  4.015135e+11  163614.746092 -191556.036514  Czechia  group-states-finetuned   8.0
+1  190626.199341  5.634110e+11  193831.875628 -288649.569263  Czechia  single-state-finetuned  12.0
 ```
 
 

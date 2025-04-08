@@ -231,7 +231,7 @@ class StatesDataLoader:
             features (List[str], optional): Features to include in the data. If not set, the all numerical features are selected Defaults to None.
 
         Returns:
-            Tuple[torch.Tensor, torch.Tensor]: input sequences, target sequences
+            out: Tuple[torch.Tensor, torch.Tensor]: input sequences, target sequences
         """
 
         # For each state create train and target sequences
@@ -357,7 +357,7 @@ class StatesDataLoader:
         states_train_data_dict: Dict[str, pd.DataFrame],
         hyperparameters: LSTMHyperparameters,
         features: List[str],
-        scaler: MinMaxScaler | None,
+        scaler: MinMaxScaler | None = None,
     ) -> Tuple[
         torch.Tensor,
         torch.Tensor,

@@ -28,6 +28,10 @@ from local_model_benchmark.experiments.model_experiments import (
     RNNvsStatisticalMethods,
     FineTuneLSTMExp,
 )
+
+# from local_model_benchmark.experiments.new_data_experiments import DataUsedForTraining
+# from local_model_benchmark.experiments.new_model_experiments import
+
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, BaseLSTM, EvaluateModel
@@ -45,21 +49,15 @@ logger = logging.getLogger("benchmark")
 # setup_logging()
 
 data_experiments: List[Experiment] = [
-    AllStates(),
-    AllStatesWithoutHighErrorFeatures(),
-    OneState(),
-    OnlyStationaryFeatures(),
-    OnlyStationaryFeaturesAllData(),
-    ExcludeCovidYears(),
-    StatesCategories(),
+    # s
 ]
 
 # List of available experimets
 model_experiments: List[Experiment] = [
-    LSTMOptimalParameters(),
-    RNNvsStatisticalMethodsSingleFeature(),
-    RNNvsStatisticalMethods(),
-    FineTuneLSTMExp(),
+    # LSTMOptimalParameters(),
+    # RNNvsStatisticalMethodsSingleFeature(),
+    # RNNvsStatisticalMethods(),
+    # FineTuneLSTMExp(),
 ]
 
 

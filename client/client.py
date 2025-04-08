@@ -53,7 +53,7 @@ def info():
 def predict(state: str, model_key: str, target_year: int):
     # Send the base prediction request
     response = send_base_prediction_request(
-        state=state.capitalize(), model_key=model_key, target_year=target_year
+        state=state, model_key=model_key, target_year=target_year
     )
 
     if response.status_code == 200:
@@ -95,13 +95,13 @@ def lakmoos_predict(state: str, model_key: str, target_year: int, max_age: int):
     Prediction for lakmoos prediction endpoint. Gets the predictions and also the distribution of the required parameter.
 
     Args:
-        state (str): _description_
-        model_key (str): _description_
-        target_year (int): _description_
+        state (str): Name of the state to predict.
+        model_key (str): Name of the model used for prediction.
+        target_year (int): The year of the last prediction.
     """
     # Send the lakmoos prediction request for getting distribution curve in the target year
     response = send_lakmoos_prediction_request(
-        state=state.capitalize(),
+        state=state,
         model_key=model_key,
         target_year=target_year,
         max_age=max_age,

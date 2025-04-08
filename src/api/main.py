@@ -184,6 +184,7 @@ def model_lakmoos_predict(request: LakmoosPredictionRequest):
         return LakmoosPredictionResponse(
             state=request.state,
             predictions=prediction_df.to_dict(orient="records"),
+            max_age=request.max_age,
             distribution=age_probabilities_df.to_dict(orient="records"),
         )
 
@@ -193,7 +194,7 @@ def model_lakmoos_predict(request: LakmoosPredictionRequest):
     )
 
 
-def main(reload: bool = False):
+def main(reload: bool = True):
     # Run API
     uvicorn.run(
         "src.api.main:app",

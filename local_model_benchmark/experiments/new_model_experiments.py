@@ -569,16 +569,17 @@ if __name__ == "__main__":
         "United States",
     ]
 
-    # exp_1 = FeaturePredictionSeparatelyVSAtOnce(
-    #     description="Compares single LSTM model vs LSTM for every feature."
-    # )
-    # exp_1.run(state="Czechia", split_rate=0.8)
+    exp_1 = FeaturePredictionSeparatelyVSAtOnce(
+        description="Compares single LSTM model vs LSTM for every feature."
+    )
+    exp_1.run(state="Czechia", split_rate=0.8)
 
-    # exp_2 = FineTunedModels(
-    #     description="See if finetuning the model helps the model to be more accurate."
-    # )
+    exp_2 = FineTunedModels(
+        description="See if finetuning the model helps the model to be more accurate."
+    )
 
-    # exp_2.run(state="Czechia", state_group=RICH, split_rate=0.8)
+    exp_2.run(state="Czechia", state_group=RICH, split_rate=0.8)
+
     exp_3 = CompareWithStatisticalModels(
         description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
     )
