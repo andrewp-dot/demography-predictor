@@ -13,6 +13,7 @@ from src.base import LSTMHyperparameters, TrainingStats, CustomModelBase
 from src.evaluation import EvaluateModel
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.utils.log import setup_logging
+from src.utils.constants import get_core_hyperparameters
 
 
 logger = logging.getLogger("local_model")
@@ -195,7 +196,7 @@ class BaseLSTM(CustomModelBase):
                 optimizer.step()  # Update weights and biases
 
             epoch_loss /= len(batch_inputs)
-            self.training_stats.losses.append(epoch_loss)
+            self.training_stats.training_loss.append(epoch_loss)
 
             if not epoch % display_nth_epoch:
                 logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
@@ -308,6 +309,11 @@ class BaseLSTM(CustomModelBase):
         )
         return new_predictions_df
 
+    # Maybe eval?
+    def eval(self):
+        # self.training_stats.validation_loss.append(...)
+        pass
+
 
 if __name__ == "__main__":
     # LSTM explanation - https://medium.com/analytics-vidhya/lstms-explained-a-complete-technically-accurate-conceptual-guide-with-keras-2a650327e8f2
@@ -319,35 +325,28 @@ if __name__ == "__main__":
     setup_logging()
 
     FEATURES = [
-        # "year",
-        # "Fertility rate, total",
-        # "Population, total",
-        "Net migration",
-        # "Arable land",
-        # "Birth rate, crude",
-        # "GDP growth",
-        # "Death rate, crude",
-        # "Agricultural land",
-        # "Rural population",
-        # "Rural population growth",
-        # "Age dependency ratio",
-        # "Urban population",
-        # "Population growth",
-        # "Adolescent fertility rate",
-        # "Life expectancy at birth, total",
+        col.lower()
+        for col in [
+            "year",
+            "Fertility rate, total",
+            "Population, total",
+            "Net migration",
+            "Arable land",
+            "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            "Rural population",
+            "Rural population growth",
+            "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            "Adolescent fertility rate",
+            "Life expectancy at birth, total",
+        ]
     ]
 
-    FEATURES = [col.lower() for col in FEATURES]
-
-    hyperparameters = LSTMHyperparameters(
-        input_size=len(FEATURES),
-        hidden_size=256,
-        sequence_length=15,
-        learning_rate=0.0001,
-        epochs=30,
-        batch_size=1,
-        num_layers=4,
-    )
+    hyperparameters = get_core_hyperparameters(input_size=FEATURES)
     rnn = BaseLSTM(hyperparameters, FEATURES)
 
     # Load data

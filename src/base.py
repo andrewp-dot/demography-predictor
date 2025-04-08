@@ -85,7 +85,8 @@ Bidirectional:      {self.bidirectional}
 class TrainingStats:
 
     def __init__(self):
-        self.losses = []
+        self.training_loss = []
+        self.validation_loss = []
         self.epochs = []
 
     def create_plot(self) -> Figure:
@@ -104,10 +105,11 @@ class TrainingStats:
         plt.ylabel("Loss")
 
         # Plot the graph(s)
-        plt.plot(self.epochs, self.losses)
+        plt.plot(self.epochs, self.training_loss, label="Training loss")
+        plt.plot(self.epochs, self.validation_loss, label="Validation loss")
 
         # Show the plot
-        # plt.legend()
+        plt.legend()
         plt.grid()
 
         return fig

@@ -1,7 +1,8 @@
 # Standard libraries imports
 import pandas as pd
 import torch
-from typing import Union, Tuple, List
+import numpy as np
+from typing import Union, Tuple, List, Dict
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 import logging
 
@@ -13,6 +14,26 @@ from src.base import LSTMHyperparameters
 logger = logging.getLogger("data_preprocessing")
 
 config = Config()
+
+# TODO: setup list of features for different scalers
+FEATURE_SCALER_DICT: Dict[str, str] = {
+    "year": "minmax",
+    "fertility rate, total": "minmax",
+    "population, total": "robust",
+    "net migration": "robust",
+    "arable land": "minmax",
+    "birth rate, crude": "minmax",
+    "gdp growth": "minmax",
+    "death rate, crude": "minmax",
+    "agricultural land": "minmax",
+    "rural population": "minmax",
+    "rural population growth": "minmax",
+    "age dependency ratio": "minmax",
+    "urban population": "minmax",
+    "population growth": "minmax",
+    "adolescent fertility rate": "minmax",
+    "life expectancy at birth, total": "minmax",
+}
 
 
 class StateDataLoader:
@@ -42,15 +63,19 @@ class StateDataLoader:
         data: pd.DataFrame,
         features: List[str],
         scaler: Union[RobustScaler, StandardScaler, MinMaxScaler],
-        to_normalize_features: List[str] = None,  # TODO:
+        # to_normalize_features: List[str] = None,  # TODO:
     ) -> Tuple[pd.DataFrame, Union[RobustScaler, StandardScaler, MinMaxScaler]]:
         """
         Scales the data using the specified scaler.
 
-        :param data: pd.DataFrame: input data
-        :param scaler: Union[RobustScaler, StandardScaler, MinMaxScaler]: scaler to use
+        Args:
+            data (pd.DataFrame): input data
+            features (List[str]): Scaler to use
+            scaler (Union[RobustScaler, StandardScaler, MinMaxScaler]): Scaler to use.
+            to_normalize_features (List[str], optional): Features used for normalization. If None, all features are scaled. Defaults to None.
 
-        :return: Tuple[pd.DataFrame, Union[RobustScaler, StandardScaler, MinMaxScaler]]: scaled dataframe and fitted scaler for data unscaling
+        Returns:
+            out: Tuple[pd.DataFrame, Union[RobustScaler, StandardScaler, MinMaxScaler]]: Scaled dataframe and fitted scaler for data unscaling.
         """
 
         # Set features constant
@@ -59,16 +84,52 @@ class StateDataLoader:
         # Copy data to avoid inplace edits
         to_scale_data = data.copy()
 
-        # TODO: add normalization for some features
-        if to_normalize_features is not None:
-            pass
-
         # Scale data
         scaled_data = scaler.fit_transform(to_scale_data[FEATURES])
 
         # Create dataframe from scaled data
         scaled_data_df = pd.DataFrame(scaled_data, columns=FEATURES)
-        return scaled_data_df, scaler
+        return scaled_data_df[features], scaler
+
+    def new_scale_data(
+        self,
+        data: pd.DataFrame,
+        features: List[str],
+    ) -> pd.DataFrame:
+        # Set features constant
+
+        LOGARITMIC_FEATURES = ["population, total"]
+
+        FEATURES = [
+            feature
+            for feature in features
+            if feature not in LOGARITMIC_FEATURES and feature != "net migration"
+        ]
+
+        # Copy data to avoid inplace edits
+        to_scale_data = data.copy()
+
+        # Logaritmic transformation
+        for feature in LOGARITMIC_FEATURES:
+            to_scale_data[feature] = np.log1p(to_scale_data[feature])
+
+        # Preprocess net migration
+        if "net migration" in features:
+            x = to_scale_data["net migration"]
+            to_scale_data["net migration"] = np.sign(x) * np.log1p(np.abs(x))
+
+        # Scale data
+        scaled_data = scaler.fit_transform(to_scale_data[FEATURES])
+
+        # Concat data
+        logaritmic_features_df = to_scale_data[LOGARITMIC_FEATURES + ["net migration"]]
+        scaled_data_df = pd.DataFrame(scaled_data, columns=FEATURES)
+
+        all_scaled_data = pd.concat(
+            [scaled_data_df, logaritmic_features_df], axis=1
+        )  # row wise concatenation
+
+        return all_scaled_data[features]
 
     def split_data(
         self, data: pd.DataFrame, split_rate: float = 0.8
@@ -331,34 +392,46 @@ if __name__ == "__main__":
 
     train, test = czech_data_loader.split_data(czech_data)
 
-    print("-" * 100)
-    print("Train data tail:")
-    print(train.tail())
-
-    print("-" * 100)
-    print("Test data head:")
-    print(test.head())
-
-    # Preprocess data
-    print("-" * 100)
-    print("Preprocess data:")
-    input_sequences, target_sequences = czech_data_loader.preprocess_training_data(
-        train, 5, ["year", "population, total"]
+    scaled_data, scaler = czech_data_loader.scale_data(
+        data=czech_data, features=FEATURE_SCALER_DICT.keys(), scaler=MinMaxScaler()
     )
 
-    input_batches, target_batches = czech_data_loader.create_batches(
-        6, input_sequences=input_sequences, target_sequences=target_sequences
+    new_scaled = czech_data_loader.new_scale_data(
+        data=czech_data,
+        features=FEATURE_SCALER_DICT.keys(),
     )
 
-    print("-" * 100)
-    print("Batches: ")
+    scaled_data.to_csv("scaled_test_original.csv")
+    new_scaled.to_csv("scaled_test_new.csv")
 
-    # Input batches
-    print("-" * 100)
-    print("Input:")
-    print(input_batches.shape)
+    # print("-" * 100)
+    # print("Train data tail:")
+    # print(train.tail())
 
-    # Output batches
-    print("-" * 100)
-    print("Target:")
-    print(target_batches.shape)
+    # print("-" * 100)
+    # print("Test data head:")
+    # print(test.head())
+
+    # # Preprocess data
+    # print("-" * 100)
+    # print("Preprocess data:")
+    # input_sequences, target_sequences = czech_data_loader.preprocess_training_data(
+    #     train, 5, ["year", "population, total"]
+    # )
+
+    # input_batches, target_batches = czech_data_loader.create_batches(
+    #     6, input_sequences=input_sequences, target_sequences=target_sequences
+    # )
+
+    # print("-" * 100)
+    # print("Batches: ")
+
+    # # Input batches
+    # print("-" * 100)
+    # print("Input:")
+    # print(input_batches.shape)
+
+    # # Output batches
+    # print("-" * 100)
+    # print("Target:")
+    # print(target_batches.shape)
