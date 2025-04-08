@@ -11,6 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 # Custom imports
 from src.base import LSTMHyperparameters, TrainingStats, CustomModelBase
 from src.evaluation import EvaluateModel
+
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.utils.log import setup_logging
 from src.utils.constants import get_core_hyperparameters
@@ -201,6 +202,9 @@ class BaseLSTM(CustomModelBase):
             if not epoch % display_nth_epoch:
                 logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
 
+    # TODO:
+    # Rewrite this for prediction -> input (scaled data - tensor?) -> output (scaled data -> tensor?)
+    # Make prediction method in pipeline
     def predict(
         self,
         input_data: pd.DataFrame,
@@ -307,12 +311,16 @@ class BaseLSTM(CustomModelBase):
         new_predictions_df = pd.DataFrame(
             unscaled_predicted_data, columns=self.FEATURES
         )
+        # new_predictions_df = pd.DataFrame(new_predictions_tensor, columns=self.FEATURES)
+        # unscaled_predicted_data_df = unscale_data(
+        #     data=new_predictions_df, columns=self.FEATURES, fitted_scaler=self.SCALER
+        # )
+
         return new_predictions_df
 
-    # Maybe eval?
-    def eval(self):
-        # self.training_stats.validation_loss.append(...)
-        pass
+
+def main():
+    pass
 
 
 if __name__ == "__main__":
@@ -346,7 +354,7 @@ if __name__ == "__main__":
         ]
     ]
 
-    hyperparameters = get_core_hyperparameters(input_size=FEATURES)
+    hyperparameters = get_core_hyperparameters(input_size=len(FEATURES))
     rnn = BaseLSTM(hyperparameters, FEATURES)
 
     # Load data

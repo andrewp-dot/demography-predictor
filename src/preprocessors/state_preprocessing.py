@@ -91,44 +91,6 @@ class StateDataLoader:
         scaled_data_df = pd.DataFrame(scaled_data, columns=FEATURES)
         return scaled_data_df[features], scaler
 
-    def new_scale_data(
-        self,
-        data: pd.DataFrame,
-        features: List[str],
-    ) -> pd.DataFrame:
-        # Set features constant
-
-        LOGARITMIC_FEATURES = ["population, total"]
-
-        FEATURES = [
-            feature
-            for feature in features
-            if feature not in LOGARITMIC_FEATURES and feature != "net migration"
-        ]
-
-        # Copy data to avoid inplace edits
-        to_scale_data = data.copy()
-
-        # Logaritmic transformation
-        for feature in LOGARITMIC_FEATURES:
-            to_scale_data[feature] = np.log1p(to_scale_data[feature])
-
-        # Preprocess net migration
-        if "net migration" in features:
-            x = to_scale_data["net migration"]
-            to_scale_data["net migration"] = np.sign(x) * np.log1p(np.abs(x))
-
-        # Scale data
-        scaled_data = scaler.fit_transform(to_scale_data[FEATURES])
-
-        # Concat data
-        logaritmic_features_df = to_scale_data[LOGARITMIC_FEATURES + ["net migration"]]
-        scaled_data_df = pd.DataFrame(scaled_data, columns=FEATURES)
-
-        all_scaled_data = pd.concat(
-            [scaled_data_df, logaritmic_features_df], axis=1
-        )  # row wise concatenation
-
         return all_scaled_data[features]
 
     def split_data(
@@ -396,42 +358,34 @@ if __name__ == "__main__":
         data=czech_data, features=FEATURE_SCALER_DICT.keys(), scaler=MinMaxScaler()
     )
 
-    new_scaled = czech_data_loader.new_scale_data(
-        data=czech_data,
-        features=FEATURE_SCALER_DICT.keys(),
+    print("-" * 100)
+    print("Train data tail:")
+    print(train.tail())
+
+    print("-" * 100)
+    print("Test data head:")
+    print(test.head())
+
+    # Preprocess data
+    print("-" * 100)
+    print("Preprocess data:")
+    input_sequences, target_sequences = czech_data_loader.preprocess_training_data(
+        train, 5, ["year", "population, total"]
     )
 
-    scaled_data.to_csv("scaled_test_original.csv")
-    new_scaled.to_csv("scaled_test_new.csv")
+    input_batches, target_batches = czech_data_loader.create_batches(
+        6, input_sequences=input_sequences, target_sequences=target_sequences
+    )
 
-    # print("-" * 100)
-    # print("Train data tail:")
-    # print(train.tail())
+    print("-" * 100)
+    print("Batches: ")
 
-    # print("-" * 100)
-    # print("Test data head:")
-    # print(test.head())
+    # Input batches
+    print("-" * 100)
+    print("Input:")
+    print(input_batches.shape)
 
-    # # Preprocess data
-    # print("-" * 100)
-    # print("Preprocess data:")
-    # input_sequences, target_sequences = czech_data_loader.preprocess_training_data(
-    #     train, 5, ["year", "population, total"]
-    # )
-
-    # input_batches, target_batches = czech_data_loader.create_batches(
-    #     6, input_sequences=input_sequences, target_sequences=target_sequences
-    # )
-
-    # print("-" * 100)
-    # print("Batches: ")
-
-    # # Input batches
-    # print("-" * 100)
-    # print("Input:")
-    # print(input_batches.shape)
-
-    # # Output batches
-    # print("-" * 100)
-    # print("Target:")
-    # print(target_batches.shape)
+    # Output batches
+    print("-" * 100)
+    print("Target:")
+    print(target_batches.shape)
