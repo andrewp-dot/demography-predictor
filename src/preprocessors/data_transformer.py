@@ -186,6 +186,7 @@ class DataTransformer:
             )
 
         to_scale_data = data.copy()
+        ORIGINAL_COLUMNS = data.columns
 
         # Maintain the original column order
         FEATURES = columns
@@ -198,7 +199,18 @@ class DataTransformer:
 
         scaled_data_df = pd.DataFrame(scaled_data, columns=transformed_data_df.columns)
 
-        return scaled_data_df[FEATURES]
+        # Reconstruct the original dataframe
+        non_transformed_features = [f for f in ORIGINAL_COLUMNS if not f in FEATURES]
+
+        scaled_data_df = pd.concat(
+            [
+                data[non_transformed_features].reset_index(drop=True),
+                scaled_data_df.reset_index(drop=True),
+            ],
+            axis=1,
+        )
+
+        return scaled_data_df[ORIGINAL_COLUMNS]
 
     def unscale_data(
         self,
@@ -213,6 +225,8 @@ class DataTransformer:
 
         # Check the fitted columns and specified columns compatibility?
         to_unscale_data = data.copy()
+
+        ORIGINAL_COLUMNS = data.columns
 
         # Maintain the original column order
         FEATURES = columns
@@ -235,10 +249,21 @@ class DataTransformer:
                     reverse_transformed_data_df[col].round().astype(int)
                 )
 
-        return reverse_transformed_data_df[FEATURES]
+        # Reconstruct the original dataframe
+        non_transformed_features = [f for f in ORIGINAL_COLUMNS if f not in FEATURES]
+
+        reverse_transformed_data_df = pd.concat(
+            [
+                data[non_transformed_features].reset_index(drop=True),
+                reverse_transformed_data_df.reset_index(drop=True),
+            ],
+            axis=1,
+        )
+
+        return reverse_transformed_data_df[ORIGINAL_COLUMNS]
 
     def create_sequences(
-        input_data: pd.DataFrame, columns: List[str], sequence_len: int
+        self, input_data: pd.DataFrame, columns: List[str], sequence_len: int
     ) -> torch.Tensor:
         # Creates sequences by rolling window from any input data
 
@@ -266,7 +291,7 @@ class DataTransformer:
         return input_sequences
 
     def create_input_batches(
-        input_sequences: torch.Tensor, batch_size: int
+        self, input_sequences: torch.Tensor, batch_size: int
     ) -> torch.Tensor:
         # Reshapes input sequences to create batches from any input sequences
 
@@ -389,7 +414,7 @@ class DataTransformer:
         hyperparameters: LSTMHyperparameters,
         features: List[str],
         split_rate: float = 0.8,
-    ):
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Transform the data to training set and validation set.
 
@@ -431,15 +456,23 @@ class DataTransformer:
         val_targets_tensor = torch.tensor(val_targets, dtype=torch.float32)
 
         # Batch inputs
-        train_inputs_tensor, train_targets_tensor = self.create_input_batches(
+        train_inputs_tensor = self.create_input_batches(
             batch_size=hyperparameters.batch_size,
             input_sequences=train_inputs_tensor,
+        )
+
+        val_inputs_tensor = self.create_input_batches(
+            batch_size=hyperparameters.batch_size,
+            input_sequences=val_inputs_tensor,
+        )
+
+        train_targets_tensor = self.create_target_batches(
+            batch_size=hyperparameters.batch_size,
             target_sequences=train_targets_tensor,
         )
 
-        val_inputs_tensor, val_targets_tensor = self.create_target_batches(
+        val_targets_tensor = self.create_target_batches(
             batch_size=hyperparameters.batch_size,
-            input_sequences=val_inputs_tensor,
             target_sequences=val_targets_tensor,
         )
 
@@ -460,14 +493,14 @@ def main():
 
     data = loader.load_data()
 
-    EXCLUDE_COLUMNS = ["country name"]
+    EXCLUDE_COLUMNS = ["country name", "year"]
     COLUMNS = [col for col in data.columns if col not in EXCLUDE_COLUMNS]
 
     # Split data
     train_df, test_df = loader.split_data(data=data)
 
     print("Original train data:")
-    print(train_df[COLUMNS].head())
+    print(train_df.head())
     print()
 
     # Scale training data
@@ -494,7 +527,7 @@ def main():
 
     # Scale test data using fitted scaler
     print("Original test data:")
-    print(test_df[COLUMNS].head())
+    print(test_df.head())
     print()
 
     scaled_test_data = transformer.scale_data(data=test_df, columns=COLUMNS)

@@ -9,12 +9,15 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 # Custom imports
+from src.utils.log import setup_logging
+from src.utils.constants import get_core_hyperparameters
+
 from src.base import LSTMHyperparameters, TrainingStats, CustomModelBase
 from src.evaluation import EvaluateModel
 
 from src.preprocessors.state_preprocessing import StateDataLoader
-from src.utils.log import setup_logging
-from src.utils.constants import get_core_hyperparameters
+from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
+from src.preprocessors.data_transformer import DataTransformer
 
 
 logger = logging.getLogger("local_model")
@@ -55,13 +58,6 @@ class BaseLSTM(CustomModelBase):
             in_features=hyperparameters.hidden_size,
             out_features=hyperparameters.input_size,
         )
-
-    def set_scaler(self, scaler: MinMaxScaler) -> None:
-        if self.SCALER is None:
-            self.SCALER = scaler
-            return
-
-        raise ValueError("Scaler is already set")
 
     def __initialize_hidden_states(
         self, batch_size: int
@@ -265,15 +261,17 @@ class BaseLSTM(CustomModelBase):
         input_data: pd.DataFrame,
         last_year: int,
         target_year: int,
-    ) -> pd.DataFrame:
+    ) -> torch.Tensor:
         """
-        Predicts values using past data. 2 cycles: 1st to gain context for all past data. 2nd is used to generate predictions.
+         Predicts values using past data. 2 cycles: 1st to gain context for all past data. 2nd is used to generate predictions.
 
-        :param input_data: pd.DataFrame: Unscaled input data.
-        :param last_year: int: the last known year used in order to compute the number of new data iterations
-        :param target_year: int: predict data to year
+        Args:
+            input_data (torch.Tensor): Preprocessed (scaled) input data.
+            last_year (int): The last year of all records in the data.
+            target_year (int): The request year to get predictions to.
 
-        :return torch.Tensor: prediction tensor
+        Returns:
+            out: torch.Tensor: Generated predictions.
         """
 
         to_predict_years_num = (
@@ -287,28 +285,12 @@ class BaseLSTM(CustomModelBase):
         # Put the model into the evaluation mode
         self.eval()
 
-        # Preprocess data
-
-        FEATURES = self.FEATURES
-
-        if set(FEATURES) != set(self.SCALER.feature_names_in_):
-            logger.warning(
-                f"Unused features due to be unseen at the fit time: {set(FEATURES) - set(self.SCALER.feature_names_in_)}"
-            )
-            FEATURES = self.SCALER.feature_names_in_
-
-        # Scale data
-        scaled_input_data = self.SCALER.transform(input_data[FEATURES])
-
-        scaled_input_data_df = pd.DataFrame(scaled_input_data)
-
-        input_sequence = torch.tensor(
-            data=scaled_input_data_df.values, dtype=torch.float32
-        )
-
-        logger.debug(f"Input sequence: {input_sequence.shape}")
+        logger.debug(f"Input sequence: {input_data.shape}")
 
         # Move input to the appropriate device
+
+        input_sequence = torch.tensor(data=input_data.values, dtype=torch.float32)
+
         input_sequence.to(self.device)
 
         num_timesteps, input_size = input_sequence.shape
@@ -361,17 +343,7 @@ class BaseLSTM(CustomModelBase):
 
         new_predictions_tensor = torch.cat(new_predictions, dim=0)
 
-        # Unscale predicted data
-        unscaled_predicted_data = self.SCALER.inverse_transform(new_predictions_tensor)
-        new_predictions_df = pd.DataFrame(
-            unscaled_predicted_data, columns=self.FEATURES
-        )
-        # new_predictions_df = pd.DataFrame(new_predictions_tensor, columns=self.FEATURES)
-        # unscaled_predicted_data_df = unscale_data(
-        #     data=new_predictions_df, columns=self.FEATURES, fitted_scaler=self.SCALER
-        # )
-
-        return new_predictions_df
+        return new_predictions_tensor
 
 
 def main():
@@ -381,7 +353,7 @@ def main():
     FEATURES = [
         col.lower()
         for col in [
-            "year",
+            # "year",
             "Fertility rate, total",
             "Population, total",
             "Net migration",
@@ -401,42 +373,37 @@ def main():
     ]
 
     # Setup model
-    hyperparameters = get_core_hyperparameters(input_size=len(FEATURES), epochs=200)
+    hyperparameters = get_core_hyperparameters(
+        input_size=len(FEATURES), epochs=50, batch_size=32
+    )
     rnn = BaseLSTM(hyperparameters, FEATURES)
 
-    # TODO: rework this for training the model on the whole dataset
-
     # Load data
-    czech_loader = StateDataLoader("Czechia")
+    states_loader = StatesDataLoader()
+    states_data_dict = states_loader.load_all_states()
 
-    czech_data = czech_loader.load_data()
+    # Get training data
+    train_data_dict, test_data_dict = states_loader.split_data(
+        states_dict=states_data_dict, sequence_len=hyperparameters.sequence_length
+    )
+    train_states_df = states_loader.merge_states(train_data_dict)
+    whole_dataset_df = states_loader.merge_states(states_data_dict)
 
-    # Exclude country name
-    czech_data = czech_data.drop(columns=["country name"])
+    # Transform data
+    transformer = DataTransformer()
 
-    print(czech_data[FEATURES])
-
-    # Scale data
-    scaled_cz_data, cz_scaler = czech_loader.scale_data(
-        czech_data, features=FEATURES, scaler=MinMaxScaler()
+    # This is useless maybe -> just for fitting the scaler on training data after transformation in datatransforme
+    scaled_training_df, _ = transformer.scale_and_fit(
+        training_data=train_states_df, columns=FEATURES, scaler=MinMaxScaler()
     )
 
-    train, test = czech_loader.split_data(czech_data)
+    scaled_data = transformer.scale_data(data=whole_dataset_df, columns=FEATURES)
 
     batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
-        czech_loader.create_train_test_data_batches(
-            data=scaled_cz_data, hyperparameters=hyperparameters, features=FEATURES
+        transformer.create_train_test_data_batches(
+            data=scaled_data, hyperparameters=hyperparameters, features=FEATURES
         )
     )
-
-    # TODO: create validation inputs and validation outputs
-    # batch_inputs, batch_targets, cz_scaler = (
-    #     czech_loader.preprocess_training_data_batches(
-    #         train_data_df=train,
-    #         hyperparameters=hyperparameters.sequence_length,
-    #         features=FEATURES,
-    #     )
-    # )
 
     print("-" * 100)
     logger.info(f"Batch inputs shape: {batch_inputs.shape}")
@@ -459,26 +426,22 @@ def main():
     fig.savefig("training_stats.png")
 
     # # Evaluate model
-    # model_evaluation = EvaluateModel(rnn)
+    EVALUATION_STATES = ["Czechia"]
+    eval_states_dict = states_loader.load_states(states=EVALUATION_STATES)
 
-    # # Split the raw data
-    # val_X, val_y = czech_loader.split_data(czech_data)
+    X_test_states, y_test_states = states_loader.split_data(
+        states_dict=eval_states_dict, sequence_len=hyperparameters.sequence_length
+    )
 
-    # model_evaluation.eval(
-    #     test_X=val_X,
-    #     test_y=val_y,
-    # )
+    model_evaluation = EvaluateModel(transformer=transformer, model=rnn)
+    evaluation_df = model_evaluation.eval(
+        test_X=X_test_states["Czechia"], test_y=y_test_states["Czechia"]
+    )
 
-    # logger.info(
-    #     f"Model evaluation by per target metrics: \n{model_evaluation.per_target_metrics}"
-    # )
-    # logger.info(
-    #     f"Model evaluation by overall metrics: \n{model_evaluation.overall_metrics}"
-    # )
+    print(evaluation_df)
 
-    # fig = model_evaluation.plot_predictions()
-
-    # plt.show()
+    # model_evaluation.plot_predictions()
+    # plt.savefig("test_predicions.png")
 
 
 if __name__ == "__main__":

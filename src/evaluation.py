@@ -19,6 +19,8 @@ from sklearn.metrics import (
 from src.utils.log import setup_logging
 from src.base import CustomModelBase
 
+from src.preprocessors.data_transformer import DataTransformer
+
 
 logger = logging.getLogger("evaluation")
 
@@ -325,10 +327,33 @@ class BaseEvaluation:
 
 class EvaluateModel(BaseEvaluation):
 
-    def __init__(self, model: nn.Module):
+    def __init__(self, transformer: DataTransformer, model: nn.Module):
         super().__init__()
+        self.transformer: DataTransformer = transformer
         self.model: CustomModelBase = model
-        self.all_states_evaluation: pd.DataFrame = None
+
+    def __pipeline_predictions(
+        self, input_data: pd.DataFrame, last_year: int, target_year: int
+    ) -> pd.DataFrame:
+
+        # Scale data
+        scaled_input_data = self.transformer.scale_data(
+            data=input_data, columns=self.model.FEATURES
+        )
+
+        # Predict
+        predictions = self.model.predict(
+            input_data=scaled_input_data, last_year=last_year, target_year=target_year
+        )
+
+        predicions_df = pd.DataFrame(predictions, columns=scaled_input_data.columns)
+
+        # Unscale data
+        unscaled_input_data = self.transformer.unscale_data(
+            data=predicions_df, columns=self.model.FEATURES
+        )
+
+        return unscaled_input_data
 
     def __get_refference_and_predicted_data(
         self, test_X: pd.DataFrame, test_y: pd.DataFrame
@@ -337,9 +362,14 @@ class EvaluateModel(BaseEvaluation):
         FEATURES = self.model.FEATURES
         TARGETS = self.model.TARGETS
 
+        # Get year data
         last_year, target_year = self.get_last_and_target_year(
             test_X=test_X, test_y=test_y
         )
+
+        # Adjust features
+        test_X = test_X[FEATURES]
+        test_y = test_y[TARGETS]
 
         # Get predicted years
         self.predicted_years = list(
@@ -347,16 +377,11 @@ class EvaluateModel(BaseEvaluation):
         )  # values are predicted from next year after last year and for the target year (+ 1 to include target year)
         logger.debug(f"[Eval]: predicting values from {last_year} to {target_year}...")
 
-        # Adjust features
-        test_X = test_X[FEATURES]
-        test_y = test_y[TARGETS]
-
         # Get predictions
-        predictions_df = self.model.predict(
-            input_data=test_X,
-            last_year=last_year,
-            target_year=target_year,
+        predictions_df = self.__pipeline_predictions(
+            input_data=test_X, last_year=last_year, target_year=target_year
         )
+
         self.predicted = predictions_df[self.model.TARGETS]
 
         logger.critical(self.predicted)
@@ -439,7 +464,9 @@ class EvaluateModel(BaseEvaluation):
             test_y = y_test_states[state]
 
             # Run evaluation (Maybe create new evaluation?)
-            current_state_evaluation = EvaluateModel(self.model)
+            current_state_evaluation = EvaluateModel(
+                transformer=self.transformer, model=self.model
+            )
             state_overall_metrics = current_state_evaluation.eval(
                 test_X=test_X, test_y=test_y
             )
