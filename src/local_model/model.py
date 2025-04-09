@@ -56,9 +56,6 @@ class BaseLSTM(CustomModelBase):
             out_features=hyperparameters.input_size,
         )
 
-        # Get stats
-        self.training_stats = TrainingStats()
-
     def set_scaler(self, scaler: MinMaxScaler) -> None:
         if self.SCALER is None:
             self.SCALER = scaler
@@ -122,16 +119,26 @@ class BaseLSTM(CustomModelBase):
         self,
         batch_inputs: torch.Tensor,
         batch_targets: torch.Tensor,
+        batch_validation_inputs: torch.Tensor | None = None,
+        batch_validation_targets: torch.Tensor | None = None,
         display_nth_epoch: int = 10,
         loss_function: Union[nn.MSELoss, nn.L1Loss, nn.HuberLoss] = None,
-    ):
+    ) -> Dict[str, List[int | float]]:
         """
         Trains model using batched input sequences and batched target sequences.
 
+        Args:
+            batch_inputs (torch.Tensor): Batches of input sequences.
+            batch_targets (torch.Tensor): Batches of target sequences
+            display_nth_epoch (int, optional): Display every nth epochs. Always displays first and last epoch. Defaults to 10.
+            loss_function (Union[nn.MSELoss, nn.L1Loss, nn.HuberLoss], optional): _description_. Defaults to None.
+            training_stats (TrainingStats | None, optional): Training stats object to track the training and validation loss, If None, no records are tracked. Defaults to None.
 
-        :param batch_inputs: torch.Tensor: batches of input sequences
-        :param batch_targets: torch.Tensor: batches of target sequences
-        :param display_nth_epoch: int: First and every nth epoch is displayed
+        Raises:
+            ValueError: If the loss is None or Infinity.
+
+        Returns:
+            out: Dict[str, List[int | float]]: Training statistics. contains list of epochs, training and validation loss curves.
         """
 
         torch.autograd.set_detect_anomaly(True)
@@ -152,18 +159,27 @@ class BaseLSTM(CustomModelBase):
             self.parameters(), lr=self.hyperparameters.learning_rate
         )
 
+        # Define the training stats
+        training_stats: Dict[str, List[int | float]] = {
+            "epochs": [],
+            "training-loss": [],
+            "validation-loss": [],
+        }
+
         # Define the training loop
         num_epochs = self.hyperparameters.epochs
+        training_stats["epochs"] = list(range(num_epochs))
 
-        # Setup epochs for stats
-        self.training_stats.epochs = list(range(num_epochs))
+        # Set the flag for gettting the validation loss
+        GET_VALIDATION_CURVE: bool = (
+            not batch_validation_inputs is None and not batch_validation_targets is None
+        )
 
         # Training loop
         for epoch in range(num_epochs):
 
             # Init epoch loss
-            epoch_loss = 0
-
+            epoch_loss = 0.0
             for batch_input, batch_target in zip(batch_inputs, batch_targets):
 
                 # Put the targets to the device
@@ -174,16 +190,12 @@ class BaseLSTM(CustomModelBase):
                 # Forward pass
                 outputs = self(batch_input)
 
-                # logger.error("loss ")
-
                 # Compute loss
                 loss = criterion(outputs, batch_target)
 
                 if torch.isnan(loss) or torch.isinf(loss):
                     logger.error(f"Loss is NaN/Inf at epoch {epoch}")
                     raise ValueError("Loss became NaN or Inf, stopping training!")
-
-                # logger.error("loss ")
 
                 loss.to(
                     device=self.device
@@ -197,10 +209,53 @@ class BaseLSTM(CustomModelBase):
                 optimizer.step()  # Update weights and biases
 
             epoch_loss /= len(batch_inputs)
-            self.training_stats.training_loss.append(epoch_loss)
+            training_stats["training-loss"].append(epoch_loss)
 
-            if not epoch % display_nth_epoch:
-                logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+            # Get validation loss if available
+            if GET_VALIDATION_CURVE:
+                validation_epoch_loss = 0.0
+
+                with torch.no_grad():
+
+                    for batch_input, batch_target in zip(
+                        batch_validation_inputs, batch_validation_targets
+                    ):
+
+                        # Put the targets to the device
+                        batch_input, batch_target = batch_input.to(
+                            device=self.device
+                        ), batch_target.to(device=self.device)
+
+                        # Forward pass
+                        outputs = self(batch_input)
+
+                        # Compute loss
+                        loss = criterion(outputs, batch_target)
+
+                        if torch.isnan(loss) or torch.isinf(loss):
+                            logger.error(f"Loss is NaN/Inf at epoch {epoch}")
+                            raise ValueError(
+                                "Loss became NaN or Inf, stopping training!"
+                            )
+
+                        loss.to(
+                            device=self.device
+                        )  # Use this to prevent errors, see if this will work on azure
+
+                        validation_epoch_loss += loss.item()
+
+                # Save the stats
+                training_stats["validation-loss"].append(None)
+
+            # Display loss
+            if not epoch % display_nth_epoch or epoch == (
+                num_epochs - 1
+            ):  # Display first, nth epoch and last
+                logger.info(
+                    f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Validation loss: {validation_epoch_loss:.4f}"
+                )
+
+        return training_stats
 
     # TODO:
     # Rewrite this for prediction -> input (scaled data - tensor?) -> output (scaled data -> tensor?)
@@ -320,15 +375,6 @@ class BaseLSTM(CustomModelBase):
 
 
 def main():
-    pass
-
-
-if __name__ == "__main__":
-    # LSTM explanation - https://medium.com/analytics-vidhya/lstms-explained-a-complete-technically-accurate-conceptual-guide-with-keras-2a650327e8f2
-
-    # Notes:
-    # statefull vs stateless LSTM - can I pass data with different batch sizes?
-
     # Setup logging
     setup_logging()
 
@@ -354,8 +400,11 @@ if __name__ == "__main__":
         ]
     ]
 
+    # Setup model
     hyperparameters = get_core_hyperparameters(input_size=len(FEATURES))
     rnn = BaseLSTM(hyperparameters, FEATURES)
+
+    # TODO: rework this for training the model on the whole dataset
 
     # Load data
     czech_loader = StateDataLoader("Czechia")
@@ -368,27 +417,29 @@ if __name__ == "__main__":
     print(czech_data[FEATURES])
 
     # Scale data
-    scaled_cz_data, cz_scaler = czech_loader.scale_data(
-        czech_data, features=FEATURES, scaler=MinMaxScaler()
-    )
+    # scaled_cz_data, cz_scaler = czech_loader.scale_data(
+    #     czech_data, features=FEATURES, scaler=MinMaxScaler()
+    # )
 
-    print(scaled_cz_data.head())
-
-    train, test = czech_loader.split_data(scaled_cz_data)
+    train, test = czech_loader.split_data(czech_data)
 
     # Get input/output sequences from train data
-    input_sequences, target_sequences = czech_loader.preprocess_training_data(
-        train,
-        hyperparameters.sequence_length,
-        features=FEATURES,
+    batch_inputs, batch_targets, cz_scaler = (
+        czech_loader.preprocess_training_data_batches(
+            train_data_df=train,
+            hyperparameters=hyperparameters.sequence_length,
+            features=FEATURES,
+        )
     )
 
-    # Get input/output batches of sequences
-    batch_inputs, batch_targets = czech_loader.create_batches(
-        batch_size=hyperparameters.batch_size,
-        input_sequences=input_sequences,
-        target_sequences=target_sequences,
-    )
+    # TODO: create validation inputs and validation outputs
+    # batch_inputs, batch_targets, cz_scaler = (
+    #     czech_loader.preprocess_training_data_batches(
+    #         train_data_df=train,
+    #         hyperparameters=hyperparameters.sequence_length,
+    #         features=FEATURES,
+    #     )
+    # )
 
     print("-" * 100)
     logger.info(f"Batch inputs shape: {batch_inputs.shape}")
@@ -422,3 +473,12 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     plt.show()
+
+
+if __name__ == "__main__":
+    # LSTM explanation - https://medium.com/analytics-vidhya/lstms-explained-a-complete-technically-accurate-conceptual-guide-with-keras-2a650327e8f2
+
+    # Notes:
+    # statefull vs stateless LSTM - can I pass data with different batch sizes?
+
+    main()

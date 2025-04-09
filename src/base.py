@@ -22,6 +22,7 @@ logger = logging.getLogger("local_model")
 torch.manual_seed(42)
 
 
+# TODO: if you want to make the LSTMHyperparameters more portable, just support serializing it to dict or loading it from dict.
 class LSTMHyperparameters:
 
     def __init__(
@@ -118,6 +119,23 @@ class TrainingStats:
         fig: Figure = self.create_plot()
         fig.show()
 
+    @classmethod
+    def from_dict(cls, stats_dict: dict) -> "TrainingStats":
+        """
+        Creates a TrainingStats instance from a dictionary.
+
+        Args:
+            stats_dict (dict): Dictionary containing 'training_loss', 'validation_loss', and 'epochs'.
+
+        Returns:
+            out: TrainingStats: An instance populated with the given data.
+        """
+        instance = cls()
+        instance.training_loss = stats_dict.get("training_loss", [])
+        instance.validation_loss = stats_dict.get("validation_loss", [])
+        instance.epochs = stats_dict.get("epochs", [])
+        return instance
+
 
 class CustomModelBase(nn.Module):
     """
@@ -140,6 +158,7 @@ class CustomModelBase(nn.Module):
     ):
         super().__init__(*args, **kwargs)
 
+        # TODO: change this to separate parts for portability
         self.hyperparameters: LSTMHyperparameters = hyperparameters
 
         self.FEATURES: List[str] = features
