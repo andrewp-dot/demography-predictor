@@ -162,8 +162,8 @@ class BaseLSTM(CustomModelBase):
         # Define the training stats
         training_stats: Dict[str, List[int | float]] = {
             "epochs": [],
-            "training-loss": [],
-            "validation-loss": [],
+            "training_loss": [],
+            "validation_loss": [],
         }
 
         # Define the training loop
@@ -209,7 +209,7 @@ class BaseLSTM(CustomModelBase):
                 optimizer.step()  # Update weights and biases
 
             epoch_loss /= len(batch_inputs)
-            training_stats["training-loss"].append(epoch_loss)
+            training_stats["training_loss"].append(epoch_loss)
 
             # Get validation loss if available
             if GET_VALIDATION_CURVE:
@@ -245,7 +245,7 @@ class BaseLSTM(CustomModelBase):
                         validation_epoch_loss += loss.item()
 
                 # Save the stats
-                training_stats["validation-loss"].append(None)
+                training_stats["validation_loss"].append(validation_epoch_loss)
 
             # Display loss
             if not epoch % display_nth_epoch or epoch == (
@@ -401,7 +401,7 @@ def main():
     ]
 
     # Setup model
-    hyperparameters = get_core_hyperparameters(input_size=len(FEATURES))
+    hyperparameters = get_core_hyperparameters(input_size=len(FEATURES), epochs=200)
     rnn = BaseLSTM(hyperparameters, FEATURES)
 
     # TODO: rework this for training the model on the whole dataset
@@ -417,18 +417,15 @@ def main():
     print(czech_data[FEATURES])
 
     # Scale data
-    # scaled_cz_data, cz_scaler = czech_loader.scale_data(
-    #     czech_data, features=FEATURES, scaler=MinMaxScaler()
-    # )
+    scaled_cz_data, cz_scaler = czech_loader.scale_data(
+        czech_data, features=FEATURES, scaler=MinMaxScaler()
+    )
 
     train, test = czech_loader.split_data(czech_data)
 
-    # Get input/output sequences from train data
-    batch_inputs, batch_targets, cz_scaler = (
-        czech_loader.preprocess_training_data_batches(
-            train_data_df=train,
-            hyperparameters=hyperparameters.sequence_length,
-            features=FEATURES,
+    batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
+        czech_loader.create_train_test_data_batches(
+            data=scaled_cz_data, hyperparameters=hyperparameters, features=FEATURES
         )
     )
 
@@ -446,33 +443,42 @@ def main():
     logger.info(f"Batch targets shape: {batch_targets.shape}")
 
     # Train model
-    rnn.train_model(
-        batch_inputs=batch_inputs, batch_targets=batch_targets, display_nth_epoch=1
+    stats = rnn.train_model(
+        batch_inputs=batch_inputs,
+        batch_targets=batch_targets,
+        batch_validation_inputs=batch_validation_inputs,
+        batch_validation_targets=batch_validation_targets,
+        display_nth_epoch=1,
     )
-
-    # Evaluate model
-    model_evaluation = EvaluateModel(rnn)
-
-    # Split the raw data
-    val_X, val_y = czech_loader.split_data(czech_data)
-
-    model_evaluation.eval(
-        test_X=val_X,
-        test_y=val_y,
-    )
-
-    logger.info(
-        f"Model evaluation by per target metrics: \n{model_evaluation.per_target_metrics}"
-    )
-    logger.info(
-        f"Model evaluation by overall metrics: \n{model_evaluation.overall_metrics}"
-    )
-
-    fig = model_evaluation.plot_predictions()
 
     import matplotlib.pyplot as plt
 
-    plt.show()
+    training_stats = TrainingStats.from_dict(stats_dict=stats)
+    fig = training_stats.create_plot()
+
+    fig.savefig("training_stats.png")
+
+    # # Evaluate model
+    # model_evaluation = EvaluateModel(rnn)
+
+    # # Split the raw data
+    # val_X, val_y = czech_loader.split_data(czech_data)
+
+    # model_evaluation.eval(
+    #     test_X=val_X,
+    #     test_y=val_y,
+    # )
+
+    # logger.info(
+    #     f"Model evaluation by per target metrics: \n{model_evaluation.per_target_metrics}"
+    # )
+    # logger.info(
+    #     f"Model evaluation by overall metrics: \n{model_evaluation.overall_metrics}"
+    # )
+
+    # fig = model_evaluation.plot_predictions()
+
+    # plt.show()
 
 
 if __name__ == "__main__":

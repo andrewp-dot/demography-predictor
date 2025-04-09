@@ -91,8 +91,6 @@ class StateDataLoader:
         scaled_data_df = pd.DataFrame(scaled_data, columns=FEATURES)
         return scaled_data_df[features], scaler
 
-        return all_scaled_data[features]
-
     def split_data(
         self, data: pd.DataFrame, split_rate: float = 0.8
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -111,6 +109,55 @@ class StateDataLoader:
         test_data = data.iloc[int(split_rate * len(data)) :]
 
         return train_data, test_data
+
+    def create_train_test_sequences(
+        self,
+        data: pd.DataFrame,
+        sequence_len: int,
+        features: List[str],
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        From the states data creates the input sequences and the desired output of the sequnce.
+
+        Args:
+            data (pd.DataFrame): _description_
+            sequence_len (int): _description_
+            features (List[str]): _description_
+
+        Returns:
+            out: Tuple[torch.Tensor, torch.Tensor]: Input sequence, expected output of the sequence
+        """
+
+        # Copy data to avoid modifying the original data
+        current_data = data.copy()
+
+        # Select features
+        current_data = current_data[features]
+
+        # Get data using rolling window
+        input_sequences = []
+        sequence_output = []
+
+        # + 1 in order to get also the last sample
+        number_of_samples = current_data.shape[0] - sequence_len
+        for i in range(number_of_samples):
+
+            # Get the input sequence
+            input_sequences.append(
+                # Converting to a PyTorch tensor
+                torch.tensor(
+                    current_data.iloc[i : i + sequence_len].values, dtype=torch.float32
+                )
+            )
+
+            # Get the expected output of the sequence
+            sequence_output.append(
+                torch.tensor(
+                    current_data.iloc[i + sequence_len].values, dtype=torch.float32
+                )
+            )
+
+        return torch.stack(input_sequences), torch.stack(sequence_output)
 
     def create_batches(
         self,
@@ -341,6 +388,73 @@ class StateDataLoader:
 
         # Return training batches, target batches and fitted scaler
         return train_input_batches, train_target_batches, state_scaler
+
+    def create_train_test_data_batches(
+        self,
+        data: pd.DataFrame,
+        hyperparameters: LSTMHyperparameters,
+        features: List[str],
+        split_rate: float = 0.8,
+    ):
+        """
+        Transform the data to training set and validation set.
+
+        Args:
+            data (pd.DataFrame): Pre-scaled data for training and validation.
+            hyperparameters (LSTMHyperparameters): Hyperparameters of the model.
+            features (List[str]): Selected features from the data.
+
+        Returns:
+            out: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]: train_inputs, train_targets, val_inputs, val_targets
+        """
+        # Adjust the data
+        df = data.copy()
+        FEATURES = features
+
+        # Create sequences and batches from the full training data
+        input_sequences, sequences_outputs = self.create_train_test_sequences(
+            data=df, sequence_len=hyperparameters.sequence_length, features=FEATURES
+        )
+
+        # Convert to numpy
+        input_sequences = np.array(input_sequences)
+        sequences_outputs = np.array(sequences_outputs)
+
+        # Compute split index
+        total_samples = len(input_sequences)
+        split_idx = int(split_rate * total_samples)
+
+        # Split into training and validation
+        train_inputs = input_sequences[:split_idx]
+        train_targets = sequences_outputs[:split_idx]
+        val_inputs = input_sequences[split_idx:]
+        val_targets = sequences_outputs[split_idx:]
+
+        # Convert to torch tensors
+        train_inputs_tensor = torch.tensor(train_inputs, dtype=torch.float32)
+        train_targets_tensor = torch.tensor(train_targets, dtype=torch.float32)
+        val_inputs_tensor = torch.tensor(val_inputs, dtype=torch.float32)
+        val_targets_tensor = torch.tensor(val_targets, dtype=torch.float32)
+
+        # Batch inputs
+        train_inputs_tensor, train_targets_tensor = self.create_batches(
+            batch_size=hyperparameters.batch_size,
+            input_sequences=train_inputs_tensor,
+            target_sequences=train_targets_tensor,
+        )
+
+        val_inputs_tensor, val_targets_tensor = self.create_batches(
+            batch_size=hyperparameters.batch_size,
+            input_sequences=val_inputs_tensor,
+            target_sequences=val_targets_tensor,
+        )
+
+        return (
+            train_inputs_tensor,
+            train_targets_tensor,
+            val_inputs_tensor,
+            val_targets_tensor,
+        )
 
 
 if __name__ == "__main__":
