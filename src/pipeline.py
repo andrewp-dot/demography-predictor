@@ -3,7 +3,7 @@ import pandas as pd
 
 # Custom imports
 from src.utils.log import setup_logging
-from src.preprocessors.data_scaling import DataTransformer
+from preprocessors.data_transformer import DataTransformer
 
 from src.predictors.predictor_base import DemographyPredictor
 

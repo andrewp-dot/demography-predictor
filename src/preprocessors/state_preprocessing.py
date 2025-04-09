@@ -1,41 +1,20 @@
 # Standard libraries imports
 import pandas as pd
-import torch
 import numpy as np
-from typing import Union, Tuple, List, Dict
-from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
+from typing import Tuple
+from sklearn.preprocessing import MinMaxScaler
 import logging
 
 # Custom libraries imports
 from config import Config
 from src.utils.log import setup_logging
-from src.base import LSTMHyperparameters
 
 logger = logging.getLogger("data_preprocessing")
 
 config = Config()
 
-# TODO: setup list of features for different scalers
-FEATURE_SCALER_DICT: Dict[str, str] = {
-    "year": "minmax",
-    "fertility rate, total": "minmax",
-    "population, total": "robust",
-    "net migration": "robust",
-    "arable land": "minmax",
-    "birth rate, crude": "minmax",
-    "gdp growth": "minmax",
-    "death rate, crude": "minmax",
-    "agricultural land": "minmax",
-    "rural population": "minmax",
-    "rural population growth": "minmax",
-    "age dependency ratio": "minmax",
-    "urban population": "minmax",
-    "population growth": "minmax",
-    "adolescent fertility rate": "minmax",
-    "life expectancy at birth, total": "minmax",
-}
 
-
+# Simplification for data loading
 class StateDataLoader:
 
     def __init__(self, state: str):
@@ -45,7 +24,8 @@ class StateDataLoader:
         """
         Load the state data. Renames the columns all to lower.
 
-        :return: pd.DataFrame
+        Retruns:
+            out: pd.DataFrame: Loaded states data sorted by 'year' in ascending order
         """
         data = pd.read_csv(f"{config.states_data_dir}/{self.state}.csv")
 
@@ -56,40 +36,27 @@ class StateDataLoader:
             # Covid started about 17th November in 2019. The impact of covid 19 is expected on years 2020 and higher.
             data = data.loc[data["year"] < 2020]
 
-        return data
+        return data.sort_values(by="year", ascending=True)
 
-    def scale_data(
-        self,
-        data: pd.DataFrame,
-        features: List[str],
-        scaler: Union[RobustScaler, StandardScaler, MinMaxScaler],
-        # to_normalize_features: List[str] = None,  # TODO:
-    ) -> Tuple[pd.DataFrame, Union[RobustScaler, StandardScaler, MinMaxScaler]]:
+    def get_last_year(self, data: pd.DataFrame) -> int:
         """
-        Scales the data using the specified scaler.
+        Get the last record in the dataframme.
 
         Args:
-            data (pd.DataFrame): input data
-            features (List[str]): Scaler to use
-            scaler (Union[RobustScaler, StandardScaler, MinMaxScaler]): Scaler to use.
-            to_normalize_features (List[str], optional): Features used for normalization. If None, all features are scaled. Defaults to None.
+            data (pd.DataFrame): Dataframe which should contain the year.
 
         Returns:
-            out: Tuple[pd.DataFrame, Union[RobustScaler, StandardScaler, MinMaxScaler]]: Scaled dataframe and fitted scaler for data unscaling.
+            out: int: Last year of the record.
         """
 
-        # Set features constant
-        FEATURES = features
+        # Verify if the 'year' is in the columns
+        if "year" not in data.columns:
+            raise ValueError("The given dataframe does not contain the 'year' column!")
 
-        # Copy data to avoid inplace edits
-        to_scale_data = data.copy()
+        # Retrieve the last year from data
+        last_year = int(data["year"].sort_values(ascending=False).iloc[0])
 
-        # Scale data
-        scaled_data = scaler.fit_transform(to_scale_data[FEATURES])
-
-        # Create dataframe from scaled data
-        scaled_data_df = pd.DataFrame(scaled_data, columns=FEATURES)
-        return scaled_data_df[features], scaler
+        return last_year
 
     def split_data(
         self, data: pd.DataFrame, split_rate: float = 0.8
@@ -110,357 +77,33 @@ class StateDataLoader:
 
         return train_data, test_data
 
-    def create_train_test_sequences(
-        self,
-        data: pd.DataFrame,
-        sequence_len: int,
-        features: List[str],
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        From the states data creates the input sequences and the desired output of the sequnce.
-
-        Args:
-            data (pd.DataFrame): _description_
-            sequence_len (int): _description_
-            features (List[str]): _description_
-
-        Returns:
-            out: Tuple[torch.Tensor, torch.Tensor]: Input sequence, expected output of the sequence
-        """
-
-        # Copy data to avoid modifying the original data
-        current_data = data.copy()
-
-        # Select features
-        current_data = current_data[features]
-
-        # Get data using rolling window
-        input_sequences = []
-        sequence_output = []
-
-        # + 1 in order to get also the last sample
-        number_of_samples = current_data.shape[0] - sequence_len
-        for i in range(number_of_samples):
-
-            # Get the input sequence
-            input_sequences.append(
-                # Converting to a PyTorch tensor
-                torch.tensor(
-                    current_data.iloc[i : i + sequence_len].values, dtype=torch.float32
-                )
-            )
-
-            # Get the expected output of the sequence
-            sequence_output.append(
-                torch.tensor(
-                    current_data.iloc[i + sequence_len].values, dtype=torch.float32
-                )
-            )
-
-        return torch.stack(input_sequences), torch.stack(sequence_output)
-
-    def create_batches(
-        self,
-        batch_size: int,
-        input_sequences: torch.Tensor,
-        target_sequences: torch.Tensor = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Groups sequences to batches. (Format: (num_batches, batch_size, sequence_len, num_features) ).
-
-        :param batch_size: int: the number of samples processed in one forward/backward pass (how many samples the network sees before it updates itself)
-        :param input_sequences: torch.Tensor: sequences to create a input batches
-        :param target_sequences: torch.Tensor: sequences to create a target batches. Defaults to None.
-
-        :return: Tuple[torch.Tensor, torch.Tensor]: input_batches, target_batches. If target_sequences are not specified returns (input_batches, None)
-        """
-
-        # Reshape
-        input_batches = input_sequences.view(
-            -1, batch_size, input_sequences.shape[1], input_sequences.shape[2]
-        )  # (num_batches, batch_size, sequence_len, num_features)
-
-        if target_sequences is not None:
-            target_batches = target_sequences.view(
-                -1, batch_size, target_sequences.shape[1]
-            )  # (num_batches, batch_size, num_features)
-
-            return input_batches, target_batches
-
-        return input_batches, None
-
-    def get_last_year(self, data: pd.DataFrame) -> int:
-        """
-        Get the last record in the dataframme.
-
-        Args:
-            data (pd.DataFrame): Dataframe which should contain the year.
-
-        Returns:
-            out: int: Last year of the record.
-        """
-
-        # Verify if the 'year' is in the columns
-        if "year" not in data.columns:
-            raise ValueError("The given dataframe does not contain the 'year' column!")
-
-        # Retrieve the last year from data
-        last_year = int(data["year"].sort_values(ascending=True).iloc[-1])
-
-        return last_year
-
-    def preprocess_training_data(
-        self,
-        data: pd.DataFrame,
-        sequence_len: int,
-        features: List[str],
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Transforms the data for the specified format (3D tensor): `(batch_size,time_steps,input_features)`, where:
-        - time_steps or sequence_length: number of time steps
-        - input_features: number of input features
-
-        Args:
-            data (pd.DataFrame): Scaled input data.
-            sequence_len (int): Sequence length of the input/target sequences.
-            features (List[str]): List of features to use.
-
-        Returns:
-            out: Tuple[torch.Tensor, torch.Tensor]: input_sequences, target_sequences.
-        """
-
-        # Copy data to avoid modifying the original data
-        current_data = data.copy()
-
-        # Select features
-        current_data = current_data[features]
-
-        # Get data using rolling window
-        input_sequences = []
-        target_sequences = []
-        number_of_samples = current_data.shape[0] - sequence_len
-        for i in range(number_of_samples):
-
-            # Get the input sequence
-            input_sequences.append(
-                # Converting to a PyTorch tensor
-                torch.tensor(
-                    current_data.iloc[i : i + sequence_len].values, dtype=torch.float32
-                )
-            )
-
-            # Get tha target sequence output
-            target_sequences.append(
-                # Converting to a PyTorch tensor
-                torch.tensor(
-                    current_data.iloc[i + sequence_len].values, dtype=torch.float32
-                )
-            )
-
-        # Return
-        input_sequences, target_sequences = torch.stack(input_sequences), torch.stack(
-            target_sequences
-        )
-
-        logger.debug(
-            f"[Preprocessing train data]: input sequences shape: {input_sequences.shape}, target sequences shape: {target_sequences.shape}"
-        )
-
-        return input_sequences, target_sequences
-
-    def preprocess_data(
-        self,
-        data: pd.DataFrame,
-        sequence_len: int,
-        features: List[str],
-    ) -> torch.Tensor:
-        """
-        Transforms the data for the specified format (3D tensor): `(batch_size,time_steps,input_features)`, where:
-        - time_steps or sequence_length: number of time steps
-        - input_features: number of input features
-
-        **Note: creates only input sequences from the provided data.**
-
-        Args:
-            data (pd.DataFrame): Scaled input data.
-            sequence_len (int): Sequence length of the input sequences.
-            features (List[str]): List of features to use.
-
-        Returns:
-            out: torch.Tensor: Stacked input sequences.
-        """
-
-        # Copy data to avoid modifying the original data
-        current_data = data.copy()
-
-        # Select features
-        current_data = current_data[features]
-
-        # Get data using rolling window
-        input_sequences = []
-
-        # + 1 in order to get also the last sample
-        number_of_samples = current_data.shape[0] - sequence_len + 1
-        for i in range(number_of_samples):
-
-            # Get the input sequence
-            input_sequences.append(
-                # Converting to a PyTorch tensor
-                torch.tensor(
-                    current_data.iloc[i : i + sequence_len].values, dtype=torch.float32
-                )
-            )
-
-        return torch.stack(input_sequences)
-
-    def preprocess_data_batches(
-        self,
-        data: pd.DataFrame,
-        hyperparameters: LSTMHyperparameters,
-        features: List[str],
-        scaler: Union[MinMaxScaler, RobustScaler, StandardScaler],
-    ) -> torch.Tensor:
-
-        # Get features
-        FEATURES = features
-
-        # Scale data
-        scaled_data, _ = self.scale_data(data, features=FEATURES, scaler=scaler)
-
-        # Create input sequences
-        input_sequences = self.preprocess_data(
-            data=scaled_data,
-            sequence_len=hyperparameters.sequence_length,
-            features=FEATURES,
-        )
-
-        # Create batches
-        input_batches, _ = self.create_batches(
-            batch_size=hyperparameters.batch_size, input_sequences=input_sequences
-        )
-
-        return input_batches
-
-    def preprocess_training_data_batches(
-        self,
-        train_data_df: pd.DataFrame,
-        hyperparameters: LSTMHyperparameters,
-        features: List[str],
-        scaler: Union[MinMaxScaler, RobustScaler, StandardScaler],
-    ) -> Tuple[
-        torch.Tensor, torch.Tensor, Union[MinMaxScaler, RobustScaler, StandardScaler]
-    ]:
-        """
-        Converts training data to format for training. From the unscaled training data to batches.
-
-        Args:
-            train_data_df (pd.DataFrame): Unscaled training data.
-            state_loader (StateDataLoader): Loader for the state.
-            hyperparameters (LSTMHyperparameters): Hyperparameters used for training the model.
-            features (List[str]): Features used in model.
-
-        Returns:
-            out: Tuple[torch.Tensor, torch.Tensor, Union[MinMaxScaler, RobustScaler, StandardScaler]]: train input batches, train target batches,
-            fitted scaler used for training data scaling.
-        """
-
-        # Get features
-        FEATURES = features
-
-        # Scale data
-        scaled_train_data, state_scaler = self.scale_data(
-            train_data_df, features=FEATURES, scaler=scaler
-        )
-
-        # Create input and target sequences
-        train_input_sequences, train_target_sequences = self.preprocess_training_data(
-            data=scaled_train_data,
-            sequence_len=hyperparameters.sequence_length,
-            features=FEATURES,
-        )
-
-        # Create input and target batches for faster training
-        train_input_batches, train_target_batches = self.create_batches(
-            batch_size=hyperparameters.batch_size,
-            input_sequences=train_input_sequences,
-            target_sequences=train_target_sequences,
-        )
-
-        # Return training batches, target batches and fitted scaler
-        return train_input_batches, train_target_batches, state_scaler
-
-    def create_train_test_data_batches(
-        self,
-        data: pd.DataFrame,
-        hyperparameters: LSTMHyperparameters,
-        features: List[str],
-        split_rate: float = 0.8,
-    ):
-        """
-        Transform the data to training set and validation set.
-
-        Args:
-            data (pd.DataFrame): Pre-scaled data for training and validation.
-            hyperparameters (LSTMHyperparameters): Hyperparameters of the model.
-            features (List[str]): Selected features from the data.
-
-        Returns:
-            out: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]: train_inputs, train_targets, val_inputs, val_targets
-        """
-        # Adjust the data
-        df = data.copy()
-        FEATURES = features
-
-        # Create sequences and batches from the full training data
-        input_sequences, sequences_outputs = self.create_train_test_sequences(
-            data=df, sequence_len=hyperparameters.sequence_length, features=FEATURES
-        )
-
-        # Convert to numpy
-        input_sequences = np.array(input_sequences)
-        sequences_outputs = np.array(sequences_outputs)
-
-        # Compute split index
-        total_samples = len(input_sequences)
-        split_idx = int(split_rate * total_samples)
-
-        # Split into training and validation
-        train_inputs = input_sequences[:split_idx]
-        train_targets = sequences_outputs[:split_idx]
-        val_inputs = input_sequences[split_idx:]
-        val_targets = sequences_outputs[split_idx:]
-
-        # Convert to torch tensors
-        train_inputs_tensor = torch.tensor(train_inputs, dtype=torch.float32)
-        train_targets_tensor = torch.tensor(train_targets, dtype=torch.float32)
-        val_inputs_tensor = torch.tensor(val_inputs, dtype=torch.float32)
-        val_targets_tensor = torch.tensor(val_targets, dtype=torch.float32)
-
-        # Batch inputs
-        train_inputs_tensor, train_targets_tensor = self.create_batches(
-            batch_size=hyperparameters.batch_size,
-            input_sequences=train_inputs_tensor,
-            target_sequences=train_targets_tensor,
-        )
-
-        val_inputs_tensor, val_targets_tensor = self.create_batches(
-            batch_size=hyperparameters.batch_size,
-            input_sequences=val_inputs_tensor,
-            target_sequences=val_targets_tensor,
-        )
-
-        return (
-            train_inputs_tensor,
-            train_targets_tensor,
-            val_inputs_tensor,
-            val_targets_tensor,
-        )
-
 
 if __name__ == "__main__":
 
     # Set up logging
     setup_logging()
+
+    FEATURES = [
+        col.lower()
+        for col in [
+            "year",
+            "Fertility rate, total",
+            "Population, total",
+            "Net migration",
+            "Arable land",
+            "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            "Rural population",
+            "Rural population growth",
+            "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            "Adolescent fertility rate",
+            "Life expectancy at birth, total",
+        ]
+    ]
 
     # Load czech data
     czech_data_loader = StateDataLoader("Czechia")
@@ -468,8 +111,9 @@ if __name__ == "__main__":
 
     train, test = czech_data_loader.split_data(czech_data)
 
+    # TODO: fix this
     scaled_data, scaler = czech_data_loader.scale_data(
-        data=czech_data, features=FEATURE_SCALER_DICT.keys(), scaler=MinMaxScaler()
+        data=czech_data, features=FEATURES, scaler=MinMaxScaler()
     )
 
     print("-" * 100)
