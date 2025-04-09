@@ -241,6 +241,7 @@ class BaseLSTM(CustomModelBase):
                         validation_epoch_loss += loss.item()
 
                 # Save the stats
+                validation_epoch_loss /= len(batch_validation_inputs)
                 training_stats["validation_loss"].append(validation_epoch_loss)
 
             # Display loss
@@ -292,6 +293,7 @@ class BaseLSTM(CustomModelBase):
         input_sequence = torch.tensor(data=input_data.values, dtype=torch.float32)
 
         input_sequence.to(self.device)
+        self.to(device=self.device)
 
         num_timesteps, input_size = input_sequence.shape
         sequence_length = self.hyperparameters.sequence_length
@@ -392,6 +394,8 @@ def main():
     # Transform data
     transformer = DataTransformer()
 
+    # TODO: WRITE THIS BETTER NOT LIKE A MONKEY
+
     # This is useless maybe -> just for fitting the scaler on training data after transformation in datatransforme
     scaled_training_df, _ = transformer.scale_and_fit(
         training_data=train_states_df, columns=FEATURES, scaler=MinMaxScaler()
@@ -415,7 +419,7 @@ def main():
         batch_targets=batch_targets,
         batch_validation_inputs=batch_validation_inputs,
         batch_validation_targets=batch_validation_targets,
-        display_nth_epoch=1,
+        display_nth_epoch=10,
     )
 
     import matplotlib.pyplot as plt
@@ -439,6 +443,7 @@ def main():
     )
 
     print(evaluation_df)
+
 
     # model_evaluation.plot_predictions()
     # plt.savefig("test_predicions.png")

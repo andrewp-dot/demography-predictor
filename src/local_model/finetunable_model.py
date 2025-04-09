@@ -3,8 +3,10 @@ import pandas as pd
 import logging
 import torch
 from torch import nn
-from typing import Tuple, List, Union
+from typing import Tuple, Dict, List, Union
 from sklearn.preprocessing import MinMaxScaler
+
+import matplotlib.pyplot as plt
 
 # Custom imports
 from src.utils.log import setup_logging
@@ -15,9 +17,17 @@ from src.local_model.model import BaseLSTM
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
+from src.preprocessors.data_transformer import DataTransformer
+
+from src.utils.constants import get_core_hyperparameters
 
 
 logger = logging.getLogger(name="finetuneable_local_model")
+
+
+# FIRE TODO:
+# 1. Update train model method -> training stats -> training and validation curve. -> TO TRY
+# 2. Update predict method -> scaled data in -> prediction tensor out -> TO TRY
 
 # NOTE:
 # What to do with hidden state initialization?
@@ -228,6 +238,8 @@ class FineTunableLSTM(CustomModelBase):
         self,
         batch_inputs: torch.Tensor,
         batch_targets: torch.Tensor,
+        batch_validation_inputs: torch.Tensor | None = None,
+        batch_validation_targets: torch.Tensor | None = None,
         display_nth_epoch: int = 10,
         loss_function: Union[nn.MSELoss, nn.L1Loss, nn.HuberLoss] = None,
     ):
@@ -247,12 +259,24 @@ class FineTunableLSTM(CustomModelBase):
             lr=self.hyperparameters.learning_rate,
         )
 
-        # Training loop
+        training_stats: Dict[str, List[int | float]] = {
+            "epochs": [],
+            "training_loss": [],
+            "validation_loss": [],
+        }
+
         num_epochs = self.hyperparameters.epochs
+        training_stats["epochs"] = list(range(num_epochs))
+
+        GET_VALIDATION_CURVE: bool = (
+            not batch_validation_inputs is None and not batch_validation_targets is None
+        )
+
+        # Training loop
         for epoch in range(num_epochs):
 
             # Initialize epoch loss
-            epoch_loss = 0
+            epoch_loss = 0.0
 
             # Train for every batch
             for batch_input, batch_target in zip(batch_inputs, batch_targets):
@@ -268,7 +292,7 @@ class FineTunableLSTM(CustomModelBase):
                 )
 
                 loss = criterion(outputs, batch_target)
-                epoch_loss += loss.item()
+                epoch_loss += loss.cpu().item()
 
                 # Update or reset the hidden state
                 self.__update_hidden_state(
@@ -288,15 +312,61 @@ class FineTunableLSTM(CustomModelBase):
             epoch_loss /= len(batch_inputs)
 
             # Add epoch and epoch loss to training stats
-            self.training_stasts.losses.append(epoch_loss)
-            self.training_stasts.epochs.append(epoch)
+            training_stats["training_loss"].append(epoch_loss)
+
+            # Add validation loss
+            if GET_VALIDATION_CURVE:
+                validation_epoch_loss = 0.0
+
+                with torch.no_grad():
+
+                    for batch_input, batch_target in zip(
+                        batch_validation_inputs, batch_validation_targets
+                    ):
+
+                        # Put the targets to the device
+                        batch_input, batch_target = batch_input.to(
+                            device=self.device
+                        ), batch_target.to(device=self.device)
+
+                        # Forward pass
+                        outputs, (base_h_0, base_c_0), (h_0, c_0) = self(
+                            batch_input,
+                            self.base_h_0,
+                            self.base_c_0,
+                            self.h_0,
+                            self.c_0,
+                        )
+
+                        # Compute loss
+                        loss = criterion(outputs, batch_target)
+
+                        if torch.isnan(loss) or torch.isinf(loss):
+                            logger.error(f"Loss is NaN/Inf at epoch {epoch}")
+                            raise ValueError(
+                                "Loss became NaN or Inf, stopping training!"
+                            )
+
+                        # loss.to(
+                        #     device=self.device
+                        # )  # Use this to prevent errors, see if this will work on azure
+
+                        validation_epoch_loss += loss.cpu().item()
+
+                # Save the stats
+                validation_epoch_loss /= len(batch_validation_inputs)
+                training_stats["validation_loss"].append(validation_epoch_loss)
 
             # Display average loss
-            if not epoch % display_nth_epoch:
-                logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+            if not epoch % display_nth_epoch or epoch == (num_epochs - 1):
+                logger.info(
+                    f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Validation loss: {validation_epoch_loss:.4f}"
+                )
 
-        # Reset hidden states after training
-        self.__reset_hidden_state()
+            # Reset hidden states after epoch
+            self.__reset_hidden_state()
+
+        return training_stats
 
     # TODO: predict stateless or statefull... initiliazie hidden state and reset after every forward pass or not
     def predict(
@@ -305,7 +375,19 @@ class FineTunableLSTM(CustomModelBase):
         last_year: int,
         target_year: int,
         keep_context: bool = True,
-    ):
+    ) -> torch.Tensor:
+        """
+        Based on input data predicts the values given input data.
+
+        Args:
+            input_data (pd.DataFrame): Preprocessed (scaled) input data.
+            last_year (int): The year of the last record in the input data.
+            target_year (int): The target year to which predictions are generated.
+            keep_context (bool, optional): Experimental. If set to True, use past data to get more context. Defaults to True.
+
+        Returns:
+            out: torch.Tensor: Prediction tensor.
+        """
 
         to_predict_years_num = (
             target_year - last_year
@@ -319,13 +401,11 @@ class FineTunableLSTM(CustomModelBase):
         self.eval()
 
         # Scale data
-        scaled_input_data = self.SCALER.transform(input_data[self.FEATURES])
+        # scaled_input_data = self.SCALER.transform(input_data[self.FEATURES])
 
-        scaled_input_data_df = pd.DataFrame(scaled_input_data)
+        # scaled_input_data_df = pd.DataFrame(scaled_input_data)
 
-        input_sequence = torch.tensor(
-            data=scaled_input_data_df.values, dtype=torch.float32
-        )
+        input_sequence = torch.tensor(data=input_data.values, dtype=torch.float32)
 
         logger.debug(f"Input sequence: {input_sequence.shape}")
 
@@ -412,20 +492,16 @@ class FineTunableLSTM(CustomModelBase):
 
         new_predictions_tensor = torch.cat(new_predictions, dim=0)
 
-        # Unscale predicted data
-        unscaled_predicted_data = self.SCALER.inverse_transform(new_predictions_tensor)
-        new_predictions_df = pd.DataFrame(
-            unscaled_predicted_data, columns=self.FEATURES
-        )
-        return new_predictions_df
+        return new_predictions_tensor
 
 
 def train_base_model(
+    model_name: str,
     base_model: BaseLSTM,
     evaluation_state_name: str,
     save: bool = True,
     is_experimental: bool = True,
-) -> BaseLSTM:
+) -> Tuple[BaseLSTM, DataTransformer]:
     """
     Trains base model using all available data. This functions is used just to create base model
 
@@ -439,64 +515,76 @@ def train_base_model(
         ValueError: If there is an existing model and it hase incompatibile input features, raises ValueError.
 
     Returns:
-        out: BaseLSTM: Trained BaseLSTM model.
+        out: Tuple[BaseLSTM, DataTransformer]: Trained BaseLSTM model with used DataTransformer.
     """
-
-    MODEL_NAME = f"base_model_{base_model.hyperparameters.hidden_size}.pkl"
 
     # Set features const
     FEATURES = base_model.FEATURES
 
-    try:
-        model: BaseLSTM = get_model(MODEL_NAME)
-        logger.info(f"Base model already exist. Model name: {MODEL_NAME}")
+    # try:
+    #     # TODO: save transformer for the model
+    #     model: BaseLSTM = get_model(model_name)
+    #     logger.info(f"Base model already exist. Model name: {model_name}")
 
-        # TODO: change this
-        if model.FEATURES != FEATURES:
-            raise ValueError(
-                "The Base model has incompatibile features with the one you want"
-            )
+    #     # TODO: change this
+    #     if model.FEATURES != FEATURES:
+    #         raise ValueError(
+    #             "The Base model has incompatibile features with the one you want"
+    #         )
 
-        return model
-    except ValueError as e:
-        logger.info(f"{str(e)}. Training new model.")
+    #     return model
+    # except ValueError as e:
+    #     logger.info(f"{str(e)}. Training new model.")
+
+    # Setup model
+    hyperparameters = get_core_hyperparameters(
+        input_size=len(FEATURES), epochs=50, batch_size=32
+    )
+    rnn = BaseLSTM(hyperparameters, FEATURES)
 
     # Load data
-    all_states_loader = StatesDataLoader()
-    all_states_dict = all_states_loader.load_all_states()
+    states_loader = StatesDataLoader()
+    states_data_dict = states_loader.load_all_states()
 
-    # Get training and test data
-    train_data_dict, test_data_dict = all_states_loader.split_data(
-        states_dict=all_states_dict,
-        sequence_len=base_model.hyperparameters.sequence_length,
-        split_rate=0.8,
+    # Get training data
+    train_data_dict, test_data_dict = states_loader.split_data(
+        states_dict=states_data_dict, sequence_len=hyperparameters.sequence_length
+    )
+    train_states_df = states_loader.merge_states(train_data_dict)
+    whole_dataset_df = states_loader.merge_states(states_data_dict)
+
+    # Transform data
+    transformer = DataTransformer()
+
+    # This is useless maybe -> just for fitting the scaler on training data after transformation in datatransforme
+    scaled_training_df, _ = transformer.scale_and_fit(
+        training_data=train_states_df, columns=FEATURES, scaler=MinMaxScaler()
     )
 
-    # Preprocess training data
-    trainig_batches, target_batches, base_fitted_scaler = (
-        all_states_loader.preprocess_train_data_batches(
-            states_train_data_dict=train_data_dict,
-            hyperparameters=base_model.hyperparameters,
-            features=FEATURES,
+    scaled_data = transformer.scale_data(data=whole_dataset_df, columns=FEATURES)
+
+    batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
+        transformer.create_train_test_data_batches(
+            data=scaled_data, hyperparameters=hyperparameters, features=FEATURES
         )
     )
 
-    base_model.set_scaler(scaler=base_fitted_scaler)
+    print("-" * 100)
+    logger.info(f"Batch inputs shape: {batch_inputs.shape}")
+    logger.info(f"Batch targets shape: {batch_targets.shape}")
 
-    # Train model using whole dataset
-    logger.info("Training base model...")
-    base_model.train_model(
-        batch_inputs=trainig_batches,
-        batch_targets=target_batches,
-        display_nth_epoch=1,
+    # Train model
+    stats = rnn.train_model(
+        batch_inputs=batch_inputs,
+        batch_targets=batch_targets,
+        batch_validation_inputs=batch_validation_inputs,
+        batch_validation_targets=batch_validation_targets,
+        display_nth_epoch=10,
     )
-
-    # Get trainig stats
-    loss_plot_figure = base_model.training_stats.create_plot()
 
     # Evaluate base model
     logger.info("Evaluating base model...")
-    model_evaluation = EvaluateModel(base_model)
+    model_evaluation = EvaluateModel(transformer=transformer, model=base_model)
     model_evaluation.eval(
         test_X=train_data_dict[evaluation_state_name],
         test_y=test_data_dict[evaluation_state_name],
@@ -505,30 +593,22 @@ def train_base_model(
     # Get predictions plot
     base_predictions_plot = model_evaluation.plot_predictions()
 
-    # Print evaluation metrics
-    logger.info(
-        f"[BaseModel]: Overall evaluation metrics:\n{model_evaluation.overall_metrics}\n"
-    )
-    logger.info(
-        f"[BaseModel]: Per features evaluation metrics:\n{model_evaluation.per_target_metrics}\n"
-    )
-
     if save:
 
         if is_experimental:
             logger.info("Saving experimental model...")
             save_experiment_model(
                 model=base_model,
-                name=f"base_model_{base_model.hyperparameters.hidden_size}.pkl",
+                name=model_name,
             )
         else:
             logger.info("Saving model...")
             save_model(
                 model=base_model,
-                name=f"base_model_{base_model.hyperparameters.hidden_size}.pkl",
+                name=model_name,
             )
 
-    return base_model
+    return base_model, transformer
 
 
 if __name__ == "__main__":
@@ -539,7 +619,7 @@ if __name__ == "__main__":
         # "year",
         "Fertility rate, total",
         # "Population, total",
-        # "Net migration",
+        "Net migration",
         "Arable land",
         "Birth rate, crude",
         "GDP growth",
@@ -570,7 +650,9 @@ if __name__ == "__main__":
     base_model = BaseLSTM(hyperparameters=hyperparameters, features=FEATURES)
 
     # Create and train base model
-    base_model = train_base_model(
+    MODEL_NAME = "test_base_model_for_finetunable.pkl"
+    base_model, transformer = train_base_model(
+        model_name=MODEL_NAME,
         base_model=base_model,
         evaluation_state_name=EVLAUATION_STATE_NAME,
         is_experimental=False,
@@ -578,7 +660,7 @@ if __name__ == "__main__":
     )
 
     # Custom save base model
-    save_model(base_model, f"test_base_model.pkl")
+    save_model(base_model, MODEL_NAME)
 
     # Create finetunable model
     finetunable_hyperparameters = LSTMHyperparameters(
@@ -591,6 +673,7 @@ if __name__ == "__main__":
         num_layers=2,
     )
 
+    # Change this preprocessing
     finetunable_local_model = FineTunableLSTM(
         base_model=base_model, hyperparameters=finetunable_hyperparameters
     )
@@ -599,41 +682,47 @@ if __name__ == "__main__":
     state_loader = StateDataLoader(EVLAUATION_STATE_NAME)
     state_data_df = state_loader.load_data()
 
-    # Split state data
-    train_state_data_df, test_state_data_df = state_loader.split_data(
-        data=state_data_df, split_rate=0.8
-    )
+    # Scale data
+    scaled_data_df = transformer.scale_data(data=state_data_df, columns=FEATURES)
 
-    # Use the same scaler as the base model
-    trainig_batches, target_batches, _ = state_loader.preprocess_training_data_batches(
-        train_data_df=train_state_data_df,
-        hyperparameters=finetunable_hyperparameters,
-        features=FEATURES,
-        scaler=base_model.SCALER,
+    training_batches, training_targest, validation_baches, validation_targets = (
+        transformer.create_train_test_data_batches(
+            data=scaled_data_df,
+            hyperparameters=finetunable_hyperparameters,
+            features=finetunable_local_model.FEATURES,
+        )
     )
 
     logger.info("Finetuning model...")
-    finetunable_local_model.train_model(
-        batch_inputs=trainig_batches, batch_targets=target_batches, display_nth_epoch=1
+    stats = finetunable_local_model.train_model(
+        batch_inputs=training_batches,
+        batch_targets=training_targest,
+        batch_validation_inputs=validation_baches,
+        batch_validation_targets=validation_targets,
+        display_nth_epoch=1,
     )
+
+    stats = TrainingStats.from_dict(stats_dict=stats)
+    stats.create_plot()
+    plt.savefig("test_finetunable_model_predictions.png")
+
+    # TODO: Get training stats
+    test_X, test_y = state_loader.split_data(data=state_data_df)
 
     # Evaluate finetunable model
     logger.info("Evaluating finetunable model...")
-    finetunable_model_evaluation = EvaluateModel(finetunable_local_model)
-    finetunable_model_evaluation.eval(
-        test_X=train_state_data_df,
-        test_y=test_state_data_df,
+    finetunable_model_evaluation = EvaluateModel(
+        transformer=transformer, model=finetunable_local_model
+    )
+    evaluation = finetunable_model_evaluation.eval(
+        test_X=test_X,
+        test_y=test_y,
     )
 
-    logger.info(
-        f"[FinetunabelModel]: Overall metrics:\n{finetunable_model_evaluation.overall_metrics}\n"
-    )
-    logger.info(
-        f"[FinetunabelModel]: Per feature metrics:\n{finetunable_model_evaluation.per_target_metrics}\n"
-    )
+    print(evaluation)
 
     fig = finetunable_model_evaluation.plot_predictions()
-    fig.show()
+    plt.savefig("test_finetunable_model_predictions.png")
 
     # Save model
     save_model(
