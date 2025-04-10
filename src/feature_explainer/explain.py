@@ -200,13 +200,14 @@ def waterfall_plot(idx: int = 0):
 
     print(input_x[idx : idx + 1].shape)
 
+    output_idx = 0
+    base_value = model.shap_predict(input_x[idx : idx + 1])[0, output_idx].item()
+
     # Create the waterfall plot
     shap.waterfall_plot(
         shap.Explanation(
             values=shap_values_for_instance,  # SHAP values for the instance
-            base_values=model.shap_predict(
-                input_x[idx : idx + 1]
-            ),  # The base value for the model (e.g., the mean prediction)
+            base_values=base_value,
             data=input_features_for_instance,  # The input features
             feature_names=model.FEATURES,  # Feature names
         )
@@ -214,6 +215,7 @@ def waterfall_plot(idx: int = 0):
 
     # Save the waterfall plot
     plt.tight_layout()
+    plt.subplots_adjust(bottom=0.15, left=0.1, right=0.9, top=0.9)
     plt.savefig("shap_waterfall_plot.png", format="png", dpi=300, bbox_inches="tight")
 
 
