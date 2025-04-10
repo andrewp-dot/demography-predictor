@@ -33,6 +33,13 @@ settings = LocalModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
 
 
+# TODO:
+# More experiments
+# 1. Feature selection experiment?
+# 2. Compare group experiment using this?
+# 3. To exclude states? ... find out which population or what makes the problem.
+
+
 class DataUsedForTraining(BaseExperiment):
     """
     Trains models using dfferent data:
@@ -198,7 +205,10 @@ class DataUsedForTraining(BaseExperiment):
             by="per-features",
         )
         overall_metrics_df = compare_models_by_states(
-            models=COMPARATION_MODELS_DICT, states=[state], by="overall-metrics"
+            models=COMPARATION_MODELS_DICT,
+            transformers=TRANSFORMERS_MODELS_DICT,
+            states=[state],
+            by="overall-metrics",
         )
 
         # Print results to the readme
