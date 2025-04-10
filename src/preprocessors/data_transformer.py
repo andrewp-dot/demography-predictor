@@ -1,7 +1,7 @@
 # Standard library imports
 import pandas as pd
 import numpy as np
-from typing import List, Tuple, Dict, Callable
+from typing import List, Tuple, Dict, Callable, Union
 from sklearn.preprocessing import MinMaxScaler
 from src.base import LSTMHyperparameters
 
@@ -156,31 +156,62 @@ class DataTransformer:
     def scale_and_fit(
         self,
         training_data: pd.DataFrame,
+        validation_data: pd.DataFrame,
         columns: List[str],
         scaler: MinMaxScaler,
     ) -> Tuple[pd.DataFrame, MinMaxScaler]:
+        """
+        This method is scaling for the model training. Fit specified scaler on the training data.
+
+        Args:
+            training_data (pd.DataFrame): Training dataframe (X values).
+            validation_data (pd.DataFrame): Validation dataframe (y values).
+            columns (List[str]): The columns for scaling.
+            scaler (MinMaxScaler): _description_
+
+        Returns:
+            Tuple[pd.DataFrame, MinMaxScaler]: _description_
+        """
         # Transforms raw data, fits the given scaler
         # Should be used on training_data
+
+        ORIGINAL_COLUMNS = training_data.columns
+        ORIGINAL_DATA = pd.concat([training_data, validation_data], axis=0)
 
         # Transform data
         transformed_training_df = self.transform_data(
             data=training_data, columns=columns, inverse=False
         )
+        transformed_validation_df = self.transform_data(
+            data=validation_data, columns=columns
+        )
 
-        # Fit data
+        # Fit data on the training data
         scaler.fit(transformed_training_df)
 
         # Save fitted scaler
         self.SCALER = scaler
 
         # Scale data
-        scaled_data = scaler.transform(transformed_training_df)
+        merged_data = pd.concat(
+            [transformed_training_df, transformed_validation_df], axis=0
+        )  # Concat rows together
+        scaled_data = scaler.transform(merged_data)
 
-        scaled_data_df = pd.DataFrame(
-            scaled_data, columns=transformed_training_df.columns
+        scaled_data_df = pd.DataFrame(scaled_data, columns=merged_data.columns)
+
+        # Reconstruct the original dataframe
+        non_transformed_features = [f for f in ORIGINAL_COLUMNS if not f in columns]
+
+        scaled_data_df = pd.concat(
+            [
+                ORIGINAL_DATA[non_transformed_features].reset_index(drop=True),
+                scaled_data_df.reset_index(drop=True),
+            ],
+            axis=1,
         )
 
-        return scaled_data_df, scaler
+        return scaled_data_df[ORIGINAL_COLUMNS], scaler
 
     def scale_data(self, data: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
 

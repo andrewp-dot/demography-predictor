@@ -17,6 +17,7 @@ from src.local_model.ensemble_model import PureEnsembleModel
 from src.predictors.predictor_base import DemographyPredictor
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
+from src.preprocessors.data_transformer import DataTransformer
 
 logger = logging.getLogger("model_compare")
 
@@ -59,8 +60,10 @@ def rank_models(evaluation_dfs: List[pd.DataFrame]) -> pd.DataFrame:
 
 
 # Compare models predictors
+# TODO: edit this function for accepting pipelines maybe?
 def compare_models_by_states(
     models: Dict[str, Union[DemographyPredictor, CustomModelBase]],
+    transformers: Dict[str, DataTransformer],
     states: List[str] | None = None,
     by: Literal["overall-metrics", "per-features"] = "overall-metrics",
 ) -> pd.DataFrame:
@@ -132,7 +135,9 @@ def compare_models_by_states(
             sequence_len=model_sequence_len,
         )
 
-        model_evaluation = EvaluateModel(model=model)
+        model_evaluation = EvaluateModel(
+            transformer=transformers[model_name], model=model
+        )
 
         # Save the evaluation
         if "overall-metrics" == by:

@@ -17,12 +17,17 @@ from src.base import CustomModelBase
 from src.compare_models.compare import compare_models_by_states
 
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
+from local_model_benchmark.utils import (
+    ExperimentPipeline,
+    train_base_lstm,
+    train_finetunable_model,
+    train_finetunable_model_from_scratch,
+)
 from src.local_model.model import LSTMHyperparameters, BaseLSTM
 from src.evaluation import EvaluateModel
 
-from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-
+from src.preprocessors.data_transformer import DataTransformer
 
 settings = LocalModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
@@ -76,123 +81,62 @@ class DataUsedForTraining(BaseExperiment):
         state: str,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> BaseLSTM:
+    ) -> ExperimentPipeline:
 
-        single_state_loader = StateDataLoader(state=state)
-        model_single_state = BaseLSTM(
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS, features=self.FEATURES
-        )
+        # Load data
+        states_loader = StatesDataLoader()
+        state_data = states_loader.load_states(states=[state])
 
-        # Preprocess data
-        state_data = single_state_loader.load_data()
-
-        train_df, _ = single_state_loader.split_data(
-            data=state_data, split_rate=split_rate
-        )
-        train_batches, target_batches, scaler = (
-            single_state_loader.preprocess_training_data_batches(
-                train_data_df=train_df,
-                hyperparameters=model_single_state.hyperparameters,
-                features=model_single_state.FEATURES,
-                scaler=MinMaxScaler(),
-            )
-        )
-
-        # Set used scaler
-        model_single_state.set_scaler(scaler=scaler)
-
-        model_single_state.train_model(
-            batch_inputs=train_batches,
-            batch_targets=target_batches,
+        base_model_pipeline = train_base_lstm(
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            data=state_data,
+            features=self.FEATURES,
+            split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
         )
 
-        return model_single_state
+        return base_model_pipeline
 
     def __train_group_of_states(
         self,
         states: List[str],
-        states_loader: StatesDataLoader,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> CustomModelBase:
+    ) -> ExperimentPipeline:
 
-        model_group_states = BaseLSTM(
-            hyperparameters=self.MULTISTATE_BASE_LSTM_HYPERPARAMETERS,
-            features=self.FEATURES,
-        )
-
-        # Preprocess data
+        # Load data
+        states_loader = StatesDataLoader()
         states_data_dict = states_loader.load_states(states=states)
 
-        train_states_dict, _ = states_loader.split_data(
-            states_dict=states_data_dict,
-            sequence_len=model_group_states.hyperparameters.sequence_length,
+        base_model_pipeline = train_base_lstm(
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
             split_rate=split_rate,
-        )
-
-        train_batches, target_batches, scaler = (
-            states_loader.preprocess_train_data_batches(
-                states_train_data_dict=train_states_dict,
-                hyperparameters=model_group_states.hyperparameters,
-                features=model_group_states.FEATURES,
-            )
-        )
-
-        # Set fitted scaler
-        model_group_states.set_scaler(scaler=scaler)
-
-        model_group_states.train_model(
-            batch_inputs=train_batches,
-            batch_targets=target_batches,
             display_nth_epoch=display_nth_epoch,
         )
-        return model_group_states
+
+        return base_model_pipeline
 
     def __train_all_states(
         self,
-        states_loader: StatesDataLoader,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> CustomModelBase:
+    ) -> ExperimentPipeline:
 
-        model_all_states = BaseLSTM(
-            hyperparameters=self.MULTISTATE_BASE_LSTM_HYPERPARAMETERS,
-            features=self.FEATURES,
-        )
-
-        # Preprocess data
+        # Load data
+        states_loader = StatesDataLoader()
         states_data_dict = states_loader.load_all_states()
 
-        states_loader.split_data(
-            states_dict=states_data_dict,
-            sequence_len=model_all_states.hyperparameters.sequence_length,
+        base_model_pipeline = train_base_lstm(
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
             split_rate=split_rate,
-        )
-
-        train_states_dict, _ = states_loader.split_data(
-            states_dict=states_data_dict,
-            sequence_len=model_all_states.hyperparameters.sequence_length,
-            split_rate=split_rate,
-        )
-
-        train_batches, target_batches, scaler = (
-            states_loader.preprocess_train_data_batches(
-                states_train_data_dict=train_states_dict,
-                hyperparameters=model_all_states.hyperparameters,
-                features=model_all_states.FEATURES,
-            )
-        )
-
-        # Set fitted scaler
-        model_all_states.set_scaler(scaler=scaler)
-
-        model_all_states.train_model(
-            batch_inputs=train_batches,
-            batch_targets=target_batches,
             display_nth_epoch=display_nth_epoch,
         )
-        return model_all_states
+
+        return base_model_pipeline
 
     def run(self, state: str, state_group: List[str], split_rate: float = 0.8):
 
@@ -203,34 +147,55 @@ class DataUsedForTraining(BaseExperiment):
         self.create_readme()
 
         COMPARATION_MODELS_DICT: Dict[str, BaseLSTM] = {}
+        TRANSFORMERS_MODELS_DICT: Dict[str, DataTransformer] = {}
 
-        # Train model using one state
-        COMPARATION_MODELS_DICT["single_state_model"] = self.__train_by_single_state(
+        # Create model trained on a single state
+        single_state_model_pipeline = self.__train_by_single_state(
             state=state,
             split_rate=split_rate,
             display_nth_epoch=1,
         )
 
+        # Train model using one state
+        COMPARATION_MODELS_DICT["single_state_model"] = (
+            single_state_model_pipeline.model
+        )
+        TRANSFORMERS_MODELS_DICT["single_state_model"] = (
+            single_state_model_pipeline.transformer
+        )
+
         # Train model using group of states
         # Get one loader for multiple states to save memmory
-        states_loader = StatesDataLoader()
-        COMPARATION_MODELS_DICT["group_states_model"] = self.__train_group_of_states(
+        group_states_model_pipeline = self.__train_group_of_states(
             states=state_group,
-            states_loader=states_loader,
             split_rate=split_rate,
             display_nth_epoch=1,
         )
 
+        COMPARATION_MODELS_DICT["group_states_model"] = (
+            group_states_model_pipeline.model
+        )
+        TRANSFORMERS_MODELS_DICT["group_states_model"] = (
+            group_states_model_pipeline.transformer
+        )
+
         # Train model using  all states data
-        COMPARATION_MODELS_DICT["all_states_model"] = self.__train_all_states(
-            states_loader=states_loader,
+        all_states_model_pipeline = self.__train_all_states(
             split_rate=split_rate,
             display_nth_epoch=1,
+        )
+
+        COMPARATION_MODELS_DICT["all_states_model"] = all_states_model_pipeline.model
+        TRANSFORMERS_MODELS_DICT["all_states_model"] = (
+            all_states_model_pipeline.transformer
         )
 
         # Evaluate models - per-target-performance
         per_target_metrics_df = compare_models_by_states(
-            models=COMPARATION_MODELS_DICT, states=[state], by="per-features"
+            models=COMPARATION_MODELS_DICT,
+            transformers=TRANSFORMERS_MODELS_DICT,
+            states=[state],
+            by="per-features",
         )
         overall_metrics_df = compare_models_by_states(
             models=COMPARATION_MODELS_DICT, states=[state], by="overall-metrics"

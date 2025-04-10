@@ -391,23 +391,23 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
     states_loader = StatesDataLoader()
     states_data_dict = states_loader.load_all_states()
 
-    # Get training data
+    # Get training data and validation data
     train_data_dict, test_data_dict = states_loader.split_data(
         states_dict=states_data_dict, sequence_len=hyperparameters.sequence_length
     )
     train_states_df = states_loader.merge_states(train_data_dict)
-    whole_dataset_df = states_loader.merge_states(states_data_dict)
+    test_states_df = states_loader.merge_states(test_data_dict)
 
     # Transform data
     transformer = DataTransformer()
 
     # This is useless maybe -> just for fitting the scaler on training data after transformation in datatransforme
-    scaled_training_df, _ = transformer.scale_and_fit(
-        training_data=train_states_df, columns=FEATURES, scaler=MinMaxScaler()
+    scaled_data, _ = transformer.scale_and_fit(
+        training_data=train_states_df,
+        validation_data=test_states_df,
+        columns=FEATURES,
+        scaler=MinMaxScaler(),
     )
-
-    # Scale training dta
-    scaled_data = transformer.scale_data(data=whole_dataset_df, columns=FEATURES)
 
     # Create a dictionary from it
     scaled_states_dict = states_loader.parse_states(scaled_data)
