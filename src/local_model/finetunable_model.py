@@ -561,11 +561,15 @@ def train_base_model(
         training_data=train_states_df, columns=FEATURES, scaler=MinMaxScaler()
     )
 
+    # Scale training dta
     scaled_data = transformer.scale_data(data=whole_dataset_df, columns=FEATURES)
+
+    # Create a dictionary from it
+    scaled_states_dict = states_loader.parse_states(scaled_data)
 
     batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
         transformer.create_train_test_data_batches(
-            data=scaled_data, hyperparameters=hyperparameters, features=FEATURES
+            data=scaled_states_dict, hyperparameters=hyperparameters, features=FEATURES
         )
     )
 
@@ -668,9 +672,9 @@ if __name__ == "__main__":
         hidden_size=hyperparameters.hidden_size,  # Yet the base model hidden size and finetunable layer hidden size has to be the same
         sequence_length=hyperparameters.sequence_length,
         learning_rate=0.0001,
-        epochs=50,
+        epochs=10,
         batch_size=1,
-        num_layers=2,
+        num_layers=1,
     )
 
     # Change this preprocessing
@@ -704,7 +708,7 @@ if __name__ == "__main__":
 
     stats = TrainingStats.from_dict(stats_dict=stats)
     stats.create_plot()
-    plt.savefig("test_finetunable_model_predictions.png")
+    plt.savefig("test_finetunable_model_stats.png")
 
     # TODO: Get training stats
     test_X, test_y = state_loader.split_data(data=state_data_df)

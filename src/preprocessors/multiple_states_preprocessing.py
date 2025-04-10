@@ -1,5 +1,6 @@
 import pandas as pd
 import logging
+import torch
 
 # from pydantic import BaseModel
 from typing import Dict, List, Tuple
@@ -65,6 +66,22 @@ class StatesDataLoader:
         # Return loaded states
         return state_dfs
 
+    def parse_states(self, states_df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+        """
+        Create dictionary dataframe with multiple values of the 'country name' column. Inverse function to 'merge_states'.
+
+        Args:
+            states_df (pd.DataFrame): Input dataframe with the 'country name' column.
+
+        Returns:
+            out: Dict[str, pd.DataFrame]: Dictionary, where the key is the state name and the value is the state dataframe.
+        """
+        states_data_dict: Dict[str, pd.DataFrame] = {}
+        for country_name, group_df in states_df.groupby("country name"):
+            states_data_dict[country_name] = group_df
+
+        return states_data_dict
+
     def merge_states(self, state_dfs: Dict[str, pd.DataFrame]) -> pd.DataFrame:
         """
         Merges given state dataframes from the dict. Useful when creating the single pandas dataframe from multiple loaded states.
@@ -73,7 +90,7 @@ class StatesDataLoader:
             state_dfs (Dict[str, pd.DataFrame]): Dictionary where state name is the key.
 
         Returns:
-            pd.DataFrame: Single dataframe with specified states data.
+            out: d.DataFrame: Single dataframe with specified states data.
         """
         return pd.concat(state_dfs.values(), axis=0)
 
@@ -139,81 +156,6 @@ class StatesDataLoader:
             state_split_test_dict[state_name] = state_test_df
 
         return state_split_train_dict, state_split_test_dict
-
-    # TODO: rework this
-    # def scale_data(
-    #     self,
-    #     states_data: Dict[str, pd.DataFrame],
-    #     scaler: MinMaxScaler | RobustScaler | StandardScaler,
-    #     features: List[str],
-    # ) -> Tuple[Dict[str, pd.DataFrame], MinMaxScaler | RobustScaler | StandardScaler]:
-    #     """
-    #     Scales data for in the dafarame. Scales only numerical data.
-
-    #     Args:
-    #         states_data (Dict[str, pd.DataFrame]): States data to scale. The dictionary key should be the name of the state
-    #         scaler (MinMaxScaler | RobustScaler | StandardScaler): Scaler which is used for data scaling.
-    #         features (List[str]): List of features to be scaled
-
-    #     Returns:
-    #         out (Tuple[Dict[str, pd.DataFrame], MinMaxScaler | RobustScaler | StandardScaler]): Each state data scaled dict, fitted scaler.
-    #     """
-
-    #     # Set features const
-    #     FEATURES = features
-
-    #     # Merge data by rows
-    #     states_merged_df = pd.concat(list(states_data.values()), axis=0)
-
-    #     # Get only numerical columns
-    #     numerical_features_df = states_merged_df.select_dtypes(include=["number"])
-
-    #     # TEMPORARY FIX
-    #     try:
-    #         numerical_features_df = numerical_features_df[FEATURES]
-    #     except KeyError as e:
-    #         raise KeyError(f"Cannot scale non-numerical features! Exception: {e}")
-
-    #     logger.debug(f"Numerical: {numerical_features_df.columns}")
-
-    #     # Categorical columns
-    #     categorical_features_df = states_merged_df.select_dtypes(exclude=["number"])
-    #     logger.debug(f"Categorical: {categorical_features_df.columns}")
-
-    #     # Scale data
-    #     merged_scaled_data = scaler.fit_transform(numerical_features_df)
-
-    #     # Create pandas dataframe from ndarray
-    #     merged_scaled_data_df = pd.DataFrame(
-    #         merged_scaled_data,
-    #         columns=numerical_features_df.columns,
-    #         index=numerical_features_df.index,
-    #     )
-
-    #     logger.debug(
-    #         f"Merged scaled dataframe: {merged_scaled_data_df.columns} {merged_scaled_data_df.shape}"
-    #     )
-
-    #     # Get the datframe with numerical data scaled
-    #     merged_scaled_data_df = pd.concat(
-    #         [categorical_features_df, merged_scaled_data_df], axis=1
-    #     )
-
-    #     logger.debug(
-    #         f"Concatenated merged scaled dataframe: {merged_scaled_data_df.columns} {merged_scaled_data_df.shape}"
-    #     )
-
-    #     # Split to separate states
-    #     scaled_states: Dict[str, pd.DataFrame] = {}
-
-    #     for state_name in states_data.keys():
-
-    #         # Save scaled datframe by state
-    #         scaled_states[state_name] = merged_scaled_data_df.loc[
-    #             merged_scaled_data_df["country name"] == state_name
-    #         ]
-
-    #     return scaled_states, scaler
 
 
 if __name__ == "__main__":

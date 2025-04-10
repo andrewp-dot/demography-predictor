@@ -11,6 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 # Custom imports
 from src.utils.log import setup_logging
 from src.utils.constants import get_core_hyperparameters
+from src.utils.save_model import save_model
 
 from src.base import LSTMHyperparameters, TrainingStats, CustomModelBase
 from src.evaluation import EvaluateModel
@@ -348,7 +349,7 @@ class BaseLSTM(CustomModelBase):
         return new_predictions_tensor
 
 
-def main():
+def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50):
     # Setup logging
     setup_logging()
 
@@ -376,7 +377,7 @@ def main():
 
     # Setup model
     hyperparameters = get_core_hyperparameters(
-        input_size=len(FEATURES), epochs=50, batch_size=32
+        input_size=len(FEATURES), epochs=epochs, batch_size=32
     )
     rnn = BaseLSTM(hyperparameters, FEATURES)
 
@@ -394,18 +395,20 @@ def main():
     # Transform data
     transformer = DataTransformer()
 
-    # TODO: WRITE THIS BETTER NOT LIKE A MONKEY
-
     # This is useless maybe -> just for fitting the scaler on training data after transformation in datatransforme
     scaled_training_df, _ = transformer.scale_and_fit(
         training_data=train_states_df, columns=FEATURES, scaler=MinMaxScaler()
     )
 
+    # Scale training dta
     scaled_data = transformer.scale_data(data=whole_dataset_df, columns=FEATURES)
 
+    # Create a dictionary from it
+    scaled_states_dict = states_loader.parse_states(scaled_data)
+
     batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
-        transformer.create_train_test_data_batches(
-            data=scaled_data, hyperparameters=hyperparameters, features=FEATURES
+        transformer.create_train_test_multiple_states_batches(
+            data=scaled_states_dict, hyperparameters=hyperparameters, features=FEATURES
         )
     )
 
@@ -425,9 +428,10 @@ def main():
     import matplotlib.pyplot as plt
 
     training_stats = TrainingStats.from_dict(stats_dict=stats)
-    fig = training_stats.create_plot()
 
-    fig.savefig("training_stats.png")
+    if save_plots:
+        fig = training_stats.create_plot()
+        fig.savefig(f"BaseLSTM_training_stats_{hyperparameters.epochs}_epochs.png")
 
     # # Evaluate model
     EVALUATION_STATES = ["Czechia"]
@@ -444,9 +448,18 @@ def main():
 
     print(evaluation_df)
 
+    per_target_evaluation_df = model_evaluation.eval_per_target(
+        test_X=X_test_states["Czechia"], test_y=y_test_states["Czechia"]
+    )
 
-    # model_evaluation.plot_predictions()
-    # plt.savefig("test_predicions.png")
+    print(per_target_evaluation_df)
+
+    if save_plots:
+        model_evaluation.plot_predictions()
+        plt.savefig(f"BaseLSTM_predictions_{hyperparameters.epochs}_epochs.png")
+
+    if to_save_model:
+        save_model(name=f"BaseLSTM.pkl", model=rnn)
 
 
 if __name__ == "__main__":
@@ -455,4 +468,4 @@ if __name__ == "__main__":
     # Notes:
     # statefull vs stateless LSTM - can I pass data with different batch sizes?
 
-    main()
+    main(save_plots=False, to_save_model=False, epochs=50)

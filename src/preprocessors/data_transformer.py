@@ -58,6 +58,10 @@ class DataTransformer:
 
     def __init__(self):
         self.SCALER: MinMaxScaler | None = None
+        self.__unused_states: List[str] = []
+
+    def get_unused_states(self) -> List[str]:
+        return self.__unused_states
 
     def transform_categorical_columns(
         self,
@@ -474,6 +478,104 @@ class DataTransformer:
         val_targets_tensor = self.create_target_batches(
             batch_size=hyperparameters.batch_size,
             target_sequences=val_targets_tensor,
+        )
+
+        return (
+            train_inputs_tensor,
+            train_targets_tensor,
+            val_inputs_tensor,
+            val_targets_tensor,
+        )
+
+    # Create train test data from the states dict
+    def create_train_test_multiple_states_batches(
+        self,
+        data: Dict[str, pd.DataFrame],
+        hyperparameters: LSTMHyperparameters,
+        features: List[str],
+        split_rate: float = 0.8,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+
+        SEQUENCE_LEN: int = hyperparameters.sequence_length
+
+        # Training data
+        train_inputs_all = []
+        train_targets_all = []
+
+        # Validation data
+        test_inputs_all = []
+        test_targets_all = []
+
+        # Split each state
+        for state_name, state_data in data.items():
+
+            # Check if training data have enough records
+            if int(len(state_data) * split_rate) <= SEQUENCE_LEN:
+                self.__unused_states.append(state_name)
+                continue
+
+            input_sequences, sequences_outputs = self.create_train_test_sequences(
+                data=state_data,
+                sequence_len=SEQUENCE_LEN,
+                features=features,
+            )
+
+            # Parse them to test and validation
+            # Convert to numpy
+            input_sequences = np.array(input_sequences)
+            sequences_outputs = np.array(sequences_outputs)
+
+            # Compute split index
+            total_samples = len(input_sequences)
+            split_idx = int(split_rate * total_samples)
+
+            # Split into training and validation
+            train_inputs = input_sequences[:split_idx]
+            train_targets = sequences_outputs[:split_idx]
+            val_inputs = input_sequences[split_idx:]
+            val_targets = sequences_outputs[split_idx:]
+
+            # Convert to torch tensors
+            train_inputs_tensor = torch.tensor(train_inputs, dtype=torch.float32)
+            train_targets_tensor = torch.tensor(train_targets, dtype=torch.float32)
+            val_inputs_tensor = torch.tensor(val_inputs, dtype=torch.float32)
+            val_targets_tensor = torch.tensor(val_targets, dtype=torch.float32)
+
+            # Save all train inputs and targets
+            train_inputs_all.append(train_inputs_tensor)
+            train_targets_all.append(train_targets_tensor)
+
+            # Save all test inputs and targets
+            test_inputs_all.append(val_inputs_tensor)
+            test_targets_all.append(val_targets_tensor)
+
+        # Convert inputs to tensors
+        train_inputs_all = torch.cat(train_inputs_all)
+        train_targets_all = torch.cat(train_targets_all)
+
+        test_inputs_all = torch.cat(test_inputs_all)
+        test_targets_all = torch.cat(test_targets_all)
+
+        # Batch train and validation inputs
+        train_inputs_tensor = self.create_input_batches(
+            batch_size=hyperparameters.batch_size,
+            input_sequences=train_inputs_all,
+        )
+
+        val_inputs_tensor = self.create_input_batches(
+            batch_size=hyperparameters.batch_size,
+            input_sequences=test_inputs_all,
+        )
+
+        # Batch train and validation targets
+        train_targets_tensor = self.create_target_batches(
+            batch_size=hyperparameters.batch_size,
+            target_sequences=train_targets_all,
+        )
+
+        val_targets_tensor = self.create_target_batches(
+            batch_size=hyperparameters.batch_size,
+            target_sequences=test_targets_all,
         )
 
         return (
