@@ -255,6 +255,13 @@ class BaseLSTM(CustomModelBase):
 
         return training_stats
 
+    def shap_predict(self, input_tensor: pd.DataFrame) -> torch.Tensor:
+        # Single prediction for shap
+        with torch.no_grad():
+            pred = self(input_tensor)
+
+        return pred
+
     # TODO:
     # Rewrite this for prediction -> input (scaled data - tensor?) -> output (scaled data -> tensor?)
     # Make prediction method in pipeline
@@ -290,7 +297,6 @@ class BaseLSTM(CustomModelBase):
         logger.debug(f"Input sequence: {input_data.shape}")
 
         # Move input to the appropriate device
-
         input_sequence = torch.tensor(data=input_data.values, dtype=torch.float32)
 
         input_sequence.to(self.device)
@@ -460,6 +466,7 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
 
     if to_save_model:
         save_model(name=f"BaseLSTM.pkl", model=rnn)
+        save_model(name=f"BaseLSTM_transformer.pkl", model=transformer)
 
 
 if __name__ == "__main__":

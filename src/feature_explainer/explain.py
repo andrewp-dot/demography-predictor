@@ -6,39 +6,65 @@ import torch
 from src.utils.save_model import get_model
 
 from src.local_model.model import BaseLSTM
-from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
+from src.preprocessors.multiple_states_preprocessing import StateDataLoader
+from src.preprocessors.data_transformer import DataTransformer
 
 from src.utils.log import setup_logging
+
+# Filters about rng seed warning - yet the shap does not acceps 'rng' argument.
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning, module="shap")
+
 
 # Setup logging
 setup_logging()
 
 
-# Get model
-model: BaseLSTM = get_model(name="test_base_model.pkl")
+# Get model and transformer
+model: BaseLSTM = get_model(name="BaseLSTM.pkl")
+transformer: DataTransformer = get_model("BaseLSTM_transformer.pkl")
 # model.to(model.device)
 
 # Get input data
-loader = StatesDataLoader()
+INPUT_STATE_DATA: str = "Czechia"
+loader = StateDataLoader(state=INPUT_STATE_DATA)
 
-states_dict = loader.load_states(states=["Czechia"])
+states_data = loader.load_data()
 
-train_dict, test_dict = loader.split_data(
-    states_dict=states_dict,
-    sequence_len=model.hyperparameters.sequence_length,
+train_df, test_df = loader.split_data(
+    data=states_data,
     split_rate=0.8,
 )
 
+LAST_YEAR: int = loader.get_last_year(train_df)
+TARGET_YEAR: int = loader.get_last_year(test_df)
+
 print(f"Sequence length: {model.hyperparameters.sequence_length}")
 
-# Create sequences
-input_sequences, _ = loader.create_train_sequences(
-    states_data=train_dict,
-    sequence_len=model.hyperparameters.sequence_length,
-    features=model.FEATURES,
-)
+# Scale data
+scaled_state_df = transformer.scale_data(data=states_data, columns=model.FEATURES)
 
+
+# Create sequences
+def create_sequences() -> torch.Tensor:
+
+    input_sequences = transformer.create_sequences(
+        input_data=scaled_state_df,
+        columns=model.FEATURES,
+        sequence_len=model.hyperparameters.sequence_length,
+    )
+
+    # Save input sequences
+    # Extend instead of append to flatten
+    return input_sequences
+
+
+# Setup sequences
+input_sequences = create_sequences()
 input_sequences.requires_grad = True
+
+print(f"Nnmber of input sequences: {len(input_sequences)}")
 
 
 # Set training batches as input_x
@@ -49,7 +75,8 @@ model.lstm.train()
 model.to(device=model.device)
 input_x = input_sequences.to(device=model.device)
 
-print(f"INPUT X SHAPE = {input_x.shape}")
+print("\n----- Shapes".ljust(100, "-"))
+print(f"input_X shape: {input_x.shape}")
 
 # Compute shap values
 torch.backends.cudnn.enabled = False
@@ -58,7 +85,7 @@ explainer = shap.GradientExplainer(model, input_x)
 # Compute SHAP values
 shap_values = explainer.shap_values(input_x)
 torch.backends.cudnn.enabled = True
-print(f"SHAP_VALUES[0] FROM INPUT X SHAPE = {shap_values[0].shape}")
+print(f"shap_values[0] (from input_X) shape: {shap_values[0].shape}")
 
 
 # Aggregate SHAP values
@@ -90,11 +117,12 @@ plt.xlabel("Mean |SHAP Value| (Feature Importance)")
 plt.title("Overall Feature Importance")
 # plt.xticks(rotation=45)
 plt.tight_layout()
-plt.savefig("test_explanation_fig.png")
+plt.savefig("shap_explanation_fig.png")
 
 
-## FORCE PLOT
+#### FORCE PLOT #####
 # shap.initjs() # This is for interactive vizualizations
+
 
 # Choose one sample (e.g., first sample and first time step)
 sample_idx = 0
@@ -105,75 +133,93 @@ shap_vals_single = shap_values[0][sample_idx, time_step]
 input_single = input_x[sample_idx, time_step].detach().cpu().numpy()
 
 
-# Plot the force plot
-plot = shap.force_plot(
-    base_value=0,  # If your model has no baseline, 0 is fine
-    shap_values=shap_vals_single,
-    features=input_single,
-    feature_names=feature_names,
-    matplotlib=True,
-    show=False,
-)
+def force_plot(base_value: int = 0):
+    print("Force plot...")
+    # Plot the force plot
+    plot = shap.force_plot(
+        base_value=0,  # If your model has no baseline, 0 is fine
+        shap_values=shap_vals_single,
+        features=input_single,
+        feature_names=feature_names,
+        matplotlib=True,
+        show=False,
+    )
 
-# Save the force plot to a file (using matplotlib)
-plt.savefig("shap_force_plot.png", format="png", dpi=300, bbox_inches="tight")
-
-
-# SUMMARY PLOT
-# shap_vals = shap_values[0]  # shape: (batch, seq_len, features)
-# cls = 0
-# idx = 0
+    # Save the force plot to a file (using matplotlib)
+    plt.savefig("shap_force_plot.png", format="png", dpi=300, bbox_inches="tight")
 
 
-# shap_vals = shap_values[0]  # shape: (batch_size, sequence_len, input_features_num)
+#### SUMMARY PLOT #####
+def summary_plot(cls: int = 0, idx: int = 0):
 
-# shap_vals_avg = shap_vals.mean(axis=1)
+    print("Summary plot...")
 
-# # Convert input data to numpy format (for SHAP plotting)
+    input_np = input_x.detach().cpu().numpy()
+    input_x_single = input_np[
+        idx, :, :
+    ]  # Shape: (12, 13) - Take the first batch (12 time steps, 13 features)
+
+    # Flatten for plotting
+    input_x_single_flat = input_x_single.reshape(
+        -1, input_x_single.shape[-1]
+    )  # Shape: (12 * 13, 13)
+
+    # Similarly, flatten SHAP values for the same batch
+    shap_vals_single = shap_values[cls][
+        :, idx, :
+    ]  # Shape: (12, 13) - Take the first batch, all time steps
+    shap_vals_single_flat = shap_vals_single.reshape(
+        -1, shap_vals_single.shape[-1]
+    )  # Shape: (12 * 13, 13)
+
+    # Plot the summary plot
+    shap.summary_plot(
+        shap_vals_single_flat,  # Flattened SHAP values for the first batch
+        input_x_single_flat,  # Flattened input features for the first batch
+        feature_names=model.FEATURES,  # List of feature names
+        show=False,
+    )
+
+    # Step 3: Save the plot
+    # plt.tight_layout()
+    plt.savefig("shap_summary_plot.png", format="png", dpi=300, bbox_inches="tight")
 
 
-# # print(shap_values[cls][:, idx, :].shape)
-# # print(input_x[:, idx, :].shape)
-# shap.summary_plot(
-#     # shap_values[cls][:, idx, :],
-#     # input_x[idx, :, :],
-#     shap_vals_avg,
-#     input_np,
-#     feature_names=model.FEATURES,
-#     show=False,
-# )  # Feature names (list of feature names))
+### WATEFALL PLOT #####
+def waterfall_plot(idx: int = 0):
+    print("Waterfall plot...")
+    shap_values_for_instance = shap_vals_single
+
+    input_np = input_x.detach().cpu().numpy()
+    input_x_single = input_np[
+        idx, :, :
+    ]  # Shape: (12, 13) - Take the first batch (12 time steps, 13 features)
+
+    # We need the input features for the instance
+    input_features_for_instance = input_x_single[idx, :]
+
+    print(input_x[idx : idx + 1].shape)
+
+    # Create the waterfall plot
+    shap.waterfall_plot(
+        shap.Explanation(
+            values=shap_values_for_instance,  # SHAP values for the instance
+            base_values=model.shap_predict(
+                input_x[idx : idx + 1]
+            ),  # The base value for the model (e.g., the mean prediction)
+            data=input_features_for_instance,  # The input features
+            feature_names=model.FEATURES,  # Feature names
+        )
+    )
+
+    # Save the waterfall plot
+    plt.tight_layout()
+    plt.savefig("shap_waterfall_plot.png", format="png", dpi=300, bbox_inches="tight")
 
 
-# Assuming you want to work with the first batch
-input_np = input_x.detach().cpu().numpy()
-input_x_single = input_np[
-    0, :, :
-]  # Shape: (12, 13) - Take the first batch (12 time steps, 13 features)
-
-# Flatten for plotting
-input_x_single_flat = input_x_single.reshape(
-    -1, input_x_single.shape[-1]
-)  # Shape: (12 * 13, 13)
-
-# Similarly, flatten SHAP values for the same batch
-shap_vals_single = shap_values[0][
-    :, 0, :
-]  # Shape: (12, 13) - Take the first batch, all time steps
-shap_vals_single_flat = shap_vals_single.reshape(
-    -1, shap_vals_single.shape[-1]
-)  # Shape: (12 * 13, 13)
-
-# Plot the summary plot
-shap.summary_plot(
-    shap_vals_single_flat,  # Flattened SHAP values for the first batch
-    input_x_single_flat,  # Flattened input features for the first batch
-    feature_names=model.FEATURES,  # List of feature names
-    show=False,
-)
-
-# Save the p
-print("Here")
-
-# Step 3: Save the plot
-# plt.tight_layout()
-plt.savefig("shap_summary_plot.png", format="png", dpi=300, bbox_inches="tight")
+if __name__ == "__main__":
+    print("Creating plots...")
+    force_plot()
+    summary_plot()
+    waterfall_plot()
+    print("Done!")

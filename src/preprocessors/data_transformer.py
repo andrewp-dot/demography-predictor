@@ -292,7 +292,7 @@ class DataTransformer:
                 )
             )
 
-        return input_sequences
+        return torch.stack(input_sequences)
 
     def create_input_batches(
         self, input_sequences: torch.Tensor, batch_size: int
