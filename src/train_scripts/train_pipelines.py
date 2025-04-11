@@ -124,7 +124,11 @@ def main():
         global_model_targets=GLOBAL_MODEL_TARGETS,
     )
 
-    # Try to predict something, for example Czechia
+    # Save pipeline
+    pipeline.save_pipeline()
+
+    # Try to predict something, for example Czechia from loaded pipeline
+    pipeline = PredictorPipeline.get_pipeline(name="test_pipeline")
 
     states_loader = StatesDataLoader()
     czechia_data_dict = states_loader.load_states(states=["Czechia"])
@@ -134,9 +138,6 @@ def main():
     )
 
     print(test_predicion_df)
-
-    # Save pipeline
-    pipeline.save_pipeline()
 
 
 if __name__ == "__main__":

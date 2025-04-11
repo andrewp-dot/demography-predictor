@@ -19,7 +19,9 @@ from src.api.distribution_curve import AgeDistribution
 
 from src.utils.log import setup_logging
 from src.utils.save_model import get_model
-from src.predictors.predictor_base import DemographyPredictor
+
+# from src.predictors.predictor_base import DemographyPredictor
+from src.pipeline import PredictorPipeline
 
 from src.api.models import Info
 
@@ -29,7 +31,7 @@ settings = Config()
 logger = logging.getLogger("api")
 
 
-LOADED_MODELS: Dict[str, DemographyPredictor] = {}
+LOADED_MODELS: Dict[str, PredictorPipeline] = {}
 
 AGING_COLUMNS: List[str] = [
     "population ages 0-14",
@@ -42,7 +44,9 @@ def load_models() -> None:
     # Load model(s) for prediction
     for model_key in settings.prediction_models.keys():
         try:
-            LOADED_MODELS[model_key] = get_model(settings.prediction_models[model_key])
+            LOADED_MODELS[model_key] = PredictorPipeline.get_pipeline(
+                settings.prediction_models[model_key]
+            )
         except Exception as e:
             logger.error(f"Could not load the model: '{model_key}'. Reason: {str(e)}")
 
@@ -95,8 +99,12 @@ def predict_from_request(request: PredictionRequest) -> pd.DataFrame:
         )
 
     # 3. Prediction generation
+    # prediction_df: pd.DataFrame = model.predict(
+    #     input_data=input_df, last_year=LAST_YEAR, target_year=TARGET_YEAR
+    # )
+
     prediction_df: pd.DataFrame = model.predict(
-        input_data=input_df, last_year=LAST_YEAR, target_year=TARGET_YEAR
+        input_data=input_df, target_year=TARGET_YEAR
     )
 
     return prediction_df

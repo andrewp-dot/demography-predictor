@@ -3,7 +3,7 @@ import os
 import pandas as pd
 
 from pydantic import BaseModel
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Any
 
 # Custom imports
 from config import Config
@@ -151,15 +151,22 @@ class PredictorPipeline:
         if not os.path.isdir(pipeline_dir):
             os.makedirs(pipeline_dir)
 
+        def save_to_pipeline_dir(model: Any, name: str):
+            save_model(model=model, name=os.path.join(pipeline_dir, name))
+
         # Save local model and its transformer
-        save_model(model=self.local_model_pipeline.model, name="local_model.pkl")
-        save_model(
+        save_to_pipeline_dir(
+            model=self.local_model_pipeline.model, name="local_model.pkl"
+        )
+        save_to_pipeline_dir(
             model=self.local_model_pipeline.transformer, name="local_transformer.pkl"
         )
 
         # Save global model and its transformer
-        save_model(model=self.global_model_pipeline.model, name="global_model.pkl")
-        save_model(
+        save_to_pipeline_dir(
+            model=self.global_model_pipeline.model, name="global_model.pkl"
+        )
+        save_to_pipeline_dir(
             model=self.global_model_pipeline.transformer, name="global_transformer.pkl"
         )
 
@@ -176,17 +183,20 @@ class PredictorPipeline:
                 f"Could not load pipeline '{name}. The pipeline directory ({pipeline_dir}) does not exist!"
             )
 
+        def get_from_pipeline_dir(name: str) -> Any:
+            return get_model(name=os.path.join(pipeline_dir, name))
+
         # Save local model and its transformer
-        local_model = get_model(name="local_model.pkl")
-        local_transformer = get_model(name="local_transformer.pkl")
+        local_model = get_from_pipeline_dir(name="local_model.pkl")
+        local_transformer = get_from_pipeline_dir(name="local_transformer.pkl")
 
         lm_pipeline = LocalModelPipeline(
             model=local_model, transformer=local_transformer
         )
 
         # Save global model and its transformer
-        global_model = get_model(name="global_model.pkl")
-        global_transformer = get_model(name="global_transformer.pkl")
+        global_model = get_from_pipeline_dir(name="global_model.pkl")
+        global_transformer = get_from_pipeline_dir(name="global_transformer.pkl")
 
         gm_pipeline = GlobalModelPipeline(
             model=global_model, transformer=global_transformer
