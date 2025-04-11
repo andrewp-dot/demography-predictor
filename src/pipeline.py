@@ -1,11 +1,14 @@
 # Standard library imports
+import os
 import pandas as pd
 
 from pydantic import BaseModel
 from typing import Union, Optional, List
 
 # Custom imports
+from config import Config
 from src.utils.log import setup_logging
+from src.utils.save_model import save_model, get_model
 from src.preprocessors.data_transformer import DataTransformer
 
 from src.base import TrainingStats
@@ -19,13 +22,7 @@ from src.global_model.model import GlobalModel
 from src.predictors.predictor_base import DemographyPredictor
 
 
-# !!!!!!! SCALER FOR INPUT DATA AND SCALER FOR THE TARGETS !!!!!!
-# Ideas
-# Local model pipeline ?
-
-# Global model Pipeline?
-
-# Is the DemographyPredictor the pipeline? I think YES
+settings = Config()
 
 
 class LocalModelPipeline(BaseModel):
@@ -47,9 +44,12 @@ class PredictorPipeline:
 
     def __init__(
         self,
+        name: str,
         local_model_pipeline: LocalModelPipeline,
         global_model_pipeline: GlobalModelPipeline,
     ):
+        # Name for storing the pipeline
+        self.name: str = name
 
         # Is this correct?
         self.local_model_pipeline = local_model_pipeline
@@ -68,12 +68,18 @@ class PredictorPipeline:
         # Predict
         # Predict values to the future
         future_feature_values_scaled = self.local_model_pipeline.model.predict(
-            input_data=scaled_data_df, last_year=last_year, target_year=target_year
+            input_data=scaled_data_df[FEATURES],
+            last_year=last_year,
+            target_year=target_year,
+        )
+
+        future_feature_values_scaled_df = pd.DataFrame(
+            future_feature_values_scaled, columns=FEATURES
         )
 
         # Unscale data
         future_feature_values_df = self.local_model_pipeline.transformer.unscale_data(
-            data=future_feature_values_scaled, columns=FEATURES
+            data=future_feature_values_scaled_df, columns=FEATURES
         )
 
         return future_feature_values_df
@@ -136,13 +142,61 @@ class PredictorPipeline:
         return predicted_data_df
 
     def save_pipeline(self):
-        raise NotImplementedError("Cannot save this pipeline yet.")
+        # Create a new pipeline directory if does not exist
 
+        trained_models_dir = os.path.abspath(settings.trained_models_dir)
+        pipeline_dir = os.path.join(trained_models_dir, self.name)
 
-class DemographyPredictorPipeline:
+        # Create pipeline dir if there is any
+        if not os.path.isdir(pipeline_dir):
+            os.makedirs(pipeline_dir)
 
-    def __init__(self):
-        raise NotImplementedError("This pipeline is not implemented yet!")
+        # Save local model and its transformer
+        save_model(model=self.local_model_pipeline.model, name="local_model.pkl")
+        save_model(
+            model=self.local_model_pipeline.transformer, name="local_transformer.pkl"
+        )
+
+        # Save global model and its transformer
+        save_model(model=self.global_model_pipeline.model, name="global_model.pkl")
+        save_model(
+            model=self.global_model_pipeline.transformer, name="global_transformer.pkl"
+        )
+
+    @classmethod
+    def get_pipeline(cls, name: str):
+        # Gets the pipeline by name
+
+        trained_models_dir = os.path.abspath(settings.trained_models_dir)
+        pipeline_dir = os.path.join(trained_models_dir, name)
+
+        # Check if directory exist
+        if not os.path.isdir(pipeline_dir):
+            raise NotADirectoryError(
+                f"Could not load pipeline '{name}. The pipeline directory ({pipeline_dir}) does not exist!"
+            )
+
+        # Save local model and its transformer
+        local_model = get_model(name="local_model.pkl")
+        local_transformer = get_model(name="local_transformer.pkl")
+
+        lm_pipeline = LocalModelPipeline(
+            model=local_model, transformer=local_transformer
+        )
+
+        # Save global model and its transformer
+        global_model = get_model(name="global_model.pkl")
+        global_transformer = get_model(name="global_transformer.pkl")
+
+        gm_pipeline = GlobalModelPipeline(
+            model=global_model, transformer=global_transformer
+        )
+
+        return PredictorPipeline(
+            name=name,
+            local_model_pipeline=lm_pipeline,
+            global_model_pipeline=gm_pipeline,
+        )
 
 
 def main():

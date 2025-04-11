@@ -6,6 +6,7 @@ from sklearn.preprocessing import MinMaxScaler
 from src.base import LSTMHyperparameters
 
 import torch
+from sklearn.preprocessing import LabelEncoder
 
 # Custom imports
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -59,6 +60,7 @@ class DataTransformer:
     def __init__(self):
         self.SCALER: MinMaxScaler | None = None
         self.__unused_states: List[str] = []
+        self.LABEL_ENCODERS: Dict[str, LabelEncoder] | None = None
 
     def get_unused_states(self) -> List[str]:
         return self.__unused_states
@@ -69,8 +71,41 @@ class DataTransformer:
         inverse: bool = False,
     ):
 
-        # TODO: use label encoder or something
-        raise NotImplementedError("")
+        # Copy dataframe to avoid direct modification
+        to_encode_data = data.copy()
+
+        # Filter out supported categorical columns
+        categorical_columns = list(set(self.CATEGORICAL_COLUMNS) & set(data.columns))
+        to_encode_data = to_encode_data[categorical_columns]
+
+        # Create new label encoders if the label encoders is None and there are some columns
+        if self.LABEL_ENCODERS is None and categorical_columns:
+            new_label_encoders: Dict[str, LabelEncoder] = {}
+            for col in categorical_columns:
+                le = LabelEncoder()
+                to_encode_data[col] = le.fit_transform(to_encode_data[col])
+                new_label_encoders[col] = (
+                    le  # Save encoders if you want to inverse later
+                )
+
+            # Save the encoders dict
+            self.LABEL_ENCODERS = new_label_encoders
+            return to_encode_data
+
+        # If the label encoders are created
+        for col in categorical_columns:
+
+            # For inverse transformation
+            if inverse:
+                to_encode_data[col] = self.LABEL_ENCODERS[col].inverse_transform(
+                    to_encode_data[col]
+                )
+            else:
+                to_encode_data[col] = self.LABEL_ENCODERS[col].transform(
+                    to_encode_data[col]
+                )
+
+        return to_encode_data[categorical_columns]
 
     def transform_percentual_columns(
         self, data: pd.DataFrame, inverse: bool = False
@@ -90,8 +125,6 @@ class DataTransformer:
         self, net_migration_data: pd.DataFrame, inverse: bool = False
     ) -> pd.DataFrame:
         to_scale_data = net_migration_data.copy()
-
-        # TODO: maybe some sort of scaling?
 
         # Decode
         if inverse:
@@ -121,14 +154,16 @@ class DataTransformer:
         FEATURES = columns
 
         # Process categorical columns
-        # categorical_columns = set(CATEGORICAL_COLUMNS) & all_columns_set
+        categorical_df = self.transform_categorical_columns(
+            data=to_transform_data[columns], inverse=inverse
+        )
 
         # Process percentual columns - normalize from 0 - 100 to range 0 - 1
         percentual_df = self.transform_percentual_columns(
-            data=to_transform_data, inverse=inverse
+            data=to_transform_data[columns], inverse=inverse
         )
 
-        # Get available absolute columns - leave as is, just use min ma scaling
+        # Get available absolute columns - leave as is, just use min max scaling
         absolute_columns = list(set(self.ABSOLUTE_COLUMNS) & set(columns))
         absolute_columns_df = to_transform_data[absolute_columns]
 
@@ -145,7 +180,8 @@ class DataTransformer:
 
         # Merge transformed columns
         transformed_data_df = pd.concat(
-            [absolute_columns_df, percentual_df, *special_columns_dfs], axis=1
+            [categorical_df, absolute_columns_df, percentual_df, *special_columns_dfs],
+            axis=1,
         )
 
         # Maintain the column order

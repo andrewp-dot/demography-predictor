@@ -4,6 +4,7 @@ from typing import List, Dict
 from xgboost import XGBRegressor
 
 # from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
 from src.utils.log import setup_logging
@@ -19,7 +20,7 @@ def train_global_model(
     features: List[str],
     targets: List[str],
     tune_parameters: XGBoostTuneParams,
-    transfomer: DataTransformer | None,
+    transfomer: DataTransformer | None = None,
     split_size: float = 0.8,
 ) -> GlobalModelPipeline:
 
@@ -39,14 +40,17 @@ def train_global_model(
     if transfomer is None:
         transfomer = DataTransformer()
         scaled_training_data, scaled_validation_data, _ = transfomer.scale_and_fit(
-            training_data=X_train, validation_data=X_test, columns=features
+            training_data=X_train,
+            validation_data=X_test,
+            columns=features,
+            scaler=MinMaxScaler(),
         )
     else:
         scaled_training_data = transfomer.scale_data(data=X_train)
-        scaled_validation_data = transfomer.scale_data(data=X_test)
+        # scaled_validation_data = transfomer.scale_data(data=X_test)
 
     # Train XGB
-    global_model.train(X_train=scaled_training_data, y_train=scaled_validation_data)
+    global_model.train(X_train=scaled_training_data, y_train=y_train)
 
     # Create Pipeline
     pipeline = GlobalModelPipeline(model=global_model, transformer=transfomer)

@@ -6,7 +6,6 @@ from typing import Union, List, Dict, Tuple
 from pydantic import BaseModel
 import shap
 
-from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.multioutput import MultiOutputRegressor

@@ -70,6 +70,7 @@ def train_basic_pipeline(
 
     # Create pipeline
     model_pipeline = PredictorPipeline(
+        name="test_pipeline",
         local_model_pipeline=local_model_pipeline,
         global_model_pipeline=global_model_pipeline,
     )
@@ -80,14 +81,62 @@ def train_basic_pipeline(
 def main():
 
     # Get local model features
-    LOCAL_MODEL_FEATURES: List[str] = [col.lower() for col in [""]]
+    LOCAL_MODEL_FEATURES: List[str] = [
+        col.lower()
+        for col in [
+            # "year",
+            "Fertility rate, total",
+            # "Population, total",
+            "Net migration",
+            "Arable land",
+            "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            "Rural population",
+            "Rural population growth",
+            "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            "Adolescent fertility rate",
+            "Life expectancy at birth, total",
+        ]
+    ]
+
+    # Get global model settings
     GLOBAL_MODEL_ADDITIONAL_FEATURES: List[str] = [
         col.lower() for col in ["year", "country name"]
     ]
+    GLOBAL_MODEL_TARGETS: List[str] = [
+        "population ages 15-64",
+        "population ages 0-14",
+        "population ages 65 and above",
+    ]
 
-    hyperparameters = get_core_hyperparameters(input_size=len(LOCAL_MODEL_FEATURES))
+    hyperparameters = get_core_hyperparameters(
+        input_size=len(LOCAL_MODEL_FEATURES), batch_size=32
+    )
 
-    train_basic_pipeline(hyperparameters=hyperparameters)
+    pipeline = train_basic_pipeline(
+        hyperparameters=hyperparameters,
+        local_model_features=LOCAL_MODEL_FEATURES,
+        additional_global_model_features=GLOBAL_MODEL_ADDITIONAL_FEATURES,
+        global_model_targets=GLOBAL_MODEL_TARGETS,
+    )
+
+    # Try to predict something, for example Czechia
+
+    states_loader = StatesDataLoader()
+    czechia_data_dict = states_loader.load_states(states=["Czechia"])
+
+    test_predicion_df = pipeline.predict(
+        input_data=czechia_data_dict["Czechia"], target_year=2035
+    )
+
+    print(test_predicion_df)
+
+    # Save pipeline
+    pipeline.save_pipeline()
 
 
 if __name__ == "__main__":
@@ -96,5 +145,3 @@ if __name__ == "__main__":
 
     # Run main
     main()
-
-    raise NotImplementedError("Running this is not implemented yet!")
