@@ -46,7 +46,9 @@ class Config(BaseSettings):
         return {
             # "population_total",: "TODO"
             # model_name: f"pipeline_name"
-            "aging_model": "test_pipeline"
+            "aging_model": "test_pipeline",
+            "aging_model_rich": "group_pipeline",
+            "aging_model_cz": "cz_pipeline",
             # "aging_base_model": f"{self.trained_models_dir}/aging_base_model.pkl",
             # "aging_ensemble_arima_Czechia": f"{self.trained_models_dir}/aging_ensemble_arima_Czechia.pkl",
             # "aging_ensemble_lstm": f"{self.trained_models_dir}/aging_ensemble_lstm.pkl",

@@ -1,6 +1,6 @@
 # Standard library imports
 import pandas as pd
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 # Custom library imports
 from src.utils.log import setup_logging
@@ -29,7 +29,57 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 #     # Get all features to scale
 
 
+RICH_STATES: List[str] = [
+    "Australia",
+    "Austria",
+    "Bahamas, The",
+    "Bahrain",
+    "Belgium",
+    "Brunei Darussalam",
+    "Canada",
+    "Cyprus",
+    "Czechia",
+    "Denmark",
+    "Estonia",
+    "Finland",
+    "France",
+    "Germany",
+    "Hong Kong SAR, China",
+    "Iceland",
+    "Ireland",
+    "Israel",
+    "Italy",
+    "Japan",
+    "Korea, Rep.",
+    "Kuwait",
+    "Latvia",
+    "Lithuania",
+    "Luxembourg",
+    "Malta",
+    "Netherlands",
+    "New Zealand",
+    "Norway",
+    "Oman",
+    "Poland",
+    "Portugal",
+    "Qatar",
+    "Saudi Arabia",
+    "Singapore",
+    "Slovak Republic",
+    "Slovenia",
+    "Spain",
+    "Sweden",
+    "Switzerland",
+    "United Arab Emirates",
+    "United Kingdom",
+    "United States",
+]
+
+
 def train_basic_pipeline(
+    name: str,
+    global_model_data: pd.DataFrame,
+    local_model_data_dict: Dict[str, pd.DataFrame],
     hyperparameters: LSTMHyperparameters,
     local_model_features: List[str],
     global_model_targets: List[str],
@@ -38,15 +88,10 @@ def train_basic_pipeline(
     display_nth_epoch=10,
 ) -> PredictorPipeline:
 
-    # Load whole dataset
-    loader = StatesDataLoader()
-    all_states_data_dict = loader.load_all_states()
-    merged_all_states_data = loader.merge_states(state_dfs=all_states_data_dict)
-
     # Train local model pipeline
     local_model_pipeline = train_base_lstm(
         hyperparameters=hyperparameters,
-        data=all_states_data_dict,
+        data=local_model_data_dict,
         features=local_model_features,
         split_rate=split_rate,
         display_nth_epoch=display_nth_epoch,
@@ -62,7 +107,7 @@ def train_basic_pipeline(
     )
 
     global_model_pipeline = train_global_model(
-        data=merged_all_states_data,
+        data=global_model_data,
         features=[*local_model_features, *additional_global_model_features],
         targets=global_model_targets,
         tune_parameters=tune_parameters,
@@ -70,7 +115,7 @@ def train_basic_pipeline(
 
     # Create pipeline
     model_pipeline = PredictorPipeline(
-        name="test_pipeline",
+        name=name,
         local_model_pipeline=local_model_pipeline,
         global_model_pipeline=global_model_pipeline,
     )
@@ -114,10 +159,25 @@ def main():
     ]
 
     hyperparameters = get_core_hyperparameters(
-        input_size=len(LOCAL_MODEL_FEATURES), batch_size=32
+        input_size=len(LOCAL_MODEL_FEATURES),
+        batch_size=32,
+        epochs=50,
     )
 
+    # Load whole dataset
+    loader = StatesDataLoader()
+    all_states_data_dict = loader.load_all_states()
+
+    STATE: str = "Czechia"
+    single_state_data_dict = loader.load_states(states=[STATE])
+    group_state_data_dict = loader.load_states(states=RICH_STATES)
+    merged_all_states_data = loader.merge_states(state_dfs=all_states_data_dict)
+
+    PIPELINE_NAME: str = "group_pipeline"
     pipeline = train_basic_pipeline(
+        name=PIPELINE_NAME,
+        local_model_data_dict=group_state_data_dict,
+        global_model_data=merged_all_states_data,
         hyperparameters=hyperparameters,
         local_model_features=LOCAL_MODEL_FEATURES,
         additional_global_model_features=GLOBAL_MODEL_ADDITIONAL_FEATURES,
@@ -128,7 +188,7 @@ def main():
     pipeline.save_pipeline()
 
     # Try to predict something, for example Czechia from loaded pipeline
-    pipeline = PredictorPipeline.get_pipeline(name="test_pipeline")
+    pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
 
     states_loader = StatesDataLoader()
     czechia_data_dict = states_loader.load_states(states=["Czechia"])
