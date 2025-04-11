@@ -70,7 +70,7 @@ class MultipleModelStateEvaluation:
                 YEARS,
                 self.reference_data[feature],
                 label=f"Reference values",
-                color="b",
+                color="r",
             )
 
             # Fore every model evaluation
@@ -309,7 +309,7 @@ class ModelComparator:
                 YEARS,
                 reference_data[feature],
                 label=f"Reference values",
-                color="b",
+                color="r",
             )
 
             # Fore every model evaluation

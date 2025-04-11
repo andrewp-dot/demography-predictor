@@ -27,6 +27,7 @@ from xgboost import XGBRegressor
 from config import Config
 from src.utils.log import setup_logging
 
+from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 # TODO: implement XGBoost using data
@@ -77,79 +78,19 @@ class GlobalModel:
         model: Union[XGBRegressor, GridSearchCV],
         features: List[str],
         targets: List[str],
-        scaler: Union[MinMaxScaler, RobustScaler, StandardScaler] | None = None,
         params: XGBoostTuneParams | None = None,
     ):
 
         # Define model
         self.model: Union[XGBRegressor, MultiOutputRegressor] = model
         self.params: XGBoostTuneParams = params
-        self.SCALER: Union[MinMaxScaler, RobustScaler, StandardScaler] = scaler
 
         # Define features and targest
         self.FEATURES: List[str] = features
         self.TARGETS: List[str] = targets
 
-        # Initialize label encoders for categorical data
-        self.LABEL_ENCODERS: Dict[str, LabelEncoder] = {}
-
         # Initialize evaluation results
         self.evaluation_results: pd.DataFrame | None = None
-
-    def preprocess_data(
-        self,
-        data: pd.DataFrame,
-    ) -> pd.DataFrame:
-        """
-        Encode categorical values by LabelEncoding, scales numerical data by the fitted scaler.
-
-        Args:
-            data (pd.DataFrame): Data to preprocess.
-            fitted_scaler (MinMaxScaler): Scaler used in the previous (local) model
-
-        Returns:
-            out: pd.DataFrame: Preprocessed dataframe.
-        """
-
-        # Copy dataframe
-        df = data.copy()
-
-        # Scale the numerical columns
-        # numerical_data_df = df.select_dtypes(include=["number"])
-        scaled_numerical_data_df = df.select_dtypes(include=["number"])
-
-        # Scale numerical data
-
-        # Create and fit scaler if note defined
-        # if self.SCALER is None:
-        #     self.SCALER = MinMaxScaler()
-        #     self.SCALER.fit(numerical_data_df)
-
-        # scaled_numerical_data_array = self.SCALER.fit_transform(numerical_data_df)
-
-        # scaled_numerical_data_df = pd.DataFrame(
-        #     scaled_numerical_data_array,
-        #     columns=numerical_data_df.columns,
-        #     index=numerical_data_df.index,
-        # )
-
-        # Encode categorical data
-        categorical_data_df = df.select_dtypes(exclude=["number"])
-
-        for col in categorical_data_df.columns:
-            new_label_encoder = LabelEncoder()
-
-            # Encode the data
-            categorical_data_df[col] = new_label_encoder.fit_transform(
-                categorical_data_df[col]
-            )
-
-            # Save the encoder for the column
-            self.LABEL_ENCODERS[col] = new_label_encoder
-
-        scaled_df = pd.concat([categorical_data_df, scaled_numerical_data_df], axis=1)
-
-        return scaled_df
 
     def create_train_test_data(
         self,
@@ -160,7 +101,7 @@ class GlobalModel:
         From the given dataframe creates and scales the data using fitted scaler. Use train_test_split function from sklearn.
 
         Args:
-            data (pd.DataFrame): Data to preprocess and split.
+            data (pd.DataFrame): Preprocessed data for training split.
             split_size (float): The size of the train part.
             fitted_scaler (MinMaxScaler): Scaler used to scale the other features from the previous prediction model.
 
@@ -172,13 +113,9 @@ class GlobalModel:
         if "country name" in data.columns:
             data.loc[:, "country name"] = data["country name"].astype("category")
 
-        # Preprocess data
-        logger.info("Preprocessing data....")
-        preprocessed_training_data = self.preprocess_data(data=data)
-
         # Split data
-        X: pd.DataFrame = preprocessed_training_data[self.FEATURES]
-        y: pd.DataFrame = preprocessed_training_data[self.TARGETS]
+        X: pd.DataFrame = data[self.FEATURES]
+        y: pd.DataFrame = data[self.TARGETS]
 
         X_train, X_test, y_train, y_test = train_test_split(
             X,
@@ -223,10 +160,6 @@ class GlobalModel:
 
         if "counrty name" in test_df.columns:
             test_df["country name"] = test_df["country name"].astype(dtype="category")
-
-        # Preprocess the data
-        train_df = self.preprocess_data(train_df)
-        test_df = self.preprocess_data(test_df)
 
         # Create X
         X_train, y_train = train_df[self.FEATURES], train_df[self.TARGETS]
@@ -278,68 +211,6 @@ class GlobalModel:
         self.model.fit(X_train, y_train)
         logger.info("Model succesfuly fitted!")
 
-    def transform_columns(
-        self, data: pd.DataFrame, columns: List[str], inverse: bool = False
-    ) -> pd.DataFrame:
-        """
-        Transform specified columns from the given da
-
-        Args:
-            data (pd.DataFrame): The given slice of data with columns which you want to transform.
-            columns (List[str]): Columns from the data you want to transform
-            inverse (bool, optional): If True, the inverse transformation is done, else classic transformation is done. Defaults to False.
-
-        Raises:
-            ValueError: Error of the data transformation. Is the scaler fitted properly?
-
-        Returns:
-            out: pd.DataFrame: Dataframe with columns transformed.
-        """
-
-        # Copy the dataframe
-        df = data.copy()
-
-        # Get the column indexes
-        column_indexes: Dict[str, int] = {
-            col: list(self.SCALER.feature_names_in_).index(col) for col in columns
-        }
-
-        # Get the rows and cols
-        num_features = len(list(self.SCALER.feature_names_in_))
-        rows = len(df)
-
-        logger.debug(f"({rows} , {num_features})")
-
-        # Create a dummy array
-        dummy = np.zeros((rows, num_features))
-
-        # Set the dummy columns to feature values
-        for col, col_index in column_indexes.items():
-            dummy[:, col_index] = df[col].values
-
-        # Transform columns
-        try:
-            transformed_columns = (
-                self.SCALER.inverse_transform(dummy)
-                if inverse
-                else self.SCALER.transform(dummy)
-            )
-
-        except Exception as e:
-            raise ValueError(
-                f"The exception occured: {str(e)}. Is the scale fitted properly?"
-            )
-
-        # Create dataframe from the columns
-        transformed_columns_df = pd.DataFrame(
-            transformed_columns[
-                :, list(column_indexes.values())
-            ],  # All rows, select the columns to be transformed
-            columns=column_indexes.keys(),  # name the columns to be transformed
-        )
-
-        return transformed_columns_df
-
     def eval(self, X_test: pd.DataFrame, y_test: pd.DataFrame) -> None:
         """
         Evaluates model using test data. Saves the data into the `evaluation_results` parameter of the GlobalModel class.
@@ -351,11 +222,6 @@ class GlobalModel:
 
         # Get predictions in human readable dataframe
         predictions_df = self.predict_human_readable(X_test)
-
-        # Transform the original data back back
-        # y_test = self.transform_columns(
-        #     data=y_test, columns=y_test.columns, inverse=True
-        # )
 
         # Compute evaluation metrics
         mse = mean_squared_error(y_test, predictions_df)
@@ -382,35 +248,28 @@ class GlobalModel:
         # Create predictions dataframe
         predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
 
-        # predictions = self.transform_columns(
-        #     data=predictions_df, columns=predictions_df.columns, inverse=True
-        # )
-
-        # Create df again
-        # predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
-
         return predictions_df
 
-    def feature_importance(self, X_train: pd.DataFrame):
-        """
-        Create a plot or something using SHAP explainer.
-        """
+    # def feature_importance(self, X_train: pd.DataFrame):
+    #     """
+    #     Create a plot or something using SHAP explainer.
+    #     """
 
-        if None is None:
-            raise NotImplementedError(
-                "Need to implement this for explaining features! Maybe you can implement training and for single prediction feature importance explainer."
-            )
+    #     if None is None:
+    #         raise NotImplementedError(
+    #             "Need to implement this for explaining features! Maybe you can implement training and for single prediction feature importance explainer."
+    #         )
 
-        explainer: shap.Explainer = shap.Explainer(self.model)
-        shap_values = explainer(X_train)
+    #     explainer: shap.Explainer = shap.Explainer(self.model)
+    #     shap_values = explainer(X_train)
 
-        shap.summary_plot(shap_values, X_train)
+    #     shap.summary_plot(shap_values, X_train)
 
-        # For a single prediction
-        shap.force_plot(explainer.expected_value, shap_values[0], X_train.iloc[0])
+    #     # For a single prediction
+    #     shap.force_plot(explainer.expected_value, shap_values[0], X_train.iloc[0])
 
-        # Shows interaction effects
-        shap.dependence_plot("feature_name", shap_values, X_train)
+    #     # Shows interaction effects
+    #     shap.dependence_plot("feature_name", shap_values, X_train)
 
 
 def try_single_target_global_model():

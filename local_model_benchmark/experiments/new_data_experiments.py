@@ -17,7 +17,7 @@ from src.base import CustomModelBase
 from src.compare_models.compare import ModelComparator
 
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
-from local_model_benchmark.utils import (
+from src.train_scripts.train_local_models import (
     train_base_lstm,
     train_finetunable_model,
     train_finetunable_model_from_scratch,

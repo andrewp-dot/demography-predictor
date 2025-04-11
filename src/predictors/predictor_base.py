@@ -14,6 +14,8 @@ from src.local_model.statistical_models import LocalARIMA
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.state_preprocessing import StateDataLoader
 
+from src.preprocessors.data_transformer import DataTransformer
+
 # Get pre-configured logger
 logger = logging.getLogger("demography_predictor")
 
@@ -23,11 +25,13 @@ class DemographyPredictor:
     def __init__(
         self,
         name: str,
+        transformer: DataTransformer,
         local_model: Union[BaseLSTM, LocalARIMA],
         global_model: Union[GlobalModel],
     ):
         # Define name of the model -> name is used to versionning etc
         self.name: str = name
+        self.transformer: DataTransformer = transformer
 
         # Define architecture: local model -> global model
         self.local_model: Union[BaseLSTM, LocalARIMA, FineTunableLSTM] = local_model

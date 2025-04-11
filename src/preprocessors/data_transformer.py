@@ -159,7 +159,7 @@ class DataTransformer:
         validation_data: pd.DataFrame,
         columns: List[str],
         scaler: MinMaxScaler,
-    ) -> Tuple[pd.DataFrame, MinMaxScaler]:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, MinMaxScaler]:
         """
         This method is scaling for the model training. Fit specified scaler on the training data.
 
@@ -167,16 +167,18 @@ class DataTransformer:
             training_data (pd.DataFrame): Training dataframe (X values).
             validation_data (pd.DataFrame): Validation dataframe (y values).
             columns (List[str]): The columns for scaling.
-            scaler (MinMaxScaler): _description_
+            scaler (MinMaxScaler): Scaler to be fitted on training data.
 
         Returns:
-            Tuple[pd.DataFrame, MinMaxScaler]: _description_
+            Tuple[pd.DataFrame, pd.DataFrame, MinMaxScaler]: scaled_training_data, scaled_validation_data, fitted_scaler
         """
         # Transforms raw data, fits the given scaler
         # Should be used on training_data
 
         ORIGINAL_COLUMNS = training_data.columns
-        ORIGINAL_DATA = pd.concat([training_data, validation_data], axis=0)
+        # ORIGINAL_DATA = pd.concat([training_data, validation_data], axis=0)
+        ORIGINAL_DATA_TRAINING_DATA = training_data.copy()
+        ORIGINAL_DATA_VALIDATION_DATA = validation_data.copy()
 
         # Transform data
         transformed_training_df = self.transform_data(
@@ -193,25 +195,50 @@ class DataTransformer:
         self.SCALER = scaler
 
         # Scale data
-        merged_data = pd.concat(
-            [transformed_training_df, transformed_validation_df], axis=0
-        )  # Concat rows together
-        scaled_data = scaler.transform(merged_data)
+        # merged_data = pd.concat(
+        #     [transformed_training_df, transformed_validation_df], axis=0
+        # )  # Concat rows together
+        scaled_training_data = scaler.transform(transformed_training_df)
+        scaled_validation_data = scaler.transform(transformed_validation_df)
 
-        scaled_data_df = pd.DataFrame(scaled_data, columns=merged_data.columns)
+        scaled_training_data_df = pd.DataFrame(
+            scaled_training_data, columns=transformed_training_df.columns
+        )
+        scaled_validation_data_df = pd.DataFrame(
+            scaled_validation_data, columns=transformed_validation_df.columns
+        )
 
-        # Reconstruct the original dataframe
+        # scaled_data_df = pd.DataFrame(scaled_data, columns=merged_data.columns)
+
+        # Reconstruct the original dataframes
         non_transformed_features = [f for f in ORIGINAL_COLUMNS if not f in columns]
 
-        scaled_data_df = pd.concat(
+        # Get the t
+        scaled_training_data_df = pd.concat(
             [
-                ORIGINAL_DATA[non_transformed_features].reset_index(drop=True),
-                scaled_data_df.reset_index(drop=True),
+                ORIGINAL_DATA_TRAINING_DATA[non_transformed_features].reset_index(
+                    drop=True
+                ),
+                scaled_training_data_df.reset_index(drop=True),
             ],
             axis=1,
         )
 
-        return scaled_data_df[ORIGINAL_COLUMNS], scaler
+        scaled_validation_data_df = pd.concat(
+            [
+                ORIGINAL_DATA_VALIDATION_DATA[non_transformed_features].reset_index(
+                    drop=True
+                ),
+                scaled_validation_data_df.reset_index(drop=True),
+            ],
+            axis=1,
+        )
+
+        return (
+            scaled_training_data_df[ORIGINAL_COLUMNS],
+            scaled_validation_data_df[ORIGINAL_COLUMNS],
+            scaler,
+        )
 
     def scale_data(self, data: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
 
