@@ -332,6 +332,11 @@ class EvaluateModel(BaseEvaluation):
         self.transformer: DataTransformer = transformer
         self.model: CustomModelBase = model
 
+        # Reference values for every state
+        # {"Czechia": {"predicted"..., "reference": ...}, "United States": ...}
+        self.state_ref_predicted_dict: Dict[str, Dict[str, pd.DataFrame]] = {}
+        self.multiple_states_evaluations: Dict[str, EvaluateModel] = {}
+
     def __pipeline_predictions(
         self, input_data: pd.DataFrame, last_year: int, target_year: int
     ) -> pd.DataFrame:
@@ -463,13 +468,14 @@ class EvaluateModel(BaseEvaluation):
             test_X = X_test_states[state]
             test_y = y_test_states[state]
 
-            # Run evaluation (Maybe create new evaluation?)
-            current_state_evaluation = EvaluateModel(
-                transformer=self.transformer, model=self.model
-            )
-            state_overall_metrics = current_state_evaluation.eval(
-                test_X=test_X, test_y=test_y
-            )
+            state_overall_metrics = self.eval(test_X=test_X, test_y=test_y)
+
+            # Save reference and target values for each state if there is multiple state evaluation
+            self.multiple_states_evaluations[state] = {
+                "reference": self.reference_values,
+                "predicted": self.predicted,
+                "years": self.predicted_years,
+            }
 
             state_overall_metrics["state"] = state
 

@@ -2,7 +2,10 @@
 import pandas as pd
 import logging
 
-from typing import List, Dict, Union, Literal
+from typing import List, Dict, Union, Literal, Tuple
+
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 # Custom imports
 from src.utils.log import setup_logging
@@ -22,201 +25,328 @@ from src.preprocessors.data_transformer import DataTransformer
 logger = logging.getLogger("model_compare")
 
 
-def rank_models(evaluation_dfs: List[pd.DataFrame]) -> pd.DataFrame:
-    """
-    From the evaluation dictionaries create a ranking dataframe. If there are missing metrics in the dataframes, it returns an empty datframe.
+class MultipleModelStateEvaluation:
 
-    Args:
-        evaluation_dfs (List[pd.DataFrame]): Evaluation dataframes for model.
+    def __init__(self, state: str, reference_data: pd.DataFrame, features: List[str]):
+        self.state: str = state
 
-    Returns:
-        out: pd.DataFrame: Ranking dataframe.
-    """
+        self.predicted_years: List[int] = self.__get_predicted_years(df=reference_data)
+        self.FEATURES: List[str] = features
 
-    # Concatenate all model evaluations into a single DataFrame
-    df_all = pd.concat(evaluation_dfs, ignore_index=True)
+        self.reference_data: pd.DataFrame | None = reference_data
+        self.model_evaluation_dict: Dict[str, EvaluateModel] = {}
 
-    # Define ranking function
-    def rank_models(df: pd.DataFrame) -> pd.DataFrame:
-        """Ranks models based on best metric scores."""
-        df["rank"] = (
-            df["mae"].rank(ascending=True)  # Lower MAE is better
-            + df["mse"].rank(ascending=True)  # Lower MSE is better
-            + df["rmse"].rank(ascending=True)  # Lower RMSE is better
-            + (
-                df["r2"].rank(ascending=False) if "r2" in df.columns else 0
-            )  # Higher R² is better
-        )
-        return df.sort_values("rank", ascending=True)
+    def __get_min_max_years(self, df: pd.DataFrame) -> Tuple[int, int]:
 
-    # Rank models
-    try:
-        df_ranked = rank_models(df_all)
-    except KeyError as e:
-        logger.error(f"KeyError: Failed to compare models: {str(e)}.")
-        return pd.DataFrame({})
+        if "year" not in df.columns:
+            raise ValueError("Could not find the 'year' column in the given dataframe.")
 
-    return df_ranked
+        return int(df["year"].min()), int(df["year"].max())
 
+    def __get_predicted_years(self, df: pd.DataFrame) -> List[int]:
+        min_year, max_year = self.__get_min_max_years(df=df)
 
-# Compare models predictors
-# TODO: edit this function for accepting pipelines maybe?
-def compare_models_by_states(
-    models: Dict[str, Union[DemographyPredictor, CustomModelBase]],
-    transformers: Dict[str, DataTransformer],
-    states: List[str] | None = None,
-    by: Literal["overall-metrics", "per-features"] = "overall-metrics",
-) -> pd.DataFrame:
-    """
-    Compares model performance by metrics. Returns ranking dataframe.
+        # Include the max year
+        return list(range(min_year, max_year + 1))
 
-    Args:
-        models (List[str]): _description_
-        states (List[str] | None, optional): _description_. Defaults to None.
-        by (Literal[&quot;overall-metrics&quot;, &quot;per-features&quot;, optional): Overall-metrics -> compares model performance by the overall metrics for state.
-            "per-features" is options mainly for LSTM predictor models, gives information about model performance per feature. Defaults to "overall-metrics".
+    def plot_comparison_predictions(self) -> Figure:
 
-    Raises:
-        ValueError: If the models are not comparable.
+        # Plot reference data
 
-    Returns:
-        out: pd.DataFrame: Ranking dataframe.
-    """
+        N_FEATURES: int = len(self.FEATURES)
+        YEARS: List[int] = self.predicted_years
 
-    # Check if there is something to compare
-    if len(models) <= 1:
-        logger.warning("No models to compare.")
-        return {}
+        # Create a figure with N rows and 1 column
+        fig, axes = plt.subplots(N_FEATURES, 1, figsize=(8, 2 * N_FEATURES))
 
-    # Check if the models has same features and targets
-    # first_model_features: List[str] = to_compare_models[models[0]].FEATURES
-    model_names: List[str] = list(models.keys())
-    first_model_targets: List[str] = models[model_names[0]].TARGETS
+        # Ensure axes is always iterable
+        if N_FEATURES == 1:
+            axes = [axes]  # Convert to list for consistent indexing
 
-    for model_name in model_names[1:]:
-        # Get next model
-        model = models[model_name]
-
-        # Check if they have the same targets
-        if models[model_name].TARGETS != first_model_targets:
-            raise ValueError(
-                f"The model '{model_name}' has different features then the first model"
+        # Plotting in each subplot
+        for index, feature in zip(range(N_FEATURES), self.FEATURES):
+            # Plot reference values
+            axes[index].plot(
+                YEARS,
+                self.reference_data[feature],
+                label=f"Reference values",
+                color="b",
             )
 
-    # Get evaluation for all states
-    model_evaluations: Dict[str, pd.DataFrame] = {}
+            # Fore every model evaluation
+            for model_name, evaluation in self.model_evaluation_dict.items():
+                # Plot predicted values
+                axes[index].plot(
+                    YEARS,
+                    evaluation.predicted[feature],
+                    label=f"Predicted - {model_name}",
+                    color="r",
+                )
+            # Set the axis
+            axes[index].set_title(f"{feature}")
+            axes[index].set_xlabel("Years")
+            axes[index].set_ylabel("Value")
+            axes[index].legend()
 
-    # Get evaluation data
-    states_loaders = StatesDataLoader()
+        return fig
 
-    # Get the data by given states or all
-    if states is None:
-        states_data_dict = states_loaders.load_all_states()
-    else:
-        states_data_dict = states_loaders.load_states(states=states)
 
-    # Getnerate evaluation for every model
-    for model_name, model in models.items():
-        # Preprocess data for the model - suppoorts different sequence length, by type
+class ModelComparator:
 
-        # Adjust hyperparameters by the model type
-        if isinstance(model, DemographyPredictor):
-            if isinstance(model.local_model, PureEnsembleModel):
-                model_sequence_len = get_core_hyperparameters(
-                    input_size=1
-                ).sequence_length
-            else:
-                model_sequence_len = model.local_model.hyperparameters.sequence_length
-        elif isinstance(model, CustomModelBase):
-            model_sequence_len = model.hyperparameters.sequence_length
+    def __init__(self):
 
-        train_data_dict, test_data_dict = states_loaders.split_data(
-            states_dict=states_data_dict,
-            sequence_len=model_sequence_len,
-        )
+        # Save model evaluations
+        self.eval_states: List[str] = []
+        self.model_evaluations: Dict[str, EvaluateModel] = {}
 
-        model_evaluation = EvaluateModel(
-            transformer=transformers[model_name], model=model
-        )
+    def rank_models(self, evaluation_dfs: List[pd.DataFrame]) -> pd.DataFrame:
+        """
+        From the evaluation dictionaries create a ranking dataframe. If there are missing metrics in the dataframes, it returns an empty datframe.
 
-        # Save the evaluation
-        if "overall-metrics" == by:
-            model_evaluations[model_name] = model_evaluation.eval_for_every_state(
-                X_test_states=train_data_dict, y_test_states=test_data_dict
+        Args:
+            evaluation_dfs (List[pd.DataFrame]): Evaluation dataframes for model.
+
+        Returns:
+            out: pd.DataFrame: Ranking dataframe.
+        """
+
+        # Concatenate all model evaluations into a single DataFrame
+        df_all = pd.concat(evaluation_dfs, ignore_index=True)
+
+        # Define ranking function
+        def rank_models(df: pd.DataFrame) -> pd.DataFrame:
+            """Ranks models based on best metric scores."""
+            df["rank"] = (
+                df["mae"].rank(ascending=True)  # Lower MAE is better
+                + df["mse"].rank(ascending=True)  # Lower MSE is better
+                + df["rmse"].rank(ascending=True)  # Lower RMSE is better
+                + (
+                    df["r2"].rank(ascending=False) if "r2" in df.columns else 0
+                )  # Higher R² is better
             )
+            return df.sort_values("rank", ascending=True)
 
-        elif "per-features" == by:
+        # Rank models
+        try:
+            df_ranked = rank_models(df_all)
+        except KeyError as e:
+            logger.error(f"KeyError: Failed to compare models: {str(e)}.")
+            return pd.DataFrame({})
 
-            states_evaluation_for_model: pd.DataFrame | None = None
-            for state in train_data_dict.keys():
+        return df_ranked
 
-                # Get per target per state evaluation
-                model_evaluation.eval(
-                    test_X=train_data_dict[state], test_y=test_data_dict[state]
+    # Compare models predictors
+    # TODO: edit this function for accepting pipelines maybe?
+    def compare_models_by_states(
+        self,
+        models: Dict[str, Union[DemographyPredictor, CustomModelBase]],
+        transformers: Dict[str, DataTransformer],
+        states: List[str] | None = None,
+        by: Literal["overall-metrics", "per-features"] = "overall-metrics",
+    ) -> pd.DataFrame:
+        """
+        Compares model performance by metrics. Returns ranking dataframe.
+
+        Args:
+            models (List[str]): _description_
+            states (List[str] | None, optional): _description_. Defaults to None.
+            by (Literal[&quot;overall-metrics&quot;, &quot;per-features&quot;, optional): Overall-metrics -> compares model performance by the overall metrics for state.
+                "per-features" is options mainly for LSTM predictor models, gives information about model performance per feature. Defaults to "overall-metrics".
+
+        Raises:
+            ValueError: If the models are not comparable.
+
+        Returns:
+            out: pd.DataFrame: Ranking dataframe.
+        """
+
+        # Check if there is something to compare
+        if len(models) <= 1:
+            logger.warning("No models to compare.")
+            return {}
+
+        # Save eval states
+        self.eval_states = states
+
+        # Check if the models has same features and targets
+        # first_model_features: List[str] = to_compare_models[models[0]].FEATURES
+        model_names: List[str] = list(models.keys())
+        first_model_targets: List[str] = models[model_names[0]].TARGETS
+
+        for model_name in model_names[1:]:
+            # Get next model
+            model = models[model_name]
+
+            # Check if they have the same targets
+            if models[model_name].TARGETS != first_model_targets:
+                raise ValueError(
+                    f"The model '{model_name}' has different features then the first model"
                 )
-                per_target_metrics = model_evaluation.get_target_specific_metrics(
-                    model.FEATURES
-                )
-                per_target_metrics["state"] = state
 
-                # Init dataframe if none
-                if states_evaluation_for_model is None:
-                    states_evaluation_for_model = per_target_metrics
+        # Get evaluation for all states
+        model_evaluations: Dict[str, pd.DataFrame] = {}
 
-                # Concat dataframe if exists
+        # Get evaluation data
+        states_loaders = StatesDataLoader()
+
+        # Get the data by given states or all
+        if states is None:
+            states_data_dict = states_loaders.load_all_states()
+        else:
+            states_data_dict = states_loaders.load_states(states=states)
+
+        # Getnerate evaluation for every model
+        for model_name, model in models.items():
+            # Preprocess data for the model - suppoorts different sequence length, by type
+
+            # Adjust hyperparameters by the model type
+            if isinstance(model, DemographyPredictor):
+                if isinstance(model.local_model, PureEnsembleModel):
+                    model_sequence_len = get_core_hyperparameters(
+                        input_size=1
+                    ).sequence_length
                 else:
-                    states_evaluation_for_model = pd.concat(
-                        [
-                            states_evaluation_for_model,
-                            per_target_metrics,
-                        ],
-                        axis=0,
+                    model_sequence_len = (
+                        model.local_model.hyperparameters.sequence_length
                     )
+            elif isinstance(model, CustomModelBase):
+                model_sequence_len = model.hyperparameters.sequence_length
 
-            # Save all states
-            model_evaluations[model_name] = states_evaluation_for_model
-
-    # Compare evaluations
-    # Convert evaluations (Dict[str, pd.DataFrame]) into a single DataFrame
-    df_list = []
-    for model, df in model_evaluations.items():
-        df["model"] = model  # Add model name to DataFrame
-        df_list.append(df)
-
-    # Rank models
-    df_ranked = rank_models(df_list)
-
-    return df_ranked
-
-
-# Compare models by features
-def compare_models_by_features(models: List[str]) -> pd.DataFrame:
-    # Check if there is something to compare
-    if len(models) <= 1:
-        logger.warning("No models to compare.")
-        return {}
-
-    # For every model get evaluation
-    to_compare_models: Dict[str, Union[DemographyPredictor, CustomModelBase]] = {
-        model_name: get_model(model_name) for model_name in models
-    }
-
-    # Check if the models has same features and targets
-    # first_model_features: List[str] = to_compare_models[models[0]].FEATURES
-    first_model_targets: List[str] = to_compare_models[models[0]].TARGETS
-
-    for model_name in models[1:]:
-        # Get next model
-        model = to_compare_models[model_name]
-
-        # Check if they have the same targets
-        if model.TARGETS != first_model_targets:
-            raise ValueError(
-                f"The model '{model_name}' has different features then the first model"
+            train_data_dict, test_data_dict = states_loaders.split_data(
+                states_dict=states_data_dict,
+                sequence_len=model_sequence_len,
             )
 
-    # Get evaluation for all states
-    model_evaluations: Dict[str, pd.DataFrame] = {}
+            model_evaluation = EvaluateModel(
+                transformer=transformers[model_name], model=model
+            )
+
+            # Save the model evaluation refference
+            self.model_evaluations[model_name] = model_evaluation
+
+            # Save the evaluation
+            if "overall-metrics" == by:
+                model_evaluations[model_name] = model_evaluation.eval_for_every_state(
+                    X_test_states=train_data_dict, y_test_states=test_data_dict
+                )
+
+            elif "per-features" == by:
+
+                states_evaluation_for_model: pd.DataFrame | None = None
+                for state in train_data_dict.keys():
+
+                    # Get per target per state evaluation
+                    model_evaluation.eval(
+                        test_X=train_data_dict[state], test_y=test_data_dict[state]
+                    )
+                    per_target_metrics = model_evaluation.get_target_specific_metrics(
+                        model.FEATURES
+                    )
+                    per_target_metrics["state"] = state
+
+                    # Init dataframe if none
+                    if states_evaluation_for_model is None:
+                        states_evaluation_for_model = per_target_metrics
+
+                    # Concat dataframe if exists
+                    else:
+                        states_evaluation_for_model = pd.concat(
+                            [
+                                states_evaluation_for_model,
+                                per_target_metrics,
+                            ],
+                            axis=0,
+                        )
+
+                # Save all states
+                model_evaluations[model_name] = states_evaluation_for_model
+
+        # Compare evaluations
+        # Convert evaluations (Dict[str, pd.DataFrame]) into a single DataFrame
+        df_list = []
+        for model, df in model_evaluations.items():
+            df["model"] = model  # Add model name to DataFrame
+            df_list.append(df)
+
+        # Rank models
+        df_ranked = self.rank_models(df_list)
+
+        return df_ranked
+
+    def create_state_comparison_plot(self, state: str) -> Figure:
+
+        # Plot refference data
+        if not self.model_evaluations:
+            raise ValueError(
+                f"No model evaluations to create state comparison plot. Compare some models first."
+            )
+
+        # Get the first model
+        first_model = list(self.model_evaluations.keys())[0]
+
+        # Get the refference data for the state
+        FEATURES = self.model_evaluations[first_model].model.FEATURES
+        N_FEATURES = len(FEATURES)
+
+        # Get evalution for the first model for the state to get refference data info
+        first_model_evaluation = self.model_evaluations[first_model]
+
+        first_model_state_evaluation = (
+            first_model_evaluation.multiple_states_evaluations[state]
+        )
+
+        YEARS = first_model_state_evaluation["years"]
+        reference_data = first_model_state_evaluation["reference"]
+
+        # Create a figure with N rows and 1 column
+        fig, axes = plt.subplots(N_FEATURES, 1, figsize=(8, 2 * N_FEATURES))
+
+        # Plotting in each subplot
+        for index, feature in zip(range(N_FEATURES), FEATURES):
+
+            # Plot reference values
+            axes[index].plot(
+                YEARS,
+                reference_data[feature],
+                label=f"Reference values",
+                color="b",
+            )
+
+            # Fore every model evaluation
+            for model_name, evaluation in self.model_evaluations.items():
+                # Plot predicted values
+                axes[index].plot(
+                    YEARS,
+                    evaluation.predicted[feature],
+                    label=f"Predicted - {model_name}",
+                )
+            # Set the axis
+            axes[index].set_title(f"{feature}")
+            axes[index].set_xlabel("Years")
+            axes[index].set_ylabel("Value")
+            axes[index].grid()
+            axes[index].legend()
+
+        # Add some space
+        fig.subplots_adjust(hspace=1)
+        fig.tight_layout()
+        return fig
+
+    def create_comparision_plots(self) -> Dict[str, Figure]:
+        """
+        Creates dictionary of evaluation plot for every state and every model on every target prediction.
+
+        Returns:
+            out: Dict[str, Figure]: The key is the 'state' and the figure is the comparison plot of compared models. The plot of the reference / predicted values for all models and their targets.
+        """
+
+        state_plots: Dict[str, Figure] = {}
+
+        for state in self.eval_states:
+            state_plots[state] = self.create_state_comparison_plot(state=state)
+
+        # return state_plots
+        return state_plots
 
 
 if __name__ == "__main__":
@@ -242,8 +372,10 @@ if __name__ == "__main__":
 
     COMPARATION_STATES = ["Czechia", "Afghanistan", "United States", "Croatia"]
 
+    model_comparator = ModelComparator()
+
     # # Example 1: comparing local predictor models using per feature metrics
-    # ranked_models = compare_models_by_states(
+    # ranked_models = model_comparator.compare_models_by_states(
     #     models=to_compare_models,
     #     states=COMPARATION_STATES,
     #     by="per-features",
@@ -257,7 +389,7 @@ if __name__ == "__main__":
     # )
 
     # # Example 2: comparing demographic predictor by specified states
-    ranked_models = compare_models_by_states(
+    ranked_models = model_comparator.compare_models_by_states(
         models=to_compare_models,
         states=COMPARATION_STATES,
         by="overall-metrics",
@@ -266,3 +398,5 @@ if __name__ == "__main__":
     # Display
     for state in COMPARATION_STATES:
         print(ranked_models[ranked_models["state"] == state])
+
+    # Plot predictions

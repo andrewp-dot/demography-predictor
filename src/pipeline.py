@@ -1,9 +1,18 @@
 # Standard library imports
 import pandas as pd
 
+from pydantic import BaseModel
+from typing import Union, Optional
+
 # Custom imports
 from src.utils.log import setup_logging
-from preprocessors.data_transformer import DataTransformer
+from src.preprocessors.data_transformer import DataTransformer
+
+from src.base import TrainingStats
+
+from src.local_model.model import LSTMHyperparameters, BaseLSTM
+from src.local_model.finetunable_model import FineTunableLSTM
+from src.local_model.ensemble_model import PureEnsembleModel
 
 from src.predictors.predictor_base import DemographyPredictor
 
@@ -15,6 +24,14 @@ from src.predictors.predictor_base import DemographyPredictor
 # Global model Pipeline?
 
 # Is the DemographyPredictor the pipeline? I think YES
+
+
+class LocalModelPipeline(BaseModel):
+    model: Union[BaseLSTM, FineTunableLSTM, PureEnsembleModel]
+    transformer: DataTransformer
+    training_stats: Optional[TrainingStats] = None
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class PredictorPipeline:

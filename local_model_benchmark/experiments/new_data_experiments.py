@@ -14,15 +14,15 @@ from local_model_benchmark.config import (
 
 # from src.utils.save_model import save_experiment_model, get_experiment_model
 from src.base import CustomModelBase
-from src.compare_models.compare import compare_models_by_states
+from src.compare_models.compare import ModelComparator
 
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
 from local_model_benchmark.utils import (
-    ExperimentPipeline,
     train_base_lstm,
     train_finetunable_model,
     train_finetunable_model_from_scratch,
 )
+from src.pipeline import LocalModelPipeline
 from src.local_model.model import LSTMHyperparameters, BaseLSTM
 from src.evaluation import EvaluateModel
 
@@ -77,7 +77,7 @@ class DataUsedForTraining(BaseExperiment):
     )
 
     MULTISTATE_BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
-        input_size=len(FEATURES), batch_size=16
+        input_size=len(FEATURES), batch_size=16, epochs=10
     )
 
     def __init__(self, description: str):
@@ -88,7 +88,7 @@ class DataUsedForTraining(BaseExperiment):
         state: str,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> ExperimentPipeline:
+    ) -> LocalModelPipeline:
 
         # Load data
         states_loader = StatesDataLoader()
@@ -109,14 +109,14 @@ class DataUsedForTraining(BaseExperiment):
         states: List[str],
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> ExperimentPipeline:
+    ) -> LocalModelPipeline:
 
         # Load data
         states_loader = StatesDataLoader()
         states_data_dict = states_loader.load_states(states=states)
 
         base_model_pipeline = train_base_lstm(
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            hyperparameters=self.MULTISTATE_BASE_LSTM_HYPERPARAMETERS,
             data=states_data_dict,
             features=self.FEATURES,
             split_rate=split_rate,
@@ -129,14 +129,14 @@ class DataUsedForTraining(BaseExperiment):
         self,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> ExperimentPipeline:
+    ) -> LocalModelPipeline:
 
         # Load data
         states_loader = StatesDataLoader()
         states_data_dict = states_loader.load_all_states()
 
         base_model_pipeline = train_base_lstm(
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            hyperparameters=self.MULTISTATE_BASE_LSTM_HYPERPARAMETERS,
             data=states_data_dict,
             features=self.FEATURES,
             split_rate=split_rate,
@@ -197,18 +197,33 @@ class DataUsedForTraining(BaseExperiment):
             all_states_model_pipeline.transformer
         )
 
+        # Compare models
+        comparator = ModelComparator()
         # Evaluate models - per-target-performance
-        per_target_metrics_df = compare_models_by_states(
+        per_target_metrics_df = comparator.compare_models_by_states(
             models=COMPARATION_MODELS_DICT,
             transformers=TRANSFORMERS_MODELS_DICT,
             states=[state],
             by="per-features",
         )
-        overall_metrics_df = compare_models_by_states(
+        overall_metrics_df = comparator.compare_models_by_states(
             models=COMPARATION_MODELS_DICT,
             transformers=TRANSFORMERS_MODELS_DICT,
             states=[state],
             by="overall-metrics",
+        )
+
+        comparaison_plots = comparator.create_comparision_plots()
+
+        # Save and display the state plot
+        self.save_plot(
+            fig_name="state_prediction_comparions.png", figure=comparaison_plots[state]
+        )
+
+        self.readme_add_plot(
+            plot_name="## Model comparision prediction plot",
+            plot_description="In the next feagure you can see each model predictions compared to each other and the reference data.",
+            fig_name="state_prediction_comparions.png",
         )
 
         # Print results to the readme

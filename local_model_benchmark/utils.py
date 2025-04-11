@@ -23,60 +23,10 @@ from src.local_model.model import LSTMHyperparameters, BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 
+from src.pipeline import LocalModelPipeline
+
 
 settings = Config()
-
-
-# # TODO: use this as data preprocessing function
-# def preprocess_single_state_data(
-#     train_data_df: pd.DataFrame,
-#     state_loader: StateDataLoader,
-#     hyperparameters: LSTMHyperparameters,
-#     features: List[str],
-#     scaler: Union[MinMaxScaler, RobustScaler, StandardScaler],
-# ) -> Tuple[
-#     torch.Tensor, torch.Tensor, Union[MinMaxScaler, RobustScaler, StandardScaler]
-# ]:
-#     """
-#     Converts training data to format for training. From the
-
-#     Args:
-#         train_data_df (pd.DataFrame): Unscaled training data.
-#         state_loader (StateDataLoader): Loader for the state.
-#         hyperparameters (LSTMHyperparameters): Hyperparameters used for training the model.
-#         features (List[str]): Features used in model.
-
-#     Returns:
-#         out: Tuple[torch.Tensor, torch.Tensor, Union[MinMaxScaler, RobustScaler, StandardScaler]]: train input batches, train target batches,
-#         fitted scaler used for training data scaling.
-#     """
-
-#     # Get features
-#     FEATURES = features
-
-#     # Scale data
-#     scaled_train_data, state_scaler = state_loader.scale_data(
-#         train_data_df, features=FEATURES, scaler=scaler
-#     )
-
-#     # Create input and target sequences
-#     train_input_sequences, train_target_sequences = (
-#         state_loader.preprocess_training_data(
-#             data=scaled_train_data,
-#             sequence_len=hyperparameters.sequence_length,
-#             features=FEATURES,
-#         )
-#     )
-
-#     # Create input and target batches for faster training
-#     train_input_batches, train_target_batches = state_loader.create_batches(
-#         batch_size=hyperparameters.batch_size,
-#         input_sequences=train_input_sequences,
-#         target_sequences=train_target_sequences,
-#     )
-
-#     # Return training batches, target batches and fitted scaler
-#     return train_input_batches, train_target_batches, state_scaler
 
 
 # def pre_train_model_if_needed(
@@ -104,12 +54,12 @@ settings = Config()
 #     return base_model
 
 
-class ExperimentPipeline(BaseModel):
-    model: Union[BaseLSTM, FineTunableLSTM, PureEnsembleModel]
-    transformer: DataTransformer
-    training_stats: Optional[TrainingStats] = None
+# class LocalModelPipeline(BaseModel):
+#     model: Union[BaseLSTM, FineTunableLSTM, PureEnsembleModel]
+#     transformer: DataTransformer
+#     training_stats: Optional[TrainingStats] = None
 
-    model_config = {"arbitrary_types_allowed": True}
+#     model_config = {"arbitrary_types_allowed": True}
 
 
 def preprocess_data(
@@ -163,7 +113,7 @@ def train_base_lstm(
     features: List[str],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
-) -> ExperimentPipeline:
+) -> LocalModelPipeline:
 
     # Preprocess data
     transformer = DataTransformer()
@@ -192,7 +142,7 @@ def train_base_lstm(
     )
 
     # Create pipeline
-    return ExperimentPipeline(
+    return LocalModelPipeline(
         model=base_lstm,
         transformer=transformer,
         training_stats=TrainingStats.from_dict(stats),
@@ -200,12 +150,12 @@ def train_base_lstm(
 
 
 def train_finetunable_model(
-    base_model_pipeline: ExperimentPipeline,
+    base_model_pipeline: LocalModelPipeline,
     finetunable_model_hyperparameters: LSTMHyperparameters,
     finetunable_model_data: Dict[str, pd.DataFrame],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
-) -> ExperimentPipeline:
+) -> LocalModelPipeline:
 
     # Preprocess data
     batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
@@ -233,7 +183,7 @@ def train_finetunable_model(
         display_nth_epoch=display_nth_epoch,
     )
 
-    return ExperimentPipeline(
+    return LocalModelPipeline(
         model=finetuneable_lstm,
         transformer=base_model_pipeline.transformer,
         training_stats=TrainingStats.from_dict(stats),
@@ -248,7 +198,7 @@ def train_finetunable_model_from_scratch(
     features: List[str],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
-) -> ExperimentPipeline:
+) -> LocalModelPipeline:
 
     # Train base lstm
     base_model_pipeline = train_base_lstm(
