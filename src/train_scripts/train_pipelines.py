@@ -167,17 +167,20 @@ def main():
 
     # Load whole dataset
     loader = StatesDataLoader()
-    all_states_data_dict = loader.load_all_states()
 
+    # Local model training data
     STATE: str = "Czechia"
     single_state_data_dict = loader.load_states(states=[STATE])
     group_state_data_dict = loader.load_states(states=RICH_STATES)
+    all_states_data_dict = loader.load_all_states()
+
+    # Global model taining data
     merged_all_states_data = loader.merge_states(state_dfs=all_states_data_dict)
 
-    PIPELINE_NAME: str = "group_pipeline"
+    PIPELINE_NAME: str = "core_pipeline"
     pipeline = train_basic_pipeline(
         name=PIPELINE_NAME,
-        local_model_data_dict=group_state_data_dict,
+        local_model_data_dict=all_states_data_dict,
         global_model_data=merged_all_states_data,
         hyperparameters=hyperparameters,
         local_model_features=LOCAL_MODEL_FEATURES,
@@ -199,8 +202,6 @@ def main():
     )
 
     print(test_predicion_df)
-
-    eval_pipeline = EvaluateModel()
 
 
 if __name__ == "__main__":

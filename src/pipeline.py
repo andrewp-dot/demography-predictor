@@ -26,14 +26,15 @@ class LocalModelPipeline:
 
     def __init__(
         self,
-        name: str,
         model: Union[BaseLSTM, FineTunableLSTM, PureEnsembleModel],
         transformer: DataTransformer,
+        name: str = "local_model_pipeline",
+        training_stats: Optional[TrainingStats] = None,
     ):
         self.name: str = name
         self.model: Union[BaseLSTM, FineTunableLSTM, PureEnsembleModel] = model
         self.transformer: DataTransformer = transformer
-        self.training_stats: Optional[TrainingStats] = None
+        self.training_stats: Optional[TrainingStats] = training_stats
 
     def predict(
         self, input_data: pd.DataFrame, last_year: int, target_year: int
@@ -68,7 +69,12 @@ class GlobalModelPipeline:
 
     # model_config = {"arbitrary_types_allowed": True}
 
-    def __init__(self, name: str, model: GlobalModel, transformer: DataTransformer):
+    def __init__(
+        self,
+        model: GlobalModel,
+        transformer: DataTransformer,
+        name: str = "global_model_pipeline",
+    ):
         self.name: str = name
         self.model: GlobalModel = model
         self.transformer: DataTransformer = transformer

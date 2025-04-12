@@ -333,9 +333,7 @@ class EvaluateModel(BaseEvaluation):
     def __init__(self, transformer: DataTransformer, model: nn.Module):
         super().__init__()
         self.transformer: DataTransformer = transformer
-        self.model: Union[
-            CustomModelBase, LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
-        ] = model
+        self.model: CustomModelBase = model
 
         # Reference values for every state
         # {"Czechia": {"predicted"..., "reference": ...}, "United States": ...}
@@ -554,6 +552,18 @@ class EvaluateARIMA(BaseEvaluation):
 
         # Get overall metrtics
         self.get_overall_metrics()
+
+
+class EvaluatePipeline(BaseEvaluation):
+
+    def __init__(
+        self,
+        pipeline: Union[LocalModelPipeline, GlobalModelPipeline, PredictorPipeline],
+    ):
+        # Get pipeline
+        self.pipeline: Union[
+            LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
+        ] = pipeline
 
 
 if __name__ == "__main__":
