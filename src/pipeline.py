@@ -147,8 +147,15 @@ class PredictorPipeline:
             input_data=future_feature_values_df
         )
 
-        # Return predictions
-        return predicted_data_df
+        # Add years to final predictions
+        PREDICTED_YEARS = list(range(last_year + 1, target_year + 1))
+        predicted_years_df = pd.DataFrame({"years": PREDICTED_YEARS})
+
+        years_final_predictions_df = pd.concat(
+            [predicted_years_df, predicted_data_df], axis=1
+        )
+
+        return years_final_predictions_df
 
     def save_pipeline(self):
         # Create a new pipeline directory if does not exist

@@ -48,6 +48,7 @@ class Config(BaseSettings):
             "aging_model": "core_pipeline",
             "aging_model_rich": "group_pipeline",
             "aging_model_cz": "cz_pipeline",
+            "gender_model": "gender_core_pipeline",
         }
 
     ALL_POSSIBLE_TARGET_FEATURES: List[str] = [

@@ -22,6 +22,7 @@ from src.utils.save_model import get_model
 
 # from src.predictors.predictor_base import DemographyPredictor
 from src.pipeline import PredictorPipeline
+from src.preprocessors.state_preprocessing import StateDataLoader
 
 from src.api.models import Info
 
@@ -39,6 +40,11 @@ AGING_COLUMNS: List[str] = [
     "population ages 65 and above",
 ]
 
+GENDER_DIST_COLUMNS: List[str] = [
+    "population, female",
+    "population, male",
+]
+
 
 def load_models() -> None:
     # Load model(s) for prediction
@@ -49,6 +55,28 @@ def load_models() -> None:
             )
         except Exception as e:
             logger.error(f"Could not load the model: '{model_key}'. Reason: {str(e)}")
+
+
+def get_dataframe_from_request(
+    state: str, input_data: pd.DataFrame | None
+) -> pd.DataFrame:
+    """
+    Convert input data to pandas dataframe.
+
+    Args:
+        input_data (pd.DataFrame | None): Input data for prediction generation.
+
+    Returns:
+        out: pd.DataFrame: Converted input data.
+    """
+    if input_data is None:
+        # Load gathered data
+        state_loader = StateDataLoader(state=state)
+        input_df: pd.DataFrame = state_loader.load_data()
+    else:
+        input_df: pd.DataFrame = pd.DataFrame(input_data)
+
+    return input_df
 
 
 def predict_from_request(request: PredictionRequest) -> pd.DataFrame:
@@ -67,7 +95,10 @@ def predict_from_request(request: PredictionRequest) -> pd.DataFrame:
         out: pd.DataFrame: Generated prediction dataframe.
     """
     # 0. Create input dataframe and extract last and target year
-    input_df: pd.DataFrame = pd.DataFrame(request.input_data)
+
+    input_df = get_dataframe_from_request(
+        state=request.state, input_data=request.input_data
+    )
 
     # Verify if the 'year' columns is in the data
     if not "year" in input_df.columns:
@@ -194,6 +225,21 @@ def model_lakmoos_predict(request: LakmoosPredictionRequest):
             predictions=prediction_df.to_dict(orient="records"),
             max_age=request.max_age,
             distribution=age_probabilities_df.to_dict(orient="records"),
+        )
+    elif set(GENDER_DIST_COLUMNS).issubset(set(prediction_df.columns)):
+
+        desired_years_prediction = prediction_df.iloc[-1].to_dict()
+
+        # Adjust values to be coeficients / probabilities
+        desired_years_prediction[GENDER_DIST_COLUMNS] = (
+            desired_years_prediction[GENDER_DIST_COLUMNS] / 100
+        )
+
+        return LakmoosPredictionResponse(
+            state=request.state,
+            predictions=prediction_df.to_dict(orient="records"),
+            max_age=request.max_age,
+            distribution=desired_years_prediction.to_dict(orient="records"),
         )
 
     raise HTTPException(

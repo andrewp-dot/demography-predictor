@@ -3,15 +3,20 @@ from pydantic import BaseModel
 
 
 # TODO:
-# Implement interface for data transfer
+# Make info endpoint to gather data about endpoints and interfaces
 class Info(BaseModel):
     avialable_models: List[str]
+    # endpoints: List[str] = [
+    #     "/predict",
+    #     "/lakmoos-predict",
+    #     "/info",
+    # ]
 
 
 class PredictionRequest(BaseModel):
     model_key: str
     state: str
-    input_data: List[Dict]  # Each dict is one row of data
+    input_data: Optional[List[Dict]]  # Each dict is one row of data
     target_year: int = 2030  # Set the default value for optional parameter
 
     # Maybe this can change into the standalone

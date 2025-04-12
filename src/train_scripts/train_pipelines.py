@@ -18,17 +18,6 @@ from src.train_scripts.train_global_models import train_global_model
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
-# # Technically I do not have to scale the both -> maybe I will just use 2 pipelines in the row and celebrate that I do not have to do this shit
-# # Problems in here: the local model and global model would be trained on the exact same training (time series) data
-
-# def preprocess_data_for_pipeline_training(data: pd.DataFrame, local_model_features: List[str], additional_global_model_features: List[str] = None,) -> Tuple[pd.DataFrame, DataTransformer]:
-#     # Create transformer
-#     transformer = DataTransformer()
-#     if additional_global_model_features is None:
-#         additional_global_model_features = []
-
-#     # Get all features to scale
-
 
 RICH_STATES: List[str] = [
     "Australia",
@@ -154,9 +143,11 @@ def main():
         col.lower() for col in ["year", "country name"]
     ]
     GLOBAL_MODEL_TARGETS: List[str] = [
-        "population ages 15-64",
-        "population ages 0-14",
-        "population ages 65 and above",
+        # "population ages 15-64",
+        # "population ages 0-14",
+        # "population ages 65 and above",
+        "population, female",
+        "population, male",
     ]
 
     hyperparameters = get_core_hyperparameters(
@@ -177,7 +168,7 @@ def main():
     # Global model taining data
     merged_all_states_data = loader.merge_states(state_dfs=all_states_data_dict)
 
-    PIPELINE_NAME: str = "core_pipeline"
+    PIPELINE_NAME: str = "gender_core_pipeline"
     pipeline = train_basic_pipeline(
         name=PIPELINE_NAME,
         local_model_data_dict=all_states_data_dict,
