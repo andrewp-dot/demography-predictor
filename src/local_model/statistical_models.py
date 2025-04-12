@@ -21,66 +21,12 @@ from sklearn.metrics import (
 from config import Config
 from src.utils.log import setup_logging
 from src.preprocessors.state_preprocessing import StateDataLoader
-from src.evaluation import BaseEvaluation
 
 # Get logger
 logger = logging.getLogger("local_model")
 
 # Set the numpy random seed for reproducibility
 np.random.seed(42)
-
-
-class EvaluateARIMA(BaseEvaluation):
-
-    def __init__(self, arima: LocalARIMA):
-
-        super().__init__()
-
-        # Get evaluation data
-        self.model: LocalARIMA = arima
-
-    def eval(
-        self,
-        test_X: pd.DataFrame,
-        test_y: pd.DataFrame,
-        features: list[str],
-        target: str,
-        index: str,
-    ):
-
-        # Set features as a constant
-        # FEATURES = features
-
-        # Get the last year and get the number of years
-        X_years = test_X[["year"]]
-        last_year = int(X_years.iloc[-1].item())
-
-        # # Get the prediction year
-        y_target_years = test_y[["year"]]
-        target_year = int(y_target_years.iloc[-1].item())
-
-        # Calculate steps
-        steps = target_year - last_year
-
-        # Get predicted years
-        self.predicted_years = range(last_year + 1, target_year + 1)
-
-        # Get copies of the data
-        train_data = test_X.copy()
-        test_data = test_y.copy()
-
-        # Set index of the dataframes
-        train_data.set_index(index, inplace=True)
-        test_data.set_index(index, inplace=True)
-
-        # Save true values
-        self.reference_values = test_data[target].to_frame()
-
-        # Get predictions
-        self.predicted = self.model.predict(data=test_data, steps=steps)
-
-        # Get overall metrtics
-        self.get_overall_metrics()
 
 
 class LocalARIMA:
@@ -172,29 +118,6 @@ class LocalARIMA:
         # Rename the predicted mean to target name
         predition_df.rename(columns={"predicted_mean": self.target}, inplace=True)
         return predition_df
-
-    def eval(
-        self,
-        train_df: pd.DataFrame,
-        test_df: pd.DataFrame,
-    ) -> Figure:
-        """
-        Evaluates the model predictions based on train and test data.
-        """
-
-        # Setup predictions
-        arima_evaluation = EvaluateARIMA(self)
-        arima_evaluation.eval(
-            test_X=train_df,
-            test_y=test_df,
-            features=self.features,
-            target=self.target,
-            index=self.index,
-        )
-
-        # Compare predictions
-
-        fig = arima_evaluation.plot_predictions()
 
 
 # TODO: implement GM(1,1)

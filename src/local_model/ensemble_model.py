@@ -8,7 +8,6 @@ from src.utils.log import setup_logging
 from src.utils.save_model import save_model, get_model
 
 from src.base import LSTMHyperparameters
-from src.evaluation import EvaluateModel
 
 from src.local_model.model import BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
@@ -262,15 +261,15 @@ if __name__ == "__main__":
     )
     # train_df, test_df = state_loader.split_data(data=state_data)
 
-    em_evaluation = EvaluateModel(model=em)
-    # em_evaluation.eval(test_X=train_df, test_y=test_df)
-    em_evaluation.eval_for_every_state(
-        X_test_states=state_train_data_dict, y_test_states=state_test_data_dict
-    )
+    # em_evaluation = EvaluateModel(model=em)
+    # # em_evaluation.eval(test_X=train_df, test_y=test_df)
+    # em_evaluation.eval_for_every_state(
+    #     X_test_states=state_train_data_dict, y_test_states=state_test_data_dict
+    # )
 
-    print(em_evaluation.overall_metrics)
-    print(em_evaluation.per_target_metrics)
-    print(em_evaluation.all_states_evaluation)
+    # print(em_evaluation.overall_metrics)
+    # print(em_evaluation.per_target_metrics)
+    # print(em_evaluation.all_states_evaluation)
 
     # Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]] = {
     #     "feature": BaseLSTM(hyperaparameters=LSTMHyperparameters(...), features=["feature"])

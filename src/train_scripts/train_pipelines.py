@@ -6,6 +6,7 @@ from typing import List, Tuple, Dict
 from src.utils.log import setup_logging
 from src.utils.constants import get_core_hyperparameters
 from src.base import LSTMHyperparameters
+from src.evaluation import EvaluateModel
 
 from src.global_model.model import XGBoostTuneParams
 
@@ -198,6 +199,8 @@ def main():
     )
 
     print(test_predicion_df)
+
+    eval_pipeline = EvaluateModel()
 
 
 if __name__ == "__main__":

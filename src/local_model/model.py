@@ -14,7 +14,8 @@ from src.utils.constants import get_core_hyperparameters
 from src.utils.save_model import save_model
 
 from src.base import LSTMHyperparameters, TrainingStats, CustomModelBase
-from src.evaluation import EvaluateModel
+
+# from src.evaluation import EvaluateModel
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -447,22 +448,22 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
         states_dict=eval_states_dict, sequence_len=hyperparameters.sequence_length
     )
 
-    model_evaluation = EvaluateModel(transformer=transformer, model=rnn)
-    evaluation_df = model_evaluation.eval(
-        test_X=X_test_states["Czechia"], test_y=y_test_states["Czechia"]
-    )
+    # model_evaluation = EvaluateModel(transformer=transformer, model=rnn)
+    # evaluation_df = model_evaluation.eval(
+    #     test_X=X_test_states["Czechia"], test_y=y_test_states["Czechia"]
+    # )
 
-    print(evaluation_df)
+    # print(evaluation_df)
 
-    per_target_evaluation_df = model_evaluation.eval_per_target(
-        test_X=X_test_states["Czechia"], test_y=y_test_states["Czechia"]
-    )
+    # per_target_evaluation_df = model_evaluation.eval_per_target(
+    #     test_X=X_test_states["Czechia"], test_y=y_test_states["Czechia"]
+    # )
 
-    print(per_target_evaluation_df)
+    # print(per_target_evaluation_df)
 
-    if save_plots:
-        model_evaluation.plot_predictions()
-        plt.savefig(f"BaseLSTM_predictions_{hyperparameters.epochs}_epochs.png")
+    # if save_plots:
+    #     model_evaluation.plot_predictions()
+    #     plt.savefig(f"BaseLSTM_predictions_{hyperparameters.epochs}_epochs.png")
 
     if to_save_model:
         save_model(name=f"BaseLSTM.pkl", model=rnn)

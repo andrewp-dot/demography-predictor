@@ -1,7 +1,7 @@
 # Standard library imports
 import pandas as pd
 from abc import abstractmethod
-from typing import Dict, List, Callable, Tuple
+from typing import Dict, List, Callable, Tuple, Union
 from torch import nn
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -18,6 +18,9 @@ from sklearn.metrics import (
 # Custom imports
 from src.utils.log import setup_logging
 from src.base import CustomModelBase
+from src.local_model.statistical_models import LocalARIMA
+
+from src.pipeline import LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
 
 from src.preprocessors.data_transformer import DataTransformer
 
@@ -330,7 +333,9 @@ class EvaluateModel(BaseEvaluation):
     def __init__(self, transformer: DataTransformer, model: nn.Module):
         super().__init__()
         self.transformer: DataTransformer = transformer
-        self.model: CustomModelBase = model
+        self.model: Union[
+            CustomModelBase, LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
+        ] = model
 
         # Reference values for every state
         # {"Czechia": {"predicted"..., "reference": ...}, "United States": ...}
@@ -383,6 +388,16 @@ class EvaluateModel(BaseEvaluation):
         logger.debug(f"[Eval]: predicting values from {last_year} to {target_year}...")
 
         # Get predictions
+
+        if (
+            isinstance(self.model, LocalModelPipeline)
+            or isinstance(self.model, GlobalModelPipeline)
+            or isinstance(self.model, PredictorPipeline)
+        ):
+            predictions_df = self.model.predict(
+                input_data=test_X, target_year=target_year
+            )
+
         predictions_df = self.__pipeline_predictions(
             input_data=test_X, last_year=last_year, target_year=target_year
         )
@@ -486,6 +501,59 @@ class EvaluateModel(BaseEvaluation):
 
         # Save the evaluation
         return all_evaluation_df
+
+
+class EvaluateARIMA(BaseEvaluation):
+
+    def __init__(self, arima: LocalARIMA):
+
+        super().__init__()
+
+        # Get evaluation data
+        self.model: LocalARIMA = arima
+
+    def eval(
+        self,
+        test_X: pd.DataFrame,
+        test_y: pd.DataFrame,
+        features: list[str],
+        target: str,
+        index: str,
+    ):
+
+        # Set features as a constant
+        # FEATURES = features
+
+        # Get the last year and get the number of years
+        X_years = test_X[["year"]]
+        last_year = int(X_years.iloc[-1].item())
+
+        # # Get the prediction year
+        y_target_years = test_y[["year"]]
+        target_year = int(y_target_years.iloc[-1].item())
+
+        # Calculate steps
+        steps = target_year - last_year
+
+        # Get predicted years
+        self.predicted_years = range(last_year + 1, target_year + 1)
+
+        # Get copies of the data
+        train_data = test_X.copy()
+        test_data = test_y.copy()
+
+        # Set index of the dataframes
+        train_data.set_index(index, inplace=True)
+        test_data.set_index(index, inplace=True)
+
+        # Save true values
+        self.reference_values = test_data[target].to_frame()
+
+        # Get predictions
+        self.predicted = self.model.predict(data=test_data, steps=steps)
+
+        # Get overall metrtics
+        self.get_overall_metrics()
 
 
 if __name__ == "__main__":

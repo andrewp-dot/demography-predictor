@@ -2,7 +2,6 @@
 import os
 import pandas as pd
 
-from pydantic import BaseModel
 from typing import Union, Optional, List, Any
 
 # Custom imports
@@ -19,25 +18,72 @@ from src.local_model.ensemble_model import PureEnsembleModel
 
 from src.global_model.model import GlobalModel
 
-from src.predictors.predictor_base import DemographyPredictor
-
 
 settings = Config()
 
 
-class LocalModelPipeline(BaseModel):
-    model: Union[BaseLSTM, FineTunableLSTM, PureEnsembleModel]
-    transformer: DataTransformer
-    training_stats: Optional[TrainingStats] = None
+class LocalModelPipeline:
 
-    model_config = {"arbitrary_types_allowed": True}
+    def __init__(
+        self,
+        name: str,
+        model: Union[BaseLSTM, FineTunableLSTM, PureEnsembleModel],
+        transformer: DataTransformer,
+    ):
+        self.name: str = name
+        self.model: Union[BaseLSTM, FineTunableLSTM, PureEnsembleModel] = model
+        self.transformer: DataTransformer = transformer
+        self.training_stats: Optional[TrainingStats] = None
+
+    def predict(
+        self, input_data: pd.DataFrame, last_year: int, target_year: int
+    ) -> pd.DataFrame:
+        FEATURES: List[str] = self.model.FEATURES
+        # Scale data
+        scaled_data_df = self.transformer.scale_data(data=input_data, columns=FEATURES)
+
+        # Predict
+        # Predict values to the future
+        future_feature_values_scaled = self.model.predict(
+            input_data=scaled_data_df[FEATURES],
+            last_year=last_year,
+            target_year=target_year,
+        )
+
+        future_feature_values_scaled_df = pd.DataFrame(
+            future_feature_values_scaled, columns=FEATURES
+        )
+
+        # Unscale data
+        future_feature_values_df = self.transformer.unscale_data(
+            data=future_feature_values_scaled_df, columns=FEATURES
+        )
+
+        return future_feature_values_df
 
 
-class GlobalModelPipeline(BaseModel):
-    model: GlobalModel
-    transformer: DataTransformer
+class GlobalModelPipeline:
+    # model: GlobalModel
+    # transformer: DataTransformer
 
-    model_config = {"arbitrary_types_allowed": True}
+    # model_config = {"arbitrary_types_allowed": True}
+
+    def __init__(self, name: str, model: GlobalModel, transformer: DataTransformer):
+        self.name: str = name
+        self.model: GlobalModel = model
+        self.transformer: DataTransformer = transformer
+
+    def predict(self, input_data: pd.DataFrame) -> pd.DataFrame:
+
+        # Scale data
+        FEATURES: List[str] = self.model.FEATURES
+
+        scaled_data = self.transformer.scale_data(data=input_data, columns=FEATURES)
+
+        # Predict
+        predictions_df = self.model.predict_human_readable(data=scaled_data)
+
+        return predictions_df
 
 
 class PredictorPipeline:
@@ -55,51 +101,6 @@ class PredictorPipeline:
         self.local_model_pipeline = local_model_pipeline
         self.global_model_pipeline = global_model_pipeline
 
-    def local_predict(
-        self, input_data: pd.DataFrame, last_year: int, target_year: int
-    ) -> pd.DataFrame:
-
-        FEATURES: List[str] = self.local_model_pipeline.model.FEATURES
-        # Scale data
-        scaled_data_df = self.local_model_pipeline.transformer.scale_data(
-            data=input_data, columns=FEATURES
-        )
-
-        # Predict
-        # Predict values to the future
-        future_feature_values_scaled = self.local_model_pipeline.model.predict(
-            input_data=scaled_data_df[FEATURES],
-            last_year=last_year,
-            target_year=target_year,
-        )
-
-        future_feature_values_scaled_df = pd.DataFrame(
-            future_feature_values_scaled, columns=FEATURES
-        )
-
-        # Unscale data
-        future_feature_values_df = self.local_model_pipeline.transformer.unscale_data(
-            data=future_feature_values_scaled_df, columns=FEATURES
-        )
-
-        return future_feature_values_df
-
-    def global_predict(self, input_data: pd.DataFrame) -> pd.DataFrame:
-
-        # Scale data
-        FEATURES: List[str] = self.global_model_pipeline.model.FEATURES
-
-        scaled_data = self.global_model_pipeline.transformer.scale_data(
-            data=input_data, columns=FEATURES
-        )
-
-        # Predict
-        predictions_df = self.global_model_pipeline.model.predict_human_readable(
-            data=scaled_data
-        )
-
-        return predictions_df
-
     def predict(self, input_data: pd.DataFrame, target_year: int) -> pd.DataFrame:
 
         # Model predict
@@ -114,7 +115,7 @@ class PredictorPipeline:
             input_data.sort_values(by="year", ascending=False)["year"].iloc[0].item()
         )
 
-        future_feature_values_df = self.local_predict(
+        future_feature_values_df = self.local_model_pipeline.predict(
             input_data=input_data, last_year=last_year, target_year=target_year
         )
 
@@ -136,7 +137,9 @@ class PredictorPipeline:
             self.global_model_pipeline.model.FEATURES
         ]
 
-        predicted_data_df = self.global_predict(input_data=future_feature_values_df)
+        predicted_data_df = self.global_model_pipeline.predict(
+            input_data=future_feature_values_df
+        )
 
         # Return predictions
         return predicted_data_df
