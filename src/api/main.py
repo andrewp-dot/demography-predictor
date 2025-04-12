@@ -200,6 +200,7 @@ def model_lakmoos_predict(request: LakmoosPredictionRequest):
 
     # Generate predictions
     prediction_df = predict_from_request(request=request)
+    print(prediction_df.columns)
 
     # If the output contains aging data
     if set(AGING_COLUMNS).issubset(set(prediction_df.columns)):
@@ -228,12 +229,16 @@ def model_lakmoos_predict(request: LakmoosPredictionRequest):
         )
     elif set(GENDER_DIST_COLUMNS).issubset(set(prediction_df.columns)):
 
-        desired_years_prediction = prediction_df.iloc[-1].to_dict()
-
         # Adjust values to be coeficients / probabilities
-        desired_years_prediction[GENDER_DIST_COLUMNS] = (
-            desired_years_prediction[GENDER_DIST_COLUMNS] / 100
-        )
+
+        distribution_df = prediction_df.copy()
+
+        # Convert percent to probability
+        for col in GENDER_DIST_COLUMNS:
+            distribution_df[col] = distribution_df[col] / 100
+
+        # Get desired years
+        desired_years_prediction = distribution_df.tail(1)
 
         return LakmoosPredictionResponse(
             state=request.state,

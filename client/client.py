@@ -60,7 +60,7 @@ def predict(state: str, model_key: str, target_year: int):
         prediction_df = pd.DataFrame(response.json()["predictions"])
         print(prediction_df)
     else:
-        print(response.text)
+        print(f"{response.status_code}: {response.text}")
 
 
 @client.command()
@@ -120,7 +120,7 @@ def lakmoos_predict(state: str, model_key: str, target_year: int, max_age: int):
             print(str(e))
 
     else:
-        print(response.text)
+        print(f"{response.status_code}: {response.text}")
 
 
 if __name__ == "__main__":
