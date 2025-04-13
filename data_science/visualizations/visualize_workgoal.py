@@ -5,8 +5,8 @@ df = pd.read_csv("./datasets/dataset_v1/states/World.csv")
 
 
 # get years and population total
-years = df[["Year"]]
-population_total = df[["Population, total"]]
+years = df[["year"]]
+population_total = df[["population, total"]]
 
 # input
 known_index = int(len(years) * 0.8)

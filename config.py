@@ -80,6 +80,22 @@ def get_source_data_dir(
     return os.path.join(data_science_root, "data", f"dataset_{dataset_version}")
 
 
+def get_data_visualizations_dir(
+    data_science_root: DirectoryPath, dataset_version: str
+) -> DirectoryPath:
+    data_visualizations_dir = os.path.join(
+        data_science_root,
+        "visualizations",
+        f"dataset_{dataset_version}",
+    )
+
+    # Create if it does not exist
+    if not os.path.isdir(data_visualizations_dir):
+        os.makedirs(data_visualizations_dir)
+
+    return data_visualizations_dir
+
+
 class DatasetCreatorSettings(BaseSettings):
 
     dataset_version: str = DATASET_VERSION
@@ -99,4 +115,11 @@ class DatasetCreatorSettings(BaseSettings):
 
     data_dir: DirectoryPath = Field(
         ..., default_factory=lambda: get_data_dir(get_data_science_dir())
+    )
+
+    visualizations_dir: DirectoryPath = Field(
+        ...,
+        default_factory=lambda: get_data_visualizations_dir(
+            get_data_science_dir(), DATASET_VERSION
+        ),
     )
