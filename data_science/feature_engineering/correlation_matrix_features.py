@@ -5,7 +5,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import numpy as np
 
 import pprint
@@ -18,27 +18,60 @@ settings = DatasetCreatorSettings()
 
 
 # Load the dataset (replace 'your_dataset.csv' with the actual file path)
+HIGHLY_CORRELATED_COLUMNS: List[str] = [
+    "life expectancy at birth, total",
+    "age dependency ratio",
+    "rural population",
+    "birth rate, crude",
+    "adolescent fertility rate",
+]
 
 
-def create_correlation_matrix(dataset_path: str) -> pd.DataFrame:
+def create_correlation_matrix(
+    dataset_path: str,
+    exclude_targets: bool = True,
+    exclude_highly_correlated: bool = True,
+) -> pd.DataFrame:
+    """
+    Create a correlation matrix from the dataset.
+
+    Args:
+        dataset_path (str): Path to the existing dataset.
+        exclude_targets (bool): Whether to exclude target features. Defaults to True.
+
+    Returns:
+        out: pd.DataFrame: Correlation matrix datframe.
+    """
     df = pd.read_csv(dataset_path)
 
-    stateless_df = df.drop(columns=["country name"])
+    if exclude_targets:
+        # Exclude target features
+        df = df.drop(columns=settings.ALL_POSSIBLE_TARGET_FEATURES)
+
+    # Drop columns with high correlation
+    if exclude_highly_correlated:
+        df = df.drop(columns=HIGHLY_CORRELATED_COLUMNS)
+
+    df = df.drop(
+        columns=["country name"]
+    )  # remove this because it is not numerical feature
 
     # Compute the correlation matrix
-    corr_matrix = stateless_df.corr()
+    corr_matrix = df.corr()
 
     return corr_matrix
 
 
 def display_corr_matrix(
-    corr_matrix: pd.DataFrame, save_path: str | None = None, only_triangle: bool = False
+    corr_matrix: pd.DataFrame,
+    save_path: str | None = None,
+    only_triangle: bool = False,
 ) -> Figure:
 
     # Create a mask for the upper triangle
     mask = None
     if only_triangle:
-        mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
+        mask = np.triu(np.ones_like(corr_matrix, dtype=bool), k=1)
 
     # Plot the heatmap
     corr_matrix_fig = plt.figure(figsize=(12, 10))
@@ -61,7 +94,8 @@ def display_corr_matrix(
 
 
 def get_highly_correlated_features(
-    corr_matrix: pd.DataFrame, threshold: float = 0.8
+    corr_matrix: pd.DataFrame,
+    threshold: float = 0.8,
 ) -> List[Tuple[str, str]]:
     """
     Get a list of highly correlated features from the correlation matrix.
@@ -83,7 +117,35 @@ def get_highly_correlated_features(
     return correlated_pairs
 
 
-def main():
+def convert_highly_correlated_features_to_dict(
+    highly_correlated_features: List[Tuple[str, str]],
+) -> Dict[str, List[str]]:
+    """
+    Convert a list of highly correlated features into a dictionary.
+
+    Args:
+        highly_correlated_features (list): A list of tuples containing pairs of highly correlated features.
+
+    Returns:
+        dict: A dictionary where the keys are feature names and the values are lists of correlated features.
+    """
+    highly_correlated_dict: Dict[str, List[str]] = {}
+
+    # For each feature find hihgly correlated features
+    for feature1, feature2 in highly_correlated_features:
+
+        # Create a dictionary entry for feature1 if it doesn't exist
+        if feature1 not in highly_correlated_dict:
+            highly_correlated_dict[feature1] = []
+
+        # Append corrlated feature2 to the list of feature1
+        highly_correlated_dict[feature1].append(feature2)
+
+    # Return transformed dictionaryy
+    return highly_correlated_dict
+
+
+def main(show_plot: bool = False) -> None:
     DATASET_PATH = os.path.join(
         settings.save_dataset_path,
         f"dataset_{settings.dataset_version}",
@@ -101,14 +163,27 @@ def main():
         ),
         only_triangle=True,
     )
-    plt.show()
 
     higly_correlated_features = get_highly_correlated_features(
-        corr_matrix=corr_matrix, threshold=0.9
+        corr_matrix=corr_matrix, threshold=0.8
     )
 
+    higly_correlated_features_dict = convert_highly_correlated_features_to_dict(
+        higly_correlated_features
+    )
+
+    print("-" * 100)
+    print("Highly correlated feature pairs:")
     pprint.pprint(higly_correlated_features)
+
+    print("-" * 100)
+
+    print("Highly correlated features dictionary:")
+    pprint.pprint(higly_correlated_features_dict)
+
+    if show_plot:
+        plt.show()
 
 
 if __name__ == "__main__":
-    main()
+    main(show_plot=True)

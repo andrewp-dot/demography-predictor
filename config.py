@@ -7,6 +7,16 @@ from typing import Literal, Dict, List
 # Custom settings
 DATASET_VERSION: Literal["v0", "v1", "v2"] = "v2"
 
+ALL_POSSIBLE_TARGET_FEATURES: List[str] = [
+    "population, total",
+    # "population growth",
+    "population ages 15-64",
+    "population ages 0-14",
+    "population ages 65 and above",
+    "population, female",
+    "population, male",
+]
+
 
 def get_trained_models_dir() -> DirectoryPath:
     trained_models_dir = os.path.join(os.path.abspath("."), "trained_models")
@@ -51,15 +61,7 @@ class Config(BaseSettings):
             "gender_model": "gender_core_pipeline",
         }
 
-    ALL_POSSIBLE_TARGET_FEATURES: List[str] = [
-        "population, total",
-        # "population growth",
-        "population ages 15-64",
-        "population ages 0-14",
-        "population ages 65 and above",
-        "population, female",
-        "population, male",
-    ]
+    ALL_POSSIBLE_TARGET_FEATURES: List[str] = ALL_POSSIBLE_TARGET_FEATURES
 
 
 def get_data_science_dir() -> DirectoryPath:
@@ -123,3 +125,5 @@ class DatasetCreatorSettings(BaseSettings):
             get_data_science_dir(), DATASET_VERSION
         ),
     )
+
+    ALL_POSSIBLE_TARGET_FEATURES: List[str] = ALL_POSSIBLE_TARGET_FEATURES

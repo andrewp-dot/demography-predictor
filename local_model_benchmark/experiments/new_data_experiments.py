@@ -40,6 +40,16 @@ logger = logging.getLogger("benchmark")
 # 3. To exclude states? ... find out which population or what makes the problem.
 
 
+# Load the dataset (replace 'your_dataset.csv' with the actual file path)
+HIGHLY_CORRELATED_COLUMNS: List[str] = [
+    "life expectancy at birth, total",
+    "age dependency ratio",
+    "rural population",
+    "birth rate, crude",
+    "adolescent fertility rate",
+]
+
+
 class DataUsedForTraining(BaseExperiment):
     """
     Trains models using dfferent data:
@@ -53,7 +63,7 @@ class DataUsedForTraining(BaseExperiment):
     FEATURES: List[str] = [
         col.lower()
         for col in [
-            "year",
+            # "year",
             "Fertility rate, total",
             # "Population, total",
             "Net migration",
@@ -70,6 +80,7 @@ class DataUsedForTraining(BaseExperiment):
             "Adolescent fertility rate",
             "Life expectancy at birth, total",
         ]
+        if col.lower() not in HIGHLY_CORRELATED_COLUMNS
     ]
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
