@@ -14,7 +14,9 @@ from local_model_benchmark.config import (
 
 # from src.utils.save_model import save_experiment_model, get_experiment_model
 from src.base import CustomModelBase
-from src.compare_models.compare import compare_models_by_states
+from src.state_groups import StatesByGeolocation, StatesByWealth
+
+from src.compare_models.compare import ModelComparator
 
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
 from src.local_model.model import LSTMHyperparameters, BaseLSTM
@@ -157,10 +159,11 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
         )
 
         # Evaluate models - per-target-performance
-        per_target_metrics_df = compare_models_by_states(
+        comparator = ModelComparator()
+        per_target_metrics_df = comparator.compare_models_by_states(
             models=TO_COMPARE_MODELS, states=[state], by="per-features"
         )
-        overall_metrics_df = compare_models_by_states(
+        overall_metrics_df = comparator.compare_models_by_states(
             models=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
         )
 
@@ -341,10 +344,11 @@ class FineTunedModels(BaseExperiment):
         )
 
         # Evaluate models - per-target-performance
-        per_target_metrics_df = compare_models_by_states(
+        comparator = ModelComparator()
+        per_target_metrics_df = comparator.compare_models_by_states(
             models=TO_COMPARE_MODELS, states=[state], by="per-features"
         )
-        overall_metrics_df = compare_models_by_states(
+        overall_metrics_df = comparator.compare_models_by_states(
             models=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
         )
 
@@ -499,10 +503,11 @@ class CompareWithStatisticalModels(BaseExperiment):
         # TODO: train GM model
 
         # Evaluate models - per-target-performance
-        per_target_metrics_df = compare_models_by_states(
+        comparator = ModelComparator()
+        per_target_metrics_df = comparator.compare_models_by_states(
             models=TO_COMPARE_MODELS, states=[state], by="per-features"
         )
-        overall_metrics_df = compare_models_by_states(
+        overall_metrics_df = comparator.compare_models_by_states(
             models=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
         )
 
@@ -523,51 +528,10 @@ if __name__ == "__main__":
     setup_logging()
 
     # States divided to this categories by GPT
-    RICH: List[str] = [
-        "Australia",
-        "Austria",
-        "Bahamas, The",
-        "Bahrain",
-        "Belgium",
-        "Brunei Darussalam",
-        "Canada",
-        "Cyprus",
-        "Czechia",
-        "Denmark",
-        "Estonia",
-        "Finland",
-        "France",
-        "Germany",
-        "Hong Kong SAR, China",
-        "Iceland",
-        "Ireland",
-        "Israel",
-        "Italy",
-        "Japan",
-        "Korea, Rep.",
-        "Kuwait",
-        "Latvia",
-        "Lithuania",
-        "Luxembourg",
-        "Malta",
-        "Netherlands",
-        "New Zealand",
-        "Norway",
-        "Oman",
-        "Poland",
-        "Portugal",
-        "Qatar",
-        "Saudi Arabia",
-        "Singapore",
-        "Slovak Republic",
-        "Slovenia",
-        "Spain",
-        "Sweden",
-        "Switzerland",
-        "United Arab Emirates",
-        "United Kingdom",
-        "United States",
-    ]
+    STATE: str = "Czechia"
+    SELECTED_GROUP: List[str] = StatesByWealth().get_states_corresponding_group(
+        state=STATE
+    )
 
     exp_1 = FeaturePredictionSeparatelyVSAtOnce(
         description="Compares single LSTM model vs LSTM for every feature."
@@ -578,7 +542,7 @@ if __name__ == "__main__":
         description="See if finetuning the model helps the model to be more accurate."
     )
 
-    exp_2.run(state="Czechia", state_group=RICH, split_rate=0.8)
+    exp_2.run(state="Czechia", state_group=SELECTED_GROUP, split_rate=0.8)
 
     exp_3 = CompareWithStatisticalModels(
         description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."

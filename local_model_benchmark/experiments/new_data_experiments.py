@@ -16,6 +16,8 @@ from local_model_benchmark.config import (
 from src.base import CustomModelBase
 from src.compare_models.compare import ModelComparator
 
+from src.state_groups import StatesByGeolocation, StatesByWealth
+
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
 from src.train_scripts.train_local_models import (
     train_base_lstm,
@@ -249,60 +251,58 @@ class DataUsedForTraining(BaseExperiment):
         )
 
 
-if __name__ == "__main__":
+class FeatureSelectionExperiment(BaseExperiment):
+    """
+    Feature selection experiment.
+    """
 
+    def __init__(self, description: str):
+        super().__init__(name=self.__class__.__name__, description=description)
+
+    def run(self):
+        pass
+
+
+# TODO:
+# 1. Create expeirment for the groups (or to find the best subset of data)
+# 2. Subset of data validaion:
+#   # 1. Create a subset of data
+#   # 2. From the subset of data create training and testing data (randomly select some % of given states from the group, and valiedate the model on the rest of the data)
+
+
+class StatesByWealthExperiment(BaseExperiment):
+    """
+    Experiment for the states by wealth.
+    """
+
+    def __init__(self, description: str):
+        super().__init__(name=self.__class__.__name__, description=description)
+
+    def run(self):
+
+        # Create readme
+        self.create_readme()
+
+
+def main():
     # Setup logging
     setup_logging()
-
-    # States divided to this categories by GPT
-    RICH: List[str] = [
-        "Australia",
-        "Austria",
-        "Bahamas, The",
-        "Bahrain",
-        "Belgium",
-        "Brunei Darussalam",
-        "Canada",
-        "Cyprus",
-        "Czechia",
-        "Denmark",
-        "Estonia",
-        "Finland",
-        "France",
-        "Germany",
-        "Hong Kong SAR, China",
-        "Iceland",
-        "Ireland",
-        "Israel",
-        "Italy",
-        "Japan",
-        "Korea, Rep.",
-        "Kuwait",
-        "Latvia",
-        "Lithuania",
-        "Luxembourg",
-        "Malta",
-        "Netherlands",
-        "New Zealand",
-        "Norway",
-        "Oman",
-        "Poland",
-        "Portugal",
-        "Qatar",
-        "Saudi Arabia",
-        "Singapore",
-        "Slovak Republic",
-        "Slovenia",
-        "Spain",
-        "Sweden",
-        "Switzerland",
-        "United Arab Emirates",
-        "United Kingdom",
-        "United States",
-    ]
 
     exp = DataUsedForTraining(
         description="Trains base LSTM models using data in 3 categories: single state data, group of states (e.g. by wealth divided states) and with all available states data.",
     )
 
-    exp.run(state="Czechia", state_group=RICH)
+    STATE: str = "Czechia"
+    GROUPS_BY_WEALTH = StatesByWealth()
+    GROUPS_BY_GEOLOCATION = StatesByGeolocation()
+
+    SELECTED_GROUP: List[str] = GROUPS_BY_WEALTH.get_states_corresponding_group(
+        state=STATE
+    )
+
+    # Get the group of the selected state
+    exp.run(state=STATE, state_group=SELECTED_GROUP, split_rate=0.8)
+
+
+if __name__ == "__main__":
+    main()

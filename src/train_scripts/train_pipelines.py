@@ -10,6 +10,9 @@ from src.evaluation import EvaluateModel
 
 from src.global_model.model import XGBoostTuneParams
 
+
+from src.state_groups import StatesByWealth
+
 from src.pipeline import PredictorPipeline
 
 from src.train_scripts.train_local_models import train_base_lstm
@@ -17,53 +20,6 @@ from src.train_scripts.train_global_models import train_global_model
 
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-
-
-RICH_STATES: List[str] = [
-    "Australia",
-    "Austria",
-    "Bahamas, The",
-    "Bahrain",
-    "Belgium",
-    "Brunei Darussalam",
-    "Canada",
-    "Cyprus",
-    "Czechia",
-    "Denmark",
-    "Estonia",
-    "Finland",
-    "France",
-    "Germany",
-    "Hong Kong SAR, China",
-    "Iceland",
-    "Ireland",
-    "Israel",
-    "Italy",
-    "Japan",
-    "Korea, Rep.",
-    "Kuwait",
-    "Latvia",
-    "Lithuania",
-    "Luxembourg",
-    "Malta",
-    "Netherlands",
-    "New Zealand",
-    "Norway",
-    "Oman",
-    "Poland",
-    "Portugal",
-    "Qatar",
-    "Saudi Arabia",
-    "Singapore",
-    "Slovak Republic",
-    "Slovenia",
-    "Spain",
-    "Sweden",
-    "Switzerland",
-    "United Arab Emirates",
-    "United Kingdom",
-    "United States",
-]
 
 
 def train_basic_pipeline(
@@ -162,7 +118,15 @@ def main():
     # Local model training data
     STATE: str = "Czechia"
     single_state_data_dict = loader.load_states(states=[STATE])
-    group_state_data_dict = loader.load_states(states=RICH_STATES)
+
+    # Get the corresponding group of states
+    GROUPS_BY_WEALTH = StatesByWealth()
+
+    SELECTED_GROUP: List[str] = GROUPS_BY_WEALTH.get_states_corresponding_group(
+        state=STATE
+    )
+
+    group_state_data_dict = loader.load_states(states=SELECTED_GROUP)
     all_states_data_dict = loader.load_all_states()
 
     # Global model taining data
