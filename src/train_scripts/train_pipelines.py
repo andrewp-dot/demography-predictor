@@ -72,26 +72,38 @@ def train_basic_pipeline(
 def main():
 
     # Get local model features
+    # LOCAL_MODEL_FEATURES: List[str] = [
+    #     col.lower()
+    #     for col in [
+    #         # "year",
+    #         "Fertility rate, total",
+    #         # "Population, total",
+    #         "Net migration",
+    #         "Arable land",
+    #         "Birth rate, crude",
+    #         "GDP growth",
+    #         "Death rate, crude",
+    #         "Agricultural land",
+    #         "Rural population",
+    #         "Rural population growth",
+    #         "Age dependency ratio",
+    #         "Urban population",
+    #         "Population growth",
+    #         "Adolescent fertility rate",
+    #         "Life expectancy at birth, total",
+    #     ]
+    # ]
+
     LOCAL_MODEL_FEATURES: List[str] = [
-        col.lower()
-        for col in [
-            # "year",
-            "Fertility rate, total",
-            # "Population, total",
-            "Net migration",
-            "Arable land",
-            "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            "Rural population",
-            "Rural population growth",
-            "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            "Adolescent fertility rate",
-            "Life expectancy at birth, total",
-        ]
+        "fertility rate, total",
+        "population, total",
+        "arable land",
+        "gdp growth",
+        "death rate, crude",
+        "agricultural land",
+        "rural population growth",
+        "urban population",
+        "population growth",
     ]
 
     # Get global model settings

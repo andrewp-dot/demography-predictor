@@ -466,6 +466,9 @@ class StatesByGroup(BaseExperiment):
 
 
 # Try this on whole pipeline?
+
+
+# TODO: Make this work for all pipelines -> use better evaluation method
 class FeatureSelectionExperiment(BaseExperiment):
 
     FEATURES: List[str] = [
