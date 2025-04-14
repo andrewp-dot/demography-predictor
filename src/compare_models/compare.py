@@ -22,6 +22,8 @@ from src.predictors.predictor_base import DemographyPredictor
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
 
+from src.pipeline import LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
+
 logger = logging.getLogger("model_compare")
 
 
@@ -139,8 +141,11 @@ class ModelComparator:
     # TODO: edit this function for accepting pipelines maybe?
     def compare_models_by_states(
         self,
-        models: Dict[str, Union[DemographyPredictor, CustomModelBase]],
-        transformers: Dict[str, DataTransformer],
+        pipelines: Dict[
+            str, Union[LocalModelPipeline, GlobalModelPipeline, PredictorPipeline]
+        ],
+        # models: Dict[str, Union[DemographyPredictor, CustomModelBase]],
+        # transformers: Dict[str, DataTransformer],
         states: List[str] | None = None,
         by: Literal["overall-metrics", "per-features"] = "overall-metrics",
     ) -> pd.DataFrame:
@@ -161,7 +166,7 @@ class ModelComparator:
         """
 
         # Check if there is something to compare
-        if len(models) <= 1:
+        if len(pipelines) <= 1:
             logger.warning("No models to compare.")
             return {}
 
@@ -170,15 +175,15 @@ class ModelComparator:
 
         # Check if the models has same features and targets
         # first_model_features: List[str] = to_compare_models[models[0]].FEATURES
-        model_names: List[str] = list(models.keys())
-        first_model_targets: List[str] = models[model_names[0]].TARGETS
+        model_names: List[str] = list(pipelines.keys())
+        first_model_targets: List[str] = pipelines[model_names[0]].model.TARGETS
 
         for model_name in model_names[1:]:
             # Get next model
-            model = models[model_name]
+            model = pipelines[model_name].model
 
             # Check if they have the same targets
-            if models[model_name].TARGETS != first_model_targets:
+            if model.TARGETS != first_model_targets:
                 raise ValueError(
                     f"The model '{model_name}' has different features then the first model"
                 )
@@ -196,7 +201,7 @@ class ModelComparator:
             states_data_dict = states_loaders.load_states(states=states)
 
         # Getnerate evaluation for every model
-        for model_name, model in models.items():
+        for model_name, pipeline in pipelines.items():
             # Preprocess data for the model - suppoorts different sequence length, by type
 
             # Adjust hyperparameters by the model type
@@ -218,7 +223,7 @@ class ModelComparator:
             )
 
             model_evaluation = EvaluateModel(
-                transformer=transformers[model_name], model=model
+                transformer=pipelines[model_name].transformer, model=model
             )
 
             # Save the model evaluation refference

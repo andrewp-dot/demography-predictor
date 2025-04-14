@@ -1,9 +1,10 @@
 # Standard library imports
 import logging
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
 
 # Custom imports
 from src.utils.log import setup_logging
@@ -16,7 +17,7 @@ from local_model_benchmark.config import (
 from src.base import CustomModelBase
 from src.compare_models.compare import ModelComparator
 
-from src.state_groups import StatesByGeolocation, StatesByWealth
+from src.state_groups import StatesGroups, StatesByGeolocation, StatesByWealth
 
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
 from src.train_scripts.train_local_models import (
@@ -82,7 +83,7 @@ class DataUsedForTraining(BaseExperiment):
             "Adolescent fertility rate",
             "Life expectancy at birth, total",
         ]
-        if col.lower() not in HIGHLY_CORRELATED_COLUMNS
+        # if col.lower() not in HIGHLY_CORRELATED_COLUMNS
     ]
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
@@ -167,7 +168,6 @@ class DataUsedForTraining(BaseExperiment):
         self.create_readme()
 
         COMPARATION_MODELS_DICT: Dict[str, BaseLSTM] = {}
-        TRANSFORMERS_MODELS_DICT: Dict[str, DataTransformer] = {}
 
         # Create model trained on a single state
         single_state_model_pipeline = self.__train_by_single_state(
@@ -177,12 +177,7 @@ class DataUsedForTraining(BaseExperiment):
         )
 
         # Train model using one state
-        COMPARATION_MODELS_DICT["single_state_model"] = (
-            single_state_model_pipeline.model
-        )
-        TRANSFORMERS_MODELS_DICT["single_state_model"] = (
-            single_state_model_pipeline.transformer
-        )
+        COMPARATION_MODELS_DICT["single_state_model"] = single_state_model_pipeline
 
         # Train model using group of states
         # Get one loader for multiple states to save memmory
@@ -192,12 +187,7 @@ class DataUsedForTraining(BaseExperiment):
             display_nth_epoch=1,
         )
 
-        COMPARATION_MODELS_DICT["group_states_model"] = (
-            group_states_model_pipeline.model
-        )
-        TRANSFORMERS_MODELS_DICT["group_states_model"] = (
-            group_states_model_pipeline.transformer
-        )
+        COMPARATION_MODELS_DICT["group_states_model"] = group_states_model_pipeline
 
         # Train model using  all states data
         all_states_model_pipeline = self.__train_all_states(
@@ -205,23 +195,18 @@ class DataUsedForTraining(BaseExperiment):
             display_nth_epoch=1,
         )
 
-        COMPARATION_MODELS_DICT["all_states_model"] = all_states_model_pipeline.model
-        TRANSFORMERS_MODELS_DICT["all_states_model"] = (
-            all_states_model_pipeline.transformer
-        )
+        COMPARATION_MODELS_DICT["all_states_model"] = all_states_model_pipeline
 
         # Compare models
         comparator = ModelComparator()
         # Evaluate models - per-target-performance
         per_target_metrics_df = comparator.compare_models_by_states(
-            models=COMPARATION_MODELS_DICT,
-            transformers=TRANSFORMERS_MODELS_DICT,
+            pipelines=COMPARATION_MODELS_DICT,
             states=[state],
             by="per-features",
         )
         overall_metrics_df = comparator.compare_models_by_states(
-            models=COMPARATION_MODELS_DICT,
-            transformers=TRANSFORMERS_MODELS_DICT,
+            pipelines=COMPARATION_MODELS_DICT,
             states=[state],
             by="overall-metrics",
         )
@@ -270,18 +255,144 @@ class FeatureSelectionExperiment(BaseExperiment):
 #   # 2. From the subset of data create training and testing data (randomly select some % of given states from the group, and valiedate the model on the rest of the data)
 
 
-class StatesByWealthExperiment(BaseExperiment):
+class StatesByGroup(BaseExperiment):
     """
     Experiment for the states by wealth.
     """
 
+    FEATURES: List[str] = [
+        col.lower()
+        for col in [
+            # "year",
+            "Fertility rate, total",
+            # "Population, total",
+            "Net migration",
+            "Arable land",
+            "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            "Rural population",
+            "Rural population growth",
+            "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            "Adolescent fertility rate",
+            "Life expectancy at birth, total",
+        ]
+        if col.lower() not in HIGHLY_CORRELATED_COLUMNS
+    ]
+
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        input_size=len(FEATURES),
+        batch_size=16,
+    )
+
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def run(self):
+    def __train_group_of_states(
+        self,
+        states: List[str],
+        split_rate: float,
+        display_nth_epoch: int = 10,
+    ) -> LocalModelPipeline:
+
+        # Load data
+        states_loader = StatesDataLoader()
+        states_data_dict = states_loader.load_states(states=states)
+
+        base_model_pipeline = train_base_lstm(
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=display_nth_epoch,
+        )
+
+        return base_model_pipeline
+
+    def __train_models_for_each_group(
+        self, state_groups: StatesGroups, split_rate: float = 0.8
+    ) -> Dict[str, Tuple[LocalModelPipeline, List[str]]]:
+        """
+        Trains model for each group of states.
+
+        Args:
+            state_groups (StatesGroups): The state groups to train the models on.
+            split_rate (float, optional): Split rate of data for training and validation. Defaults to 0.8.
+
+        Returns:
+            out: Dict[str, Tuple[LocalModelPipeline, List[str]]]: The key is the group name and the value is a tuple of the model and the states which will be used for validation.
+        """
+
+        # Load data and setup variables
+        group_states_dict: Dict[str, List[str]] = state_groups.model_dump()
+
+        GROUP_MODEL_VALIDATION_DATA: Dict[str, Tuple[LocalModelPipeline, List[str]]] = (
+            {}
+        )
+
+        for group, states in group_states_dict.items():
+            # Train model for each group
+
+            train_states, test_states = train_test_split(
+                states, test_size=(1 - split_rate), random_state=42
+            )
+
+            group_model = self.__train_group_of_states(
+                states=train_states,
+                split_rate=0.8,
+            )
+
+            GROUP_MODEL_VALIDATION_DATA[group] = (group_model, test_states)
+
+        return GROUP_MODEL_VALIDATION_DATA
+
+    def run(self, state_groups: StatesGroups, split_rate: float = 0.8):
 
         # Create readme
         self.create_readme()
+
+        # Train base model
+        states_loader = StatesDataLoader()
+        states_data_dict = states_loader.load_all_states()
+
+        base_model_pipeline = train_base_lstm(
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=1,
+        )
+
+        # Create group models vs base model tuples
+
+        GROUP_MODELS: Dict[str, Tuple[LocalModelPipeline, List[str]]] = (
+            self.__train_models_for_each_group(state_groups=state_groups)
+        )
+
+        # Compare models
+        comparator = ModelComparator()
+
+        COMPARATION_MODELS_DICT: Dict[str, LocalModelPipeline] = {}
+
+        for group, (group_model, validation_states) in GROUP_MODELS.items():
+            # Add group model to the comparision
+            COMPARATION_MODELS_DICT[group] = group_model
+            COMPARATION_MODELS_DICT["base_model"] = base_model_pipeline
+
+            # Evaluate models - per-target-performance
+            per_target_metrics_df = comparator.compare_models_by_states(
+                pipelines=COMPARATION_MODELS_DICT,
+                states=validation_states,
+                by="per-features",
+            )
+            overall_metrics_df = comparator.compare_models_by_states(
+                pipelines=COMPARATION_MODELS_DICT,
+                states=validation_states,
+                by="overall-metrics",
+            )
 
 
 def main():
