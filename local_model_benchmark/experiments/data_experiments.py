@@ -289,19 +289,34 @@ class StatesByGroup(BaseExperiment):
         batch_size=16,
     )
 
-    def __init__(self, description: str):
-        super().__init__(name=self.__class__.__name__, description=description)
+    def __init__(self, description: str, name: str = ""):
+        super().__init__(
+            name=f"{self.__class__.__name__}_{name}", description=description
+        )
 
     def __train_group_of_states(
         self,
         states: List[str],
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> LocalModelPipeline:
+    ) -> Tuple[LocalModelPipeline, List[str]]:
+        """
+        Trains model using the group of states. Returns the model and the states which was used for training.
+
+        Args:
+            states (List[str]): The list of states which you want to train the model on.
+            split_rate (float): Split rate for data training and validation.
+            display_nth_epoch (int, optional): Display every nth epoch. Defaults to 10.
+
+        Returns:
+            out: Tuple[LocalModelPipeline, List[str]]: model, training_states_list
+        """
 
         # Load data
         states_loader = StatesDataLoader()
         states_data_dict = states_loader.load_states(states=states)
+
+        all_states: List[str] = list(states_data_dict.keys())
 
         base_model_pipeline = train_base_lstm(
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
@@ -311,7 +326,7 @@ class StatesByGroup(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
         )
 
-        return base_model_pipeline
+        return base_model_pipeline, all_states
 
     def __train_models_for_each_group(
         self, state_groups: StatesGroups, split_rate: float = 0.8
@@ -337,13 +352,13 @@ class StatesByGroup(BaseExperiment):
         # Train model for each group
         for group, states in group_states_dict.items():
 
-            train_states, test_states = train_test_split(
-                states, test_size=(1 - split_rate), random_state=42
-            )
-
-            group_model = self.__train_group_of_states(
+            group_model, training_states = self.__train_group_of_states(
                 states=states,
                 split_rate=0.8,
+            )
+
+            train_states, test_states = train_test_split(
+                training_states, test_size=(1 - split_rate), random_state=42
             )
 
             GROUP_MODEL_VALIDATION_DATA[group] = (group_model, test_states)
@@ -377,6 +392,7 @@ class StatesByGroup(BaseExperiment):
 
         for group, (group_model, validation_states) in GROUP_MODELS.items():
 
+            logger.info(f"Comparing the group: {group} ... ")
             # Compare models
             comparator = ModelComparator()
 
@@ -399,33 +415,39 @@ class StatesByGroup(BaseExperiment):
             )
 
             # Choose random state for the comparision
-            comparaison_plots = comparator.create_comparision_plots()
+            comparison_plots = comparator.create_comparision_plots()
 
-            random_state_index = random.randint(0, len(validation_states) - 1)
-            random_state = validation_states[random_state_index]
+            random_state_index: int = random.randint(0, len(validation_states) - 1)
+            random_state: str = validation_states[random_state_index]
 
             # Save and display the state plot
+            FIG_NAME: str = f"{group}_{random_state}_prediction_comparions.png".replace(
+                " ", "_"
+            ).replace(",", "")
             self.save_plot(
-                fig_name=f"{group}_{random_state}_prediction_comparions.png",
-                figure=comparaison_plots[random_state],
+                fig_name=FIG_NAME,
+                figure=comparison_plots[random_state],
             )
 
             self.readme_add_plot(
                 plot_name="Model comparision prediction plot",
                 plot_description="In the next feagure you can see each model predictions compared to each other and the reference data.",
-                fig_name=f"{group}_{random_state}_prediction_comparions.png",
+                fig_name=FIG_NAME,
             )
 
             # Print results to the readme
             self.readme_add_section(
                 title="## Per target metrics - model comparision",
-                text=f"```\n{per_target_metrics_df}\n```\n\n",
+                text=f"```\n{per_target_metrics_df.sort_values(by='state')}\n```\n\n",
             )
 
             self.readme_add_section(
                 title="## Overall metrics - model comparision",
-                text=f"```\n{overall_metrics_df}\n```\n\n",
+                text=f"```\n{overall_metrics_df.sort_values(by='state')}\n```\n\n",
             )
+
+            # Reset the dictionary
+            COMPARATION_MODELS_DICT = {}
 
 
 def main():
@@ -435,7 +457,12 @@ def main():
     exp_data = DataUsedForTraining(
         description="Trains base LSTM models using data in 3 categories: single state data, group of states (e.g. by wealth divided states) and with all available states data.",
     )
-    exp_groups = StatesByGroup(description="States by the given state groups.")
+    exp_wealth_groups = StatesByGroup(
+        name="wealth", description="States by the given state groups."
+    )
+    exp_geolocation_groups = StatesByGroup(
+        name="geolocation", description="States by the given state groups."
+    )
 
     STATE: str = "Czechia"
     GROUPS_BY_WEALTH = StatesByWealth()
@@ -448,8 +475,13 @@ def main():
     # Get the group of the selected state
     # exp_data.run(state=STATE, state_group=SELECTED_GROUP, split_rate=0.8)
 
-    exp_groups.run(
+    exp_wealth_groups.run(
         state_groups=GROUPS_BY_WEALTH,
+        split_rate=0.8,
+    )
+
+    exp_geolocation_groups.run(
+        state_groups=GROUPS_BY_GEOLOCATION,
         split_rate=0.8,
     )
 

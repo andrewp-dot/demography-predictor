@@ -337,8 +337,8 @@ class EvaluateModel(BaseEvaluation):
 
         # Reference values for every state
         # {"Czechia": {"predicted"..., "reference": ...}, "United States": ...}
-        self.state_ref_predicted_dict: Dict[str, Dict[str, pd.DataFrame]] = {}
-        self.multiple_states_evaluations: Dict[str, EvaluateModel] = {}
+        # self.state_ref_predicted_dict: Dict[str, Dict[str, pd.DataFrame]] = {}
+        self.multiple_states_evaluations: Dict[str, Dict[str, pd.DataFrame]] = {}
 
     def __pipeline_predictions(
         self, input_data: pd.DataFrame, last_year: int, target_year: int

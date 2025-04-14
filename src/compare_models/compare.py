@@ -26,70 +26,70 @@ from src.pipeline import LocalModelPipeline, GlobalModelPipeline, PredictorPipel
 logger = logging.getLogger("model_compare")
 
 
-class MultipleModelStateEvaluation:
+# class MultipleModelStateEvaluation:
 
-    def __init__(self, state: str, reference_data: pd.DataFrame, features: List[str]):
-        self.state: str = state
+#     def __init__(self, state: str, reference_data: pd.DataFrame, features: List[str]):
+#         self.state: str = state
 
-        self.predicted_years: List[int] = self.__get_predicted_years(df=reference_data)
-        self.FEATURES: List[str] = features
+#         self.predicted_years: List[int] = self.__get_predicted_years(df=reference_data)
+#         self.FEATURES: List[str] = features
 
-        self.reference_data: pd.DataFrame | None = reference_data
-        self.model_evaluation_dict: Dict[str, EvaluateModel] = {}
+#         self.reference_data: pd.DataFrame | None = reference_data
+#         self.model_evaluation_dict: Dict[str, EvaluateModel] = {}
 
-    def __get_min_max_years(self, df: pd.DataFrame) -> Tuple[int, int]:
+#     def __get_min_max_years(self, df: pd.DataFrame) -> Tuple[int, int]:
 
-        if "year" not in df.columns:
-            raise ValueError("Could not find the 'year' column in the given dataframe.")
+#         if "year" not in df.columns:
+#             raise ValueError("Could not find the 'year' column in the given dataframe.")
 
-        return int(df["year"].min()), int(df["year"].max())
+#         return int(df["year"].min()), int(df["year"].max())
 
-    def __get_predicted_years(self, df: pd.DataFrame) -> List[int]:
-        min_year, max_year = self.__get_min_max_years(df=df)
+#     def __get_predicted_years(self, df: pd.DataFrame) -> List[int]:
+#         min_year, max_year = self.__get_min_max_years(df=df)
 
-        # Include the max year
-        return list(range(min_year, max_year + 1))
+#         # Include the max year
+#         return list(range(min_year, max_year + 1))
 
-    def plot_comparison_predictions(self) -> Figure:
+#     def plot_comparison_predictions(self) -> Figure:
 
-        # Plot reference data
+#         # Plot reference data
 
-        N_FEATURES: int = len(self.FEATURES)
-        YEARS: List[int] = self.predicted_years
+#         N_FEATURES: int = len(self.FEATURES)
+#         YEARS: List[int] = self.predicted_years
 
-        # Create a figure with N rows and 1 column
-        fig, axes = plt.subplots(N_FEATURES, 1, figsize=(8, 2 * N_FEATURES))
+#         # Create a figure with N rows and 1 column
+#         fig, axes = plt.subplots(N_FEATURES, 1, figsize=(8, 2 * N_FEATURES))
 
-        # Ensure axes is always iterable
-        if N_FEATURES == 1:
-            axes = [axes]  # Convert to list for consistent indexing
+#         # Ensure axes is always iterable
+#         if N_FEATURES == 1:
+#             axes = [axes]  # Convert to list for consistent indexing
 
-        # Plotting in each subplot
-        for index, feature in zip(range(N_FEATURES), self.FEATURES):
-            # Plot reference values
-            axes[index].plot(
-                YEARS,
-                self.reference_data[feature],
-                label=f"Reference values",
-                color="r",
-            )
+#         # Plotting in each subplot
+#         for index, feature in zip(range(N_FEATURES), self.FEATURES):
+#             # Plot reference values
+#             axes[index].plot(
+#                 YEARS,
+#                 self.reference_data[feature],
+#                 label=f"Reference values",
+#                 color="r",
+#             )
 
-            # Fore every model evaluation
-            for model_name, evaluation in self.model_evaluation_dict.items():
-                # Plot predicted values
-                axes[index].plot(
-                    YEARS,
-                    evaluation.predicted[feature],
-                    label=f"Predicted - {model_name}",
-                    color="r",
-                )
-            # Set the axis
-            axes[index].set_title(f"{feature}")
-            axes[index].set_xlabel("Years")
-            axes[index].set_ylabel("Value")
-            axes[index].legend()
+#             # Fore every model evaluation
+#             for model_name, evaluation in self.model_evaluation_dict.items():
+#                 # Plot predicted values
+#                 axes[index].plot(
+#                     YEARS,
+#                     evaluation.predicted[feature],
+#                     label=f"Predicted - {model_name}",
+#                     color="r",
+#                 )
+#             # Set the axis
+#             axes[index].set_title(f"{feature}")
+#             axes[index].set_xlabel("Years")
+#             axes[index].set_ylabel("Value")
+#             axes[index].legend()
 
-        return fig
+#         return fig
 
 
 class ModelComparator:
@@ -210,7 +210,12 @@ class ModelComparator:
                         input_size=1
                     ).sequence_length
                 else:
-                    model_sequence_len = model.hyperparameters.sequence_length
+                    model_sequence_len = (
+                        pipeline.local_model_pipeline.model.hyperparameters.sequence_length
+                    )
+
+            else:
+                model_sequence_len = pipeline.model.hyperparameters.sequence_length
 
             train_data_dict, test_data_dict = states_loaders.split_data(
                 states_dict=states_data_dict,
@@ -282,19 +287,24 @@ class ModelComparator:
             )
 
         # Get the first model
-        first_model = list(self.model_evaluations.keys())[0]
+        first_model_name = list(self.model_evaluations.keys())[0]
+
+        logger.critical(
+            f"Creating comparison plot for state: {state} for model: {first_model_name}"
+        )
 
         # Get the refference data for the state
-        FEATURES = self.model_evaluations[first_model].model.FEATURES
+        FEATURES = self.model_evaluations[first_model_name].model.FEATURES
         N_FEATURES = len(FEATURES)
 
         # Get evalution for the first model for the state to get refference data info
-        first_model_evaluation = self.model_evaluations[first_model]
+        first_model_evaluation: EvaluateModel = self.model_evaluations[first_model_name]
 
-        first_model_state_evaluation = (
+        first_model_state_evaluation: Dict[str, pd.DataFrame] = (
             first_model_evaluation.multiple_states_evaluations[state]
         )
 
+        # HERE IS THE PROBLEM -> IN THE YEARS COMPUTING OR SOMETHINdclearG
         YEARS = first_model_state_evaluation["years"]
         reference_data = first_model_state_evaluation["reference"]
 
@@ -314,12 +324,15 @@ class ModelComparator:
 
             # Fore every model evaluation
             for model_name, evaluation in self.model_evaluations.items():
+
                 # Plot predicted values
                 axes[index].plot(
+                    # evaluation.multiple_states_evaluations[state]["years"],
                     YEARS,
-                    evaluation.predicted[feature],
+                    evaluation.multiple_states_evaluations[state]["predicted"][feature],
                     label=f"Predicted - {model_name}",
                 )
+
             # Set the axis
             axes[index].set_title(f"{feature}")
             axes[index].set_xlabel("Years")
