@@ -144,10 +144,10 @@ def main():
     )
 
     # Save pipeline
-    pipeline.save_pipeline()
+    # pipeline.save_pipeline()
 
     # Try to predict something, for example Czechia from loaded pipeline
-    pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
+    # pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
 
     states_loader = StatesDataLoader()
     czechia_data_dict = states_loader.load_states(states=["Czechia"])
@@ -155,8 +155,31 @@ def main():
     test_predicion_df = pipeline.predict(
         input_data=czechia_data_dict["Czechia"], target_year=2035
     )
-
     print(test_predicion_df)
+
+    model_evaluation = EvaluateModel(
+        transformer=pipeline.local_model_pipeline.transformer, model=pipeline
+    )
+
+    czechia_data_dict = loader.load_states(states=["Czechia"])
+    test_X, test_y = loader.split_data(
+        states_dict=czechia_data_dict, sequence_len=hyperparameters.sequence_length
+    )
+
+    test_X = test_X[STATE]
+    test_y = test_y[STATE]
+
+    evaluation_df = model_evaluation.eval(test_X=test_X, test_y=test_y)
+
+    print(evaluation_df)
+
+    per_target_df = model_evaluation.eval_per_target(test_X=test_X, test_y=test_y)
+
+    print(per_target_df)
+
+    print(model_evaluation.predicted)
+
+    print(model_evaluation.reference_values)
 
 
 if __name__ == "__main__":

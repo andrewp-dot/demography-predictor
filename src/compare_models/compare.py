@@ -289,10 +289,6 @@ class ModelComparator:
         # Get the first model
         first_model_name = list(self.model_evaluations.keys())[0]
 
-        logger.critical(
-            f"Creating comparison plot for state: {state} for model: {first_model_name}"
-        )
-
         # Get the refference data for the state
         FEATURES = self.model_evaluations[first_model_name].model.FEATURES
         N_FEATURES = len(FEATURES)

@@ -7,6 +7,8 @@ import random
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 
+import pprint
+
 # Custom imports
 from src.utils.log import setup_logging
 from local_model_benchmark.config import (
@@ -463,9 +465,31 @@ class StatesByGroup(BaseExperiment):
             COMPARATION_MODELS_DICT = {}
 
 
+# Try this on whole pipeline?
 class FeatureSelectionExperiment(BaseExperiment):
 
-    FEATURES: List[str] = []
+    FEATURES: List[str] = [
+        col.lower()
+        for col in [
+            # "year",
+            "Fertility rate, total",
+            "Population, total",
+            "Net migration",
+            "Arable land",
+            "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            "Rural population",
+            "Rural population growth",
+            "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            "Adolescent fertility rate",
+            "Life expectancy at birth, total",
+        ]
+        if col.lower() not in HIGHLY_CORRELATED_COLUMNS
+    ]
 
     BASE_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
         len(FEATURES), batch_size=32
@@ -474,12 +498,93 @@ class FeatureSelectionExperiment(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(self.__class__.__name__, description)
 
-    def algorithm(self):
-        raise NotImplementedError("This experiment is not implemented yet!")
+    def output_bad_performing_features(
+        self,
+        all_features: List[str],
+        min_features: int = 5,
+        batch_size: int = 32,
+        epochs: int = 10,
+    ) -> List[str]:
+        """
+        Returns excluded features from the model.
 
-    def run(self, *args, **kwargs):
-        raise NotImplementedError("This experiment is not implemented yet!")
-        return
+        Args:
+            all_features (List[str]): List of all available features.
+            min_features (int, optional): Minimum number of selected features. Defaults to 5.
+            batch_size (int, optional): Batch size for training. Defaults to 32.
+            epochs (int, optional): _description_. Defaults to 10.
+
+
+        Returns:
+            out: List[str]: Features which appears to be bad performing.
+        """
+
+        bad_features = []
+
+        while len(all_features) > min_features:
+            rank_features = {}
+
+            self.readme_add_section(
+                text=f"```\n{pprint.pformat(all_features)}\n```\n\n",
+                title="# All features",
+            )
+
+            for excluded_feature in all_features:
+                current_features = [f for f in all_features if f != excluded_feature]
+
+                # Train model
+                hyperparams = get_core_parameters(
+                    input_size=len(current_features),
+                    batch_size=batch_size,
+                    epochs=epochs,
+                )
+                data = StatesDataLoader().load_all_states()
+
+                model = train_base_lstm(
+                    hyperparameters=hyperparams,
+                    data=data,
+                    features=current_features,
+                    split_rate=0.8,
+                )
+
+                val_loss = model.training_stats.validation_loss[-1]
+                rank_features[excluded_feature] = val_loss
+
+                # Save the combination of features
+
+            rank_features = dict(
+                sorted(rank_features.items(), key=lambda item: item[1])
+            )
+
+            self.readme_add_section(
+                text=f"```\n{pprint.pformat(rank_features, sort_dicts=False)}\n```\n\n",
+                title="## Validation loss per excluded feature",
+            )
+
+            logger.info(f"Ranked features: {rank_features}")
+
+            # Get the best performance of the model with the worst feature excluded
+            worst_feature = min(rank_features, key=rank_features.get)
+            all_features.remove(worst_feature)
+            bad_features.append(worst_feature)
+
+        return bad_features
+
+    def run(self):
+
+        # Create readme
+        self.create_readme()
+
+        bad_performing_features = self.output_bad_performing_features(
+            all_features=self.FEATURES
+        )
+
+        # Format the bad performing features
+        bad_performing_features_formated = pprint.pformat(bad_performing_features)
+        self.readme_add_section(
+            text=f"```\n{bad_performing_features_formated}\n```\n\n",
+            title="## Bad performing features",
+        )
 
 
 def main():
@@ -496,6 +601,10 @@ def main():
         name="geolocation", description="States by the given state groups."
     )
 
+    exp_feature_selection = FeatureSelectionExperiment(
+        description="Feature selection experiment. It will output the features which are not performing well."
+    )
+
     STATE: str = "Czechia"
     GROUPS_BY_WEALTH = StatesByWealth()
     GROUPS_BY_GEOLOCATION = StatesByGeolocation()
@@ -507,15 +616,17 @@ def main():
     # Get the group of the selected state
     # exp_data.run(state=STATE, state_group=SELECTED_GROUP, split_rate=0.8)
 
-    exp_wealth_groups.run(
-        state_groups=GROUPS_BY_WEALTH,
-        split_rate=0.8,
-    )
+    # exp_wealth_groups.run(
+    #     state_groups=GROUPS_BY_WEALTH,
+    #     split_rate=0.8,
+    # )
 
-    exp_geolocation_groups.run(
-        state_groups=GROUPS_BY_GEOLOCATION,
-        split_rate=0.8,
-    )
+    # exp_geolocation_groups.run(
+    #     state_groups=GROUPS_BY_GEOLOCATION,
+    #     split_rate=0.8,
+    # )
+
+    exp_feature_selection.run()
 
 
 if __name__ == "__main__":

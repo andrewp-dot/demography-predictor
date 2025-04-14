@@ -4,12 +4,9 @@ import pandas as pd
 import torch
 from typing import List, Tuple, Union, Dict, Optional
 
-from pydantic import BaseModel
-
 
 from config import Config
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
-from matplotlib.figure import Figure
 
 # Custom imports
 from src.utils.save_model import get_experiment_model

@@ -367,8 +367,28 @@ class EvaluateModel(BaseEvaluation):
         self, test_X: pd.DataFrame, test_y: pd.DataFrame
     ) -> None:
         # Get features and targets
-        FEATURES = self.model.FEATURES
-        TARGETS = self.model.TARGETS
+
+        if isinstance(self.model, LocalModelPipeline):
+            # Get features and targets
+            # self.model: LocalModelPipeline = self.model
+            FEATURES = self.model.model.FEATURES
+            TARGETS = self.model.model.TARGETS
+
+        elif isinstance(self.model, GlobalModelPipeline):
+            # Get features and targets
+            self.model: GlobalModelPipeline = self.model
+            FEATURES = self.model.model.FEATURES
+            TARGETS = self.model.model.TARGETS
+
+        elif isinstance(self.model, PredictorPipeline):
+            # Get features and targets
+            self.model: PredictorPipeline = self.model
+            FEATURES = self.model.global_model_pipeline.model.FEATURES
+            TARGETS = self.model.global_model_pipeline.model.TARGETS
+
+        else:
+            FEATURES = self.model.FEATURES
+            TARGETS = self.model.TARGETS
 
         # Get year data
         last_year, target_year = self.get_last_and_target_year(
@@ -387,22 +407,25 @@ class EvaluateModel(BaseEvaluation):
 
         # Get predictions
 
-        if (
-            isinstance(self.model, LocalModelPipeline)
-            or isinstance(self.model, GlobalModelPipeline)
-            or isinstance(self.model, PredictorPipeline)
-        ):
+        if isinstance(self.model, LocalModelPipeline):
+            predictions_df = self.model.predict(
+                input_data=test_X, last_year=last_year, target_year=target_year
+            )
+
+        elif isinstance(self.model, GlobalModelPipeline):
+            predictions_df = self.model.predict(input_data=test_X)
+
+        elif isinstance(self.model, PredictorPipeline):
             predictions_df = self.model.predict(
                 input_data=test_X, target_year=target_year
             )
 
-        predictions_df = self.__pipeline_predictions(
-            input_data=test_X, last_year=last_year, target_year=target_year
-        )
+        else:
+            predictions_df = self.__pipeline_predictions(
+                input_data=test_X, last_year=last_year, target_year=target_year
+            )
 
-        self.predicted = predictions_df[self.model.TARGETS]
-
-        logger.critical(self.predicted)
+        self.predicted = predictions_df[TARGETS]
 
         self.reference_values = test_y
 
@@ -449,7 +472,19 @@ class EvaluateModel(BaseEvaluation):
         self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
 
         # Get metrics for per target evaluation
-        return self.get_target_specific_metrics(targets=self.model.TARGETS)
+        if isinstance(self.model, LocalModelPipeline):
+            TARGETS = self.model.model.TARGETS
+
+        elif isinstance(self.model, GlobalModelPipeline):
+            TARGETS = self.model.model.TARGETS
+
+        elif isinstance(self.model, PredictorPipeline):
+            TARGETS = self.model.global_model_pipeline.model.TARGETS
+
+        else:
+            TARGETS = self.model.TARGETS
+
+        return self.get_target_specific_metrics(targets=TARGETS)
 
     def eval_for_every_state(
         self,
