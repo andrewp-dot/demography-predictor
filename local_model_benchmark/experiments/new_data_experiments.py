@@ -2,6 +2,7 @@
 import logging
 import pandas as pd
 from typing import List, Dict, Tuple
+import random
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
@@ -219,7 +220,7 @@ class DataUsedForTraining(BaseExperiment):
         )
 
         self.readme_add_plot(
-            plot_name="## Model comparision prediction plot",
+            plot_name="Model comparision prediction plot",
             plot_description="In the next feagure you can see each model predictions compared to each other and the reference data.",
             fig_name="state_prediction_comparions.png",
         )
@@ -333,15 +334,15 @@ class StatesByGroup(BaseExperiment):
             {}
         )
 
+        # Train model for each group
         for group, states in group_states_dict.items():
-            # Train model for each group
 
             train_states, test_states = train_test_split(
                 states, test_size=(1 - split_rate), random_state=42
             )
 
             group_model = self.__train_group_of_states(
-                states=train_states,
+                states=states,
                 split_rate=0.8,
             )
 
@@ -378,6 +379,8 @@ class StatesByGroup(BaseExperiment):
         COMPARATION_MODELS_DICT: Dict[str, LocalModelPipeline] = {}
 
         for group, (group_model, validation_states) in GROUP_MODELS.items():
+            self.readme_add_section(text="", title=f"## {group} model")
+
             # Add group model to the comparision
             COMPARATION_MODELS_DICT[group] = group_model
             COMPARATION_MODELS_DICT["base_model"] = base_model_pipeline
@@ -394,14 +397,44 @@ class StatesByGroup(BaseExperiment):
                 by="overall-metrics",
             )
 
+            # Choose random state for the comparision
+            comparaison_plots = comparator.create_comparision_plots()
+
+            random_state_index = random.randint(0, len(validation_states) - 1)
+            random_state = validation_states[random_state_index]
+
+            # Save and display the state plot
+            self.save_plot(
+                fig_name=f"{group}_{random_state}_prediction_comparions.png",
+                figure=comparaison_plots[random_state],
+            )
+
+            self.readme_add_plot(
+                plot_name="Model comparision prediction plot",
+                plot_description="In the next feagure you can see each model predictions compared to each other and the reference data.",
+                fig_name=f"{group}_{random_state}_prediction_comparions.png",
+            )
+
+            # Print results to the readme
+            self.readme_add_section(
+                title="## Per target metrics - model comparision",
+                text=f"```\n{per_target_metrics_df}\n```\n\n",
+            )
+
+            self.readme_add_section(
+                title="## Overall metrics - model comparision",
+                text=f"```\n{overall_metrics_df}\n```\n\n",
+            )
+
 
 def main():
     # Setup logging
     setup_logging()
 
-    exp = DataUsedForTraining(
+    exp_data = DataUsedForTraining(
         description="Trains base LSTM models using data in 3 categories: single state data, group of states (e.g. by wealth divided states) and with all available states data.",
     )
+    exp_groups = StatesByGroup(description="States by the given state groups.")
 
     STATE: str = "Czechia"
     GROUPS_BY_WEALTH = StatesByWealth()
@@ -412,7 +445,12 @@ def main():
     )
 
     # Get the group of the selected state
-    exp.run(state=STATE, state_group=SELECTED_GROUP, split_rate=0.8)
+    # exp_data.run(state=STATE, state_group=SELECTED_GROUP, split_rate=0.8)
+
+    exp_groups.run(
+        state_groups=GROUPS_BY_WEALTH,
+        split_rate=0.8,
+    )
 
 
 if __name__ == "__main__":
