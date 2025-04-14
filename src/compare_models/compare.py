@@ -17,7 +17,6 @@ from src.evaluation import EvaluateModel
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 
-from src.predictors.predictor_base import DemographyPredictor
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
@@ -138,14 +137,14 @@ class ModelComparator:
         return df_ranked
 
     # Compare models predictors
-    # TODO: edit this function for accepting pipelines maybe?
+    # TODO:
+    # 1. adjust this for pipeliens
+    # 2. add support for predictor pipeline
     def compare_models_by_states(
         self,
         pipelines: Dict[
             str, Union[LocalModelPipeline, GlobalModelPipeline, PredictorPipeline]
         ],
-        # models: Dict[str, Union[DemographyPredictor, CustomModelBase]],
-        # transformers: Dict[str, DataTransformer],
         states: List[str] | None = None,
         by: Literal["overall-metrics", "per-features"] = "overall-metrics",
     ) -> pd.DataFrame:
@@ -205,17 +204,13 @@ class ModelComparator:
             # Preprocess data for the model - suppoorts different sequence length, by type
 
             # Adjust hyperparameters by the model type
-            if isinstance(model, DemographyPredictor):
-                if isinstance(model.local_model, PureEnsembleModel):
+            if isinstance(pipeline, PredictorPipeline):
+                if isinstance(pipeline.local_model_pipeline.model, PureEnsembleModel):
                     model_sequence_len = get_core_hyperparameters(
                         input_size=1
                     ).sequence_length
                 else:
-                    model_sequence_len = (
-                        model.local_model.hyperparameters.sequence_length
-                    )
-            elif isinstance(model, CustomModelBase):
-                model_sequence_len = model.hyperparameters.sequence_length
+                    model_sequence_len = model.hyperparameters.sequence_length
 
             train_data_dict, test_data_dict = states_loaders.split_data(
                 states_dict=states_data_dict,

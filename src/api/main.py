@@ -20,7 +20,6 @@ from src.api.distribution_curve import AgeDistribution
 from src.utils.log import setup_logging
 from src.utils.save_model import get_model
 
-# from src.predictors.predictor_base import DemographyPredictor
 from src.pipeline import PredictorPipeline
 from src.preprocessors.state_preprocessing import StateDataLoader
 
