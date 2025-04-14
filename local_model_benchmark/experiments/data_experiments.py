@@ -318,6 +318,19 @@ class StatesByGroup(BaseExperiment):
 
         all_states: List[str] = list(states_data_dict.keys())
 
+        # Filter states with too low records
+        to_remove_states: List[str] = []
+        for state, df in states_data_dict.items():
+            if len(df) <= self.BASE_LSTM_HYPERPARAMETERS.sequence_length:
+                logger.warning(
+                    f"State {state} has too low records ({len(df)}). Removing from training data."
+                )
+                to_remove_states.append(state)
+
+        for state in to_remove_states:
+            del states_data_dict[state]
+            all_states.remove(state)
+
         base_model_pipeline = train_base_lstm(
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
             data=states_data_dict,
@@ -448,6 +461,25 @@ class StatesByGroup(BaseExperiment):
 
             # Reset the dictionary
             COMPARATION_MODELS_DICT = {}
+
+
+class FeatureSelectionExperiment(BaseExperiment):
+
+    FEATURES: List[str] = []
+
+    BASE_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        len(FEATURES), batch_size=32
+    )
+
+    def __init__(self, description: str):
+        super().__init__(self.__class__.__name__, description)
+
+    def algorithm(self):
+        raise NotImplementedError("This experiment is not implemented yet!")
+
+    def run(self, *args, **kwargs):
+        raise NotImplementedError("This experiment is not implemented yet!")
+        return
 
 
 def main():
