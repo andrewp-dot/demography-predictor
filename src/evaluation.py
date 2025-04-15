@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 import logging
+import torch
 
 from sklearn.metrics import (
     mean_absolute_error,
@@ -534,6 +535,29 @@ class EvaluateModel(BaseEvaluation):
 
         # Save the evaluation
         return all_evaluation_df
+
+    def eval_for_every_state_overall(
+        self,
+        X_test_states: Dict[str, pd.DataFrame],
+        y_test_states: Dict[str, pd.DataFrame],
+    ) -> pd.DataFrame:
+
+        # Need this function for exclusion of the features in order to improve performance for the PredictorPipeline
+        # Evalutas for every state but does not save the metrics separately, but overall
+
+        # From this:
+        # X_test_states: Dict[str, pd.DataFrame],
+        # y_test_states: Dict[str, pd.DataFrame],
+
+        # Make this:
+        # test_X_sequences: torch.Tensor, testy_y_seqeuences: torch.Tensor
+
+        # Predict
+
+        # Compute metrics
+
+        # Return df
+        pass
 
 
 class EvaluateARIMA(BaseEvaluation):

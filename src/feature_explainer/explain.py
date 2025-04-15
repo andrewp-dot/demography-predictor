@@ -5,7 +5,9 @@ import numpy as np
 import torch
 import logging
 
-from typing import Union
+import pandas as pd
+
+from typing import Dict
 
 # Filters about rng seed warning - yet the shap does not acceps 'rng' argument.
 import warnings
@@ -29,8 +31,8 @@ logger = logging.getLogger("method_selection")
 
 class LSTMExplainer:
 
-    def __init__(self, pipeline: Union[LocalModelPipeline, GlobalModelPipeline]):
-        self.pipeline: Union[LocalModelPipeline, GlobalModelPipeline] = pipeline
+    def __init__(self, pipeline: LocalModelPipeline):
+        self.pipeline: LocalModelPipeline = pipeline
 
     def create_sequences(self, state: str) -> torch.Tensor:
 
@@ -258,6 +260,58 @@ class LSTMExplainer:
         plt.savefig(
             "shap_waterfall_plot.png", format="png", dpi=300, bbox_inches="tight"
         )
+
+
+class GlobalModelExplainer:
+
+    def __init__(self, pipeline: GlobalModelPipeline):
+        self.pipeline: GlobalModelPipeline = pipeline
+
+    def create_inputs(self) -> pd.DataFrame:
+        raise NotImplementedError("Not implemented yet.")
+
+    def get_feature_importance(
+        self,
+        shap_values: torch.Tensor,
+        show_plot: bool = False,
+        save_plot: bool = False,
+    ) -> dict:
+        # Aggregate SHAP values
+        # Assuming your task is sequence-based, we’ll average across time steps (axis=1) and instances (axis=0)
+        mean_shap = np.abs(shap_values[0]).mean(axis=(0, 1))
+
+        # Get feature names from model
+        feature_names = self.pipeline.model.FEATURES  # assuming it's a list of strings
+
+        # Create and sort dict by vylues
+        feature_importance_dict = {
+            fname: value for fname, value in zip(feature_names, mean_shap)
+        }
+
+        # Sort the dictionary by values in descending order
+        sorted_feature_importance_dict = dict(
+            sorted(feature_importance_dict.items(), key=lambda item: item[1])
+        )
+
+        ## FEATURE IMPORTANCE PLOT
+        plt.figure(figsize=(10, 5))
+        plt.barh(
+            list(sorted_feature_importance_dict.keys()),
+            list(sorted_feature_importance_dict.values()),
+        )
+        plt.ylabel("Features")
+        plt.xlabel("Mean |SHAP Value| (Feature Importance)")
+        plt.title("Overall Feature Importance")
+        # plt.xticks(rotation=45)
+        plt.tight_layout()
+
+        if save_plot:
+            plt.savefig("shap_explanation_fig.png")
+
+        if show_plot:
+            plt.show()
+
+        return sorted_feature_importance_dict
 
 
 def main():
