@@ -319,10 +319,10 @@ class BaseEvaluation:
             axes[index].set_xlabel("Years")
             axes[index].set_ylabel("Value")
             axes[index].legend()
+            axes[index].grid(True)
 
         # Adjust layout to prevent overlap
         plt.tight_layout()
-        plt.grid()
         plt.legend()
 
         return fig
