@@ -16,6 +16,7 @@ from src.utils.save_model import save_model
 from src.base import LSTMHyperparameters, TrainingStats, CustomModelBase
 
 # from src.evaluation import EvaluateModel
+from src.state_groups import StatesByWealth
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -24,13 +25,8 @@ from src.preprocessors.data_transformer import DataTransformer
 
 logger = logging.getLogger("local_model")
 
-# TODO: explain detaching?
-# You can detach the hidden state here if you need to avoid backprop through the entire sequence
-# h_n = h_n.detach()
-# c_n = c_n.detach()
 
-
-class BaseLSTM(CustomModelBase):
+class ExpLSTM(CustomModelBase):
 
     def __init__(
         self,
@@ -38,7 +34,7 @@ class BaseLSTM(CustomModelBase):
         features: List[str],
         targets: List[str] | None = None,
     ):
-        super(BaseLSTM, self).__init__(
+        super(ExpLSTM, self).__init__(
             features=features,
             targets=(targets if targets else features),
             hyperparameters=hyperparameters,
@@ -60,22 +56,9 @@ class BaseLSTM(CustomModelBase):
             batch_first=True,
         )
 
-        # Add some other layers
-        self.linear_1 = nn.Linear(
-            in_features=hyperparameters.hidden_size,
-            out_features=256,
-        )
-        self.relu_1 = nn.ReLU()  # Adds non-linearity
-
-        self.linear_2 = nn.Linear(
-            in_features=256,
-            out_features=128,
-        )
-        self.relu_2 = nn.ReLU()  # Adds non-linearity
-
         # Out layer: Linear layer
         self.linear = nn.Linear(
-            in_features=128,
+            in_features=hyperparameters.hidden_size,
             out_features=hyperparameters.output_size,
         )
 
@@ -127,13 +110,16 @@ class BaseLSTM(CustomModelBase):
         # Use the output from the last time step -> use fully connected layers
         out = out[:, -1, :]
 
-        out = self.linear_1(out)  # Using the last time step's output
-        out = self.relu_1(out)
+        # out = self.linear_1(out)  # Using the last time step's output
+        # out = self.relu_1(out)
 
-        out = self.linear_2(out)
-        out = self.relu_2(out)
+        # out = self.linear_2(out)
+        # out = self.relu_2(out)
 
         out = self.linear(out)  # Using the last time step's output
+
+        # Add argmax
+        # out = torch.softmax(out, dim=-1)  # Shape: (batch_size,)
 
         # Return both output and the updated hidden state (for the next batch)
         # return out, (h_n, c_n)
@@ -289,34 +275,35 @@ class BaseLSTM(CustomModelBase):
 
         return pred
 
+        # Predict the future values
+        # new_input_data: pd.DataFrame = intial_data
+        # for year in range(last_year + 1, target_year + 1):
+
+        #     # you need to append it to a sequence
+        #     next_year_targets = self.predict(input_data=intial_data)
+
+        #     # Create a dataframe from it
+        #     next_year_targts_df = pd.DataFrame(next_year_targets, columns=self.TARGETS)
+
+        #     # Add the predictions to the known values
+        #     new_input_data = pd.concat()
+
     # TODO:
     # Rewrite this for prediction -> input (scaled data - tensor?) -> output (scaled data -> tensor?)
     # Make prediction method in pipeline
     def predict(
         self,
         input_data: pd.DataFrame,
-        last_year: int,
-        target_year: int,
     ) -> torch.Tensor:
         """
          Predicts values using past data. 2 cycles: 1st to gain context for all past data. 2nd is used to generate predictions.
 
         Args:
             input_data (torch.Tensor): Preprocessed (scaled) input data.
-            last_year (int): The last year of all records in the data.
-            target_year (int): The request year to get predictions to.
 
         Returns:
-            out: torch.Tensor: Generated predictions.
+            out: torch.Tensor: Next year targets predictions.
         """
-
-        to_predict_years_num = (
-            target_year - last_year
-        )  # To include also the target year
-
-        logger.info(f"Last recorded year: {last_year}")
-        logger.info(f"Target year: {target_year}")
-        logger.info(f"To predict years: {to_predict_years_num}")
 
         # Put the model into the evaluation mode
         self.eval()
@@ -329,62 +316,28 @@ class BaseLSTM(CustomModelBase):
         input_sequence.to(self.device)
         self.to(device=self.device)
 
-        num_timesteps, input_size = input_sequence.shape
         sequence_length = self.hyperparameters.sequence_length
 
-        # Array of predicions of previous values
-        predictions = []
-
-        # Predictions for new years (from last to target_year)
-        new_predictions = []
+        pred_value = None
         with torch.no_grad():
-
-            # NOTE: predivous data has no effect on this.
-            # # Use past data for further context
-            # logger.critical("Using context")
-            # for i in range(num_timesteps - sequence_length + 1):
-
-            #     # Slide over the sequence
-            #     window = input_sequence[i : i + sequence_length]  # Extract window
-            #     window = window.unsqueeze(0).to(
-            #         device=self.device
-            #     )  # Add batch dimension: (1, sequence_length, input_size)
-
-            #     # Forward pass
-            #     pred = self(window)
-
-            #     predictions.append(pred.cpu())
 
             current_window = (
                 input_sequence[-sequence_length:].unsqueeze(0).to(device=self.device)
             )
 
-            # logger.critical("Kokot")
-
             # Predict new data using autoregression
-            for _ in range(to_predict_years_num):
-                logger.debug(f"Current input window: {current_window}")
+            # for _ in range(to_predict_years_num):
+            logger.debug(f"Current input window: {current_window}")
 
-                # Forward pass
-                pred = self(current_window)  # Shape: (1, output_size)
-                pred_value = pred.squeeze(0)  # Remove batch dim
-                logger.debug(f"New prediction value: {pred_value}")
+            # Forward pass
+            pred = self(current_window)  # Shape: (1, output_size)
+            pred_value = pred.squeeze(0)  # Remove batch dim
+            logger.debug(f"New prediction value: {pred_value}")
 
-                predictions.append(pred.cpu())  # Store new prediction
-                new_predictions.append(pred.cpu())
+            pred_value = pred.cpu()
+            # predictions.append(pred.cpu())  # Store new prediction
 
-                # Shift the window by removing the first value and adding the new prediction
-                current_window = torch.cat(
-                    (current_window[:, 1:, :], pred.unsqueeze(0)), dim=1
-                )
-
-        # Combine with years
-        for year, pred in zip(range(last_year + 1, target_year + 1), new_predictions):
-            logger.debug(f"{year}: {pred}")
-
-        new_predictions_tensor = torch.cat(new_predictions, dim=0)
-
-        return new_predictions_tensor
+        return pred_value
 
 
 def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50):
@@ -394,7 +347,7 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
     FEATURES = [
         col.lower()
         for col in [
-            # "year",
+            "year",
             "Fertility rate, total",
             "Population, total",
             "Net migration",
@@ -414,6 +367,18 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
         ]
     ]
 
+    FEATURES: List[str] = [
+        "year",
+        "fertility rate, total",
+        "arable land",
+        "gdp growth",
+        "death rate, crude",
+        "agricultural land",
+        "rural population growth",
+        "urban population",
+        "population growth",
+    ]
+
     TARGETS: List[str] = [
         # "population, total",
         # Aging targets
@@ -425,17 +390,22 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
         # "population, male",
     ]
 
-    LSTM_FEATURES = FEATURES + TARGETS
+    WHOLE_MODEL_FEATURES: List[str] = FEATURES + TARGETS
 
     # Setup model
     hyperparameters = get_core_hyperparameters(
-        input_size=len(LSTM_FEATURES), epochs=epochs, batch_size=32
+        input_size=len(WHOLE_MODEL_FEATURES),
+        epochs=epochs,
+        batch_size=32,
+        output_size=len(TARGETS),  # TODO: make this more robust
     )
-    rnn = BaseLSTM(hyperparameters, features=LSTM_FEATURES, targets=TARGETS)
+    rnn = ExpLSTM(hyperparameters, features=WHOLE_MODEL_FEATURES, targets=TARGETS)
 
     # Load data
     states_loader = StatesDataLoader()
     states_data_dict = states_loader.load_all_states()
+
+    # states_data_dict = states_loader.load_states(states=StatesByWealth().high_income)
 
     # Get training data and validation data
     train_data_dict, test_data_dict = states_loader.split_data(
@@ -448,11 +418,11 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
     transformer = DataTransformer()
 
     # This is useless maybe -> just for fitting the scaler on training data after transformation in datatransforme
-    scaled_training_data, scaled_test_data, _ = transformer.scale_and_fit(
+    scaled_training_data, scaled_test_data = transformer.scale_and_fit(
         training_data=train_states_df,
         validation_data=test_states_df,
-        columns=LSTM_FEATURES,
-        scaler=MinMaxScaler(),
+        features=FEATURES,
+        targets=TARGETS,
     )
 
     # Create a dictionary from it
@@ -462,7 +432,8 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
         transformer.create_train_test_multiple_states_batches(
             data=scaled_states_dict,
             hyperparameters=hyperparameters,
-            features=LSTM_FEATURES,
+            features=WHOLE_MODEL_FEATURES,
+            targets=TARGETS,
         )
     )
 
@@ -476,7 +447,7 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
         batch_targets=batch_targets,
         batch_validation_inputs=batch_validation_inputs,
         batch_validation_targets=batch_validation_targets,
-        display_nth_epoch=10,
+        display_nth_epoch=1,
     )
 
     training_stats = TrainingStats.from_dict(stats_dict=stats)
@@ -486,8 +457,8 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
         fig.savefig(f"BaseLSTM_training_stats_{hyperparameters.epochs}_epochs.png")
 
     if to_save_model:
-        save_model(name=f"BaseLSTM.pkl", model=rnn)
-        save_model(name=f"BaseLSTM_transformer.pkl", model=transformer)
+        save_model(name=f"ExpLSTM.pkl", model=rnn)
+        save_model(name=f"ExpLSTM_transformer.pkl", model=transformer)
 
 
 if __name__ == "__main__":

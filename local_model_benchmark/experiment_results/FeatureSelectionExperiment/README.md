@@ -20,16 +20,16 @@
 
 ## Validation loss per excluded feature
 ```
-{'net migration': 0.004251563624016691,
- 'rural population growth': 0.005915335002494281,
- 'urban population': 0.008332079773379573,
- 'agricultural land': 0.008656477612971482,
- 'fertility rate, total': 0.008673306170559085,
- 'arable land': 0.008756405527098799,
- 'population, total': 0.00876076289351835,
- 'death rate, crude': 0.008903083110005776,
- 'gdp growth': 0.009424662392989579,
- 'population growth': 0.009507599351024116}
+{'net migration': 0.007711725100986103,
+ 'population, total': 0.012818409901445926,
+ 'agricultural land': 0.013778835608026207,
+ 'rural population growth': 0.014875156224580176,
+ 'urban population': 0.015067539567044421,
+ 'arable land': 0.01547364420396512,
+ 'population growth': 0.01681666397976119,
+ 'gdp growth': 0.017247317671609013,
+ 'death rate, crude': 0.01749532831026547,
+ 'fertility rate, total': 0.01873580365678045}
 ```
 
 
@@ -49,22 +49,47 @@
 
 ## Validation loss per excluded feature
 ```
-{'rural population growth': 0.0014362515805205747,
- 'fertility rate, total': 0.003998170283174754,
- 'agricultural land': 0.0040246854960195606,
- 'urban population': 0.004037271705091194,
- 'arable land': 0.00404898192187938,
- 'gdp growth': 0.004342003243301175,
- 'population, total': 0.004351059558241864,
- 'population growth': 0.004580456939866461,
- 'death rate, crude': 0.004753227870383147}
+{'population, total': 0.005155866571229452,
+ 'rural population growth': 0.005393936625445512,
+ 'urban population': 0.0056594675380750485,
+ 'fertility rate, total': 0.006479270278420577,
+ 'agricultural land': 0.00791487502066224,
+ 'arable land': 0.008979058852280253,
+ 'death rate, crude': 0.009030583175594237,
+ 'gdp growth': 0.009618838109187226,
+ 'population growth': 0.009796027253979623}
 ```
 
 
 # All features
 ```
 ['fertility rate, total',
- 'population, total',
+ 'arable land',
+ 'gdp growth',
+ 'death rate, crude',
+ 'agricultural land',
+ 'rural population growth',
+ 'urban population',
+ 'population growth']
+```
+
+
+## Validation loss per excluded feature
+```
+{'rural population growth': 0.002011813027888481,
+ 'arable land': 0.004717471319990956,
+ 'gdp growth': 0.005973419231022082,
+ 'agricultural land': 0.006015112408117127,
+ 'population growth': 0.006136171839464067,
+ 'urban population': 0.006155689853354732,
+ 'death rate, crude': 0.006219485647795694,
+ 'fertility rate, total': 0.006387633698516345}
+```
+
+
+# All features
+```
+['fertility rate, total',
  'arable land',
  'gdp growth',
  'death rate, crude',
@@ -76,70 +101,45 @@
 
 ## Validation loss per excluded feature
 ```
-{'urban population': 0.0007427628134697009,
- 'agricultural land': 0.0007461315924875133,
- 'fertility rate, total': 0.0007774508095593122,
- 'arable land': 0.000804725465357804,
- 'population, total': 0.0009142186335433941,
- 'gdp growth': 0.001064843711888056,
- 'death rate, crude': 0.001165058195796003,
- 'population growth': 0.001216450769544593}
+{'arable land': 0.0010409309618251482,
+ 'agricultural land': 0.0020325080202301658,
+ 'death rate, crude': 0.0024197455660662434,
+ 'population growth': 0.002467552854144362,
+ 'gdp growth': 0.002816393672585932,
+ 'fertility rate, total': 0.0029800594128397253,
+ 'urban population': 0.0031519797144096287}
 ```
 
 
 # All features
 ```
 ['fertility rate, total',
- 'population, total',
- 'arable land',
  'gdp growth',
  'death rate, crude',
  'agricultural land',
+ 'urban population',
  'population growth']
 ```
 
 
 ## Validation loss per excluded feature
 ```
-{'arable land': 0.0005657248300632267,
- 'gdp growth': 0.0006881058507133275,
- 'agricultural land': 0.0006959331256629371,
- 'population growth': 0.0007856183050290696,
- 'population, total': 0.0008379128507908379,
- 'fertility rate, total': 0.0008611830252000311,
- 'death rate, crude': 0.0013072789132372656}
-```
-
-
-# All features
-```
-['fertility rate, total',
- 'population, total',
- 'gdp growth',
- 'death rate, crude',
- 'agricultural land',
- 'population growth']
-```
-
-
-## Validation loss per excluded feature
-```
-{'gdp growth': 0.0005134678099985554,
- 'death rate, crude': 0.0005724658842507834,
- 'agricultural land': 0.0005911571421545805,
- 'population growth': 0.0005911816278152835,
- 'fertility rate, total': 0.0006114958675574761,
- 'population, total': 0.0007231308910960971}
+{'urban population': 0.0008055098565927804,
+ 'fertility rate, total': 0.0008073302070890838,
+ 'gdp growth': 0.0009086853887541775,
+ 'agricultural land': 0.000933195439553055,
+ 'population growth': 0.0010733621324405574,
+ 'death rate, crude': 0.001304523703127877}
 ```
 
 
 ## Bad performing features
 ```
 ['net migration',
+ 'population, total',
  'rural population growth',
- 'urban population',
  'arable land',
- 'gdp growth']
+ 'urban population']
 ```
 
 

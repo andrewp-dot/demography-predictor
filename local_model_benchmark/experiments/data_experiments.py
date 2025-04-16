@@ -617,17 +617,17 @@ def main():
     )
 
     # Get the group of the selected state
-    # exp_data.run(state=STATE, state_group=SELECTED_GROUP, split_rate=0.8)
+    exp_data.run(state=STATE, state_group=SELECTED_GROUP, split_rate=0.8)
 
-    # exp_wealth_groups.run(
-    #     state_groups=GROUPS_BY_WEALTH,
-    #     split_rate=0.8,
-    # )
+    exp_wealth_groups.run(
+        state_groups=GROUPS_BY_WEALTH,
+        split_rate=0.8,
+    )
 
-    # exp_geolocation_groups.run(
-    #     state_groups=GROUPS_BY_GEOLOCATION,
-    #     split_rate=0.8,
-    # )
+    exp_geolocation_groups.run(
+        state_groups=GROUPS_BY_GEOLOCATION,
+        split_rate=0.8,
+    )
 
     exp_feature_selection.run()
 

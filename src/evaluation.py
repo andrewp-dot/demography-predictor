@@ -9,6 +9,8 @@ from matplotlib.figure import Figure
 import logging
 import torch
 
+from src.local_model.experimental import ExpLSTM
+
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
@@ -397,8 +399,8 @@ class EvaluateModel(BaseEvaluation):
         )
 
         # Adjust features
-        test_X = test_X[FEATURES]
-        test_y = test_y[TARGETS]
+        X_test = test_X[FEATURES]
+        y_test = test_y[TARGETS]
 
         # Get predicted years
         self.predicted_years = list(
@@ -409,26 +411,32 @@ class EvaluateModel(BaseEvaluation):
         # Get predictions
 
         if isinstance(self.model, LocalModelPipeline):
+
+            input_data = test_X
+
+            if isinstance(self.model.model, ExpLSTM):
+                input_data = pd.concat([test_X, test_y], axis=0)
+
             predictions_df = self.model.predict(
-                input_data=test_X, last_year=last_year, target_year=target_year
+                input_data=input_data, last_year=last_year, target_year=target_year
             )
 
         elif isinstance(self.model, GlobalModelPipeline):
-            predictions_df = self.model.predict(input_data=test_X)
+            predictions_df = self.model.predict(input_data=X_test)
 
         elif isinstance(self.model, PredictorPipeline):
             predictions_df = self.model.predict(
-                input_data=test_X, target_year=target_year
+                input_data=X_test, target_year=target_year
             )
 
         else:
             predictions_df = self.__pipeline_predictions(
-                input_data=test_X, last_year=last_year, target_year=target_year
+                input_data=X_test, last_year=last_year, target_year=target_year
             )
 
         self.predicted = predictions_df[TARGETS]
 
-        self.reference_values = test_y
+        self.reference_values = y_test
 
     def eval(
         self,
@@ -449,6 +457,10 @@ class EvaluateModel(BaseEvaluation):
 
         # Make predictions and save reference data
         self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
+
+        print(self.reference_values)
+
+        print(self.predicted)
 
         # Get overall metrics for model
         return self.get_overall_metrics()
@@ -545,19 +557,43 @@ class EvaluateModel(BaseEvaluation):
         # Need this function for exclusion of the features in order to improve performance for the PredictorPipeline
         # Evalutas for every state but does not save the metrics separately, but overall
 
-        # From this:
-        # X_test_states: Dict[str, pd.DataFrame],
-        # y_test_states: Dict[str, pd.DataFrame],
+        per_state_metric_df = self.eval_for_every_state(
+            X_test_states=X_test_states, y_test_states=y_test_states
+        )
 
-        # Make this:
-        # test_X_sequences: torch.Tensor, testy_y_seqeuences: torch.Tensor
+        with open("per_state_metrics.json", "w") as f:
+            per_state_metric_df.to_json(f, indent=4, orient="records")
 
-        # Predict
+        state_lens: Dict[str, int] = {}
+        states_len_sum: int = 0
+        for state, df in X_test_states.items():
+            state_lens[state] = df.shape[0]
+            states_len_sum += df.shape[0]
 
-        # Compute metrics
+        # After computet sum, adjust the weights
+        state_weights: Dict[str, float] = {
+            state: value / states_len_sum for state, value in state_lens.items()
+        }
 
-        # Return df
-        pass
+        # Use weighted average for the overall metrics
+        metrics = ["mae", "mse", "rmse", "r2"]
+        overall_metrics: Dict[str, float] = {metric: 0.0 for metric in metrics}
+        for state in state_weights.keys():
+            # Get the state metrics
+            state_metrics = per_state_metric_df[per_state_metric_df["state"] == state]
+
+            # Get the weights
+            weight = state_weights[state]
+
+            # Adjust the metrics
+            for metric in metrics:
+                overall_metrics[metric] += state_metrics[metric].item() * weight
+
+        # Adjust the metrics by division of all states len
+        for metric in metrics:
+            overall_metrics[metric] = [overall_metrics[metric]]
+
+        return pd.DataFrame(overall_metrics)
 
 
 class EvaluateARIMA(BaseEvaluation):

@@ -145,21 +145,23 @@ def convert_highly_correlated_features_to_dict(
     return highly_correlated_dict
 
 
-def main(show_plot: bool = False) -> None:
+def main(show_plot: bool = False, exclude_highly_correlated: bool = True) -> None:
     DATASET_PATH = os.path.join(
         settings.save_dataset_path,
         f"dataset_{settings.dataset_version}",
         f"dataset_{settings.dataset_version}.csv",
     )
 
-    corr_matrix = create_correlation_matrix(DATASET_PATH)
+    corr_matrix = create_correlation_matrix(
+        DATASET_PATH, exclude_highly_correlated=exclude_highly_correlated
+    )
 
     print(corr_matrix)
 
     display_corr_matrix(
         corr_matrix,
         save_path=os.path.join(
-            settings.visualizations_dir, "feature_correlation_matrix.png"
+            settings.visualizations_dir, "all_feature_correlation_matrix.png"
         ),
         only_triangle=True,
     )
@@ -186,4 +188,4 @@ def main(show_plot: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    main(show_plot=True)
+    main(show_plot=True, exclude_highly_correlated=False)

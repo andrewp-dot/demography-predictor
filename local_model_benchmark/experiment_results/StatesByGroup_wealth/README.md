@@ -9,22 +9,22 @@
 ## Model comparision prediction plot
 In the next feagure you can see each model predictions compared to each other and the reference data.
 
-![Model comparision prediction plot](./plots/high_income_Czechia_prediction_comparions.png)
+![Model comparision prediction plot](./plots/high_income_Germany_prediction_comparions.png)
 
 ## Per target metrics - model comparision
 ```
-                      target        mae          mse       rmse          r2                state        model   rank
-5          agricultural land   0.566688     0.325365   0.570408    0.000000  Antigua and Barbuda  high_income  128.5
-109            net migration  29.764590  1066.173466  32.652312    0.644761  Antigua and Barbuda   base_model  582.0
-115         urban population   6.480697    42.827342   6.544260 -415.077721  Antigua and Barbuda   base_model  717.0
-112        death rate, crude   1.216224     1.557155   1.247860  -26.227561  Antigua and Barbuda   base_model  384.0
-8          population growth   1.052357     1.115121   1.055993  -63.585039  Antigua and Barbuda  high_income  371.0
-..                       ...        ...          ...        ...         ...                  ...          ...    ...
-159  rural population growth   0.493945     0.331273   0.575563   -3.739168       United Kingdom   base_model  187.0
-52          urban population   2.837634     8.079669   2.842476   -7.526968       United Kingdom  high_income  496.0
-48                gdp growth   5.834500    39.397021   6.276705   -1.203941       United Kingdom  high_income  574.0
-53         population growth   0.240493     0.071966   0.268265   -0.325135       United Kingdom  high_income   61.0
-157        death rate, crude   1.074715     1.343392   1.159048   -9.090363       United Kingdom   base_model  345.0
+                      target            mae           mse           rmse          r2                state        model   rank
+3                 gdp growth       8.518064  8.349566e+01       9.137596   -0.494608  Antigua and Barbuda  high_income  498.0
+6    rural population growth       1.410329  2.692938e+00       1.641017  -79.335658  Antigua and Barbuda  high_income  359.0
+108    fertility rate, total       1.530050  2.354144e+00       1.534322 -572.628673  Antigua and Barbuda   base_model  386.0
+116        population growth       0.536662  4.347690e-01       0.659370  -24.180737  Antigua and Barbuda   base_model  147.0
+4          death rate, crude       3.669876  1.351086e+01       3.675712 -235.243502  Antigua and Barbuda  high_income  500.0
+..                       ...            ...           ...            ...         ...                  ...          ...    ...
+153    fertility rate, total       0.308115  1.123947e-01       0.335253   -6.225066       United Kingdom   base_model   87.0
+53         population growth       0.322280  2.414404e-01       0.491366   -3.445705       United Kingdom  high_income   85.0
+50         agricultural land       0.393166  2.486920e-01       0.498690   -0.190882       United Kingdom  high_income   46.0
+47               arable land      11.271445  1.299563e+02      11.399837 -870.596068       United Kingdom  high_income  674.0
+46             net migration  250018.841371  6.320524e+10  251406.519982  -89.230208       United Kingdom  high_income  783.0
 
 [216 rows x 8 columns]
 ```
@@ -32,31 +32,31 @@ In the next feagure you can see each model predictions compared to each other an
 
 ## Overall metrics - model comparision
 ```
-             mae           mse          rmse            r2                state        model  rank
-12  5.034345e+00  1.311991e+02  5.743354e+00 -5.526168e+01  Antigua and Barbuda   base_model   5.0
-0   4.808128e+00  1.486402e+02  6.430670e+00 -1.523503e+02  Antigua and Barbuda  high_income  12.0
-11  5.072442e+03  3.118500e+08  5.888738e+03 -9.287986e+01              Austria  high_income  26.0
-23  9.059739e+04  1.574352e+11  1.322617e+05 -2.389336e+02              Austria   base_model  41.0
-1   8.448482e+03  1.660931e+09  1.358690e+04 -5.891685e+02              Bahrain  high_income  36.0
-13  1.532182e+04  6.775542e+09  2.744033e+04 -3.251110e+02              Bahrain   base_model  37.0
-9   4.069630e+04  2.090872e+10  4.820160e+04 -2.301607e+04               Cyprus  high_income  44.0
-21  1.400394e+05  4.020736e+11  2.113660e+05 -4.402367e+05               Cyprus   base_model  57.0
-3   1.117801e+03  1.681660e+07  1.369387e+03 -6.884427e+01              Czechia  high_income  17.0
-15  3.071003e+03  2.006504e+08  4.722964e+03 -1.232749e+02              Czechia   base_model  24.0
-16  2.201487e+07  1.456118e+16  4.022323e+07 -4.468702e+06              Germany   base_model  85.0
-4   1.090769e+06  1.812994e+13  1.419311e+06 -5.672193e+03              Germany  high_income  58.0
-19  4.759692e+06  5.305797e+14  7.678107e+06 -5.764771e+04                Italy   base_model  73.0
-7   2.370094e+05  5.208470e+11  2.405685e+05 -8.556389e+01                Italy  high_income  46.0
-2   2.708092e+07  2.824375e+16  5.601960e+07 -6.395199e+09                Malta  high_income  89.0
-14  5.038298e+07  1.106161e+17  1.108633e+08 -2.504666e+10                Malta   base_model  95.0
-22  6.139878e+07  9.359958e+16  1.019802e+08 -1.075556e+06        North America   base_model  91.0
-10  1.496319e+07  3.378098e+15  1.937380e+07 -3.900646e+04        North America  high_income  75.0
-6   1.172639e+06  1.992377e+13  1.487872e+06 -1.290706e+05               Norway  high_income  65.0
-18  2.393731e+06  1.298431e+14  3.798294e+06 -8.335057e+05               Norway   base_model  74.0
-8   7.737271e+02  5.494351e+06  7.836631e+02 -2.759707e+02             Slovenia  high_income  21.0
-20  7.649604e+02  5.406810e+06  7.763206e+02 -8.022117e+01             Slovenia   base_model  12.0
-17  2.357947e+06  1.191163e+14  3.638016e+06 -1.700937e+05       United Kingdom   base_model  69.0
-5   1.493793e+05  2.077300e+11  1.519275e+05 -3.666476e+02       United Kingdom  high_income  48.0
+              mae           mse           rmse            r2                state        model  rank
+12      53.571865  3.089535e+04      65.596459  -1236.915349  Antigua and Barbuda   base_model  15.0
+0      147.081402  2.944660e+05     188.173647  -1227.759438  Antigua and Barbuda  high_income  17.0
+23    5054.044566  3.075708e+08    5851.312330   -287.413430              Austria   base_model  52.0
+11    5061.947281  3.080857e+08    5856.135580   -324.544474              Austria  high_income  56.0
+1     2668.495235  8.114378e+07    3004.988536 -12418.930349              Bahrain  high_income  57.0
+13    2665.605261  8.080894e+07    2998.800507 -13755.083060              Bahrain   base_model  55.0
+21     468.642229  2.029320e+06     480.385223  -1943.880686               Cyprus   base_model  34.0
+9      477.352540  2.098088e+06     488.903258  -1461.021046               Cyprus  high_income  35.0
+3      330.149448  1.123999e+06     358.022832  -1400.175884              Czechia  high_income  28.0
+15     329.275895  1.112545e+06     356.167591  -2817.472248              Czechia   base_model  30.0
+4    38377.879044  1.361575e+10   38899.972935   -856.582320              Germany  high_income  75.0
+16   38205.303570  1.351018e+10   38748.737312   -893.640460              Germany   base_model  73.0
+19   12817.305519  2.487872e+09   16630.416509    -29.056955                Italy   base_model  52.0
+7    12881.570028  2.514142e+09   16719.131909    -63.286029                Italy  high_income  57.0
+2      191.085691  3.901064e+05     214.493087   -195.775986                Malta  high_income  15.0
+14     574.247163  4.811912e+06     736.501850    -86.465812                Malta   base_model  28.0
+22  147718.688114  2.058247e+11  151229.975987  -2841.975049        North America   base_model  88.0
+10  153656.160524  2.222236e+11  157139.574659  -4141.038149        North America  high_income  92.0
+6     3031.461795  9.816600e+07    3307.022613 -38137.804050               Norway  high_income  63.0
+18    3231.851365  1.116627e+08    3526.223016 -26347.621576               Norway   base_model  65.0
+8      792.240153  5.712598e+06     801.758760  -2652.609506             Slovenia  high_income  47.0
+20     789.805575  5.689116e+06     799.601859  -1506.608708             Slovenia   base_model  42.0
+17   27610.744558  6.928612e+09   27748.215260    -33.926466       United Kingdom   base_model  59.0
+5    27783.563445  7.022804e+09   27937.882590   -161.589765       United Kingdom  high_income  65.0
 ```
 
 
@@ -66,22 +66,22 @@ In the next feagure you can see each model predictions compared to each other an
 ## Model comparision prediction plot
 In the next feagure you can see each model predictions compared to each other and the reference data.
 
-![Model comparision prediction plot](./plots/upper_middle_income_Latin_America_&_the_Caribbean_(IDA_&_IBRD_countries)_prediction_comparions.png)
+![Model comparision prediction plot](./plots/upper_middle_income_Egypt_Arab_Rep._prediction_comparions.png)
 
 ## Per target metrics - model comparision
 ```
-                      target           mae           mse          rmse          r2     state                model   rank
-136            net migration  10258.517509  1.070226e+08  10345.172004  -15.379687   Albania           base_model  755.0
-140        agricultural land      0.750495  7.270152e-01      0.852652   -1.955823   Albania           base_model  253.0
-141  rural population growth      1.176740  1.449938e+00      1.204134  -26.638116   Albania           base_model  377.0
-18     fertility rate, total      0.431377  1.978241e-01      0.444774  -14.560243   Albania  upper_middle_income  232.0
-142         urban population      2.273932  5.420896e+00      2.328282    0.096156   Albania           base_model  387.0
-..                       ...           ...           ...           ...         ...       ...                  ...    ...
-96   rural population growth      1.750929  3.075875e+00      1.753817 -250.376704  Viet Nam  upper_middle_income  501.0
-208            net migration   2865.027058  9.127445e+06   3021.166096   -4.442250  Viet Nam           base_model  712.0
-93                gdp growth      2.473615  7.006579e+00      2.646994   -0.991578  Viet Nam  upper_middle_income  463.0
-214         urban population      0.910904  8.392219e-01      0.916091    0.678974  Viet Nam           base_model  208.0
-215        population growth      0.564572  3.207719e-01      0.566367  -62.049170  Viet Nam           base_model  310.0
+                      target            mae           mse           rmse           r2     state                model   rank
+25          urban population       3.385335  1.606426e+01       4.008024    -1.678446   Albania  upper_middle_income  451.0
+139        death rate, crude       2.138063  5.984426e+00       2.446309    -2.792756   Albania           base_model  333.0
+21                gdp growth       1.878834  8.640366e+00       2.939450     0.054283   Albania  upper_middle_income  298.0
+137              arable land       7.977051  6.366764e+01       7.979200 -1031.777513   Albania           base_model  702.0
+20               arable land       8.985982  8.080551e+01       8.989189 -1309.777561   Albania  upper_middle_income  716.0
+..                       ...            ...           ...            ...          ...       ...                  ...    ...
+93                gdp growth       5.314607  3.516199e+01       5.929754    -8.994583  Viet Nam  upper_middle_income  528.0
+96   rural population growth       1.917270  3.747126e+00       1.935749  -305.234852  Viet Nam  upper_middle_income  412.0
+208            net migration  111731.751110  1.297301e+10  113899.142060 -7734.176018  Viet Nam           base_model  894.0
+213  rural population growth       0.634314  5.920119e-01       0.769423   -47.382332  Viet Nam           base_model  188.0
+91             net migration  115166.000469  1.355203e+10  116413.173199 -8079.412839  Viet Nam  upper_middle_income  898.0
 
 [234 rows x 8 columns]
 ```
@@ -89,33 +89,33 @@ In the next feagure you can see each model predictions compared to each other an
 
 ## Overall metrics - model comparision
 ```
-             mae           mse          rmse            r2                                              state                model   rank
-15  1.140735e+03  1.189140e+07  1.150569e+03 -6.282222e+00                                            Albania           base_model   10.0
-2   1.206601e+03  1.349774e+07  1.226813e+03 -5.725491e+01                                            Albania  upper_middle_income   23.0
-4   1.045456e+05  1.570344e+11  1.320952e+05 -1.293873e+05                                            Belarus  upper_middle_income   96.0
-17  7.693957e+04  1.079826e+11  1.095370e+05 -8.892533e+04                                            Belarus           base_model   92.0
-11  1.443140e+03  1.926341e+07  1.467364e+03 -6.818301e+02                                           Bulgaria  upper_middle_income   43.0
-24  1.431439e+03  1.898389e+07  1.454369e+03 -1.578578e+02                                           Bulgaria           base_model   33.0
-14  1.145368e+03  1.875745e+07  1.445352e+03 -1.630607e+03                             Caribbean small states           base_model   34.0
-1   1.157621e+03  1.902720e+07  1.456076e+03 -2.037646e+03                             Caribbean small states  upper_middle_income   40.0
-7   1.030361e+04  1.964697e+09  1.477770e+04 -3.178433e+03                                         Costa Rica  upper_middle_income   70.0
-20  5.521828e+03  4.862124e+08  7.353029e+03 -9.028419e+02                                         Costa Rica           base_model   52.0
-19  5.715484e+03  6.038086e+08  8.192275e+03 -2.210783e+02                                   Egypt, Arab Rep.           base_model   53.0
-6   5.715999e+03  6.036565e+08  8.191276e+03 -1.937658e+02                                   Egypt, Arab Rep.  upper_middle_income   51.0
-8   2.784985e+04  1.845594e+10  4.528611e+04 -1.232469e+01                                             Jordan  upper_middle_income   57.0
-21  2.785164e+04  1.845602e+10  4.528666e+04 -2.780313e+01                                             Jordan           base_model   63.0
-9   4.417437e+04  2.135358e+10  4.871119e+04 -1.095889e+02  Latin America & Caribbean (excluding high income)  upper_middle_income   77.0
-22  4.292235e+04  1.995912e+10  4.709321e+04 -3.020161e+01  Latin America & Caribbean (excluding high income)           base_model   70.0
-0   4.032114e+04  1.805446e+10  4.479059e+04 -7.323263e+01  Latin America & the Caribbean (IDA & IBRD coun...  upper_middle_income   66.0
-13  3.906120e+04  1.663999e+10  4.299965e+04 -1.889305e+01  Latin America & the Caribbean (IDA & IBRD coun...           base_model   57.0
-5   2.532874e+03  1.121171e+08  3.531561e+03 -6.432540e+01                                             Panama  upper_middle_income   39.0
-18  1.177832e+03  2.472087e+07  1.659508e+03 -2.864736e+01                                             Panama           base_model   30.0
-12  5.010202e+06  3.481627e+14  6.219709e+06 -1.311566e+30                                 Russian Federation  upper_middle_income  104.0
-25  1.285911e+06  2.508361e+13  1.669453e+06 -4.722096e+29                                 Russian Federation           base_model  100.0
-16  9.301718e+03  8.702549e+08  9.836191e+03 -2.659285e+02                                          Sri Lanka           base_model   58.0
-3   9.303960e+03  8.704498e+08  9.837663e+03 -3.497496e+02                                          Sri Lanka  upper_middle_income   62.0
-10  3.478789e+02  1.206175e+06  3.678353e+02 -1.158166e+02                                           Viet Nam  upper_middle_income   18.0
-23  3.195969e+02  1.014164e+06  3.369955e+02 -1.302324e+01                                           Viet Nam           base_model    6.0
+             mae           mse          rmse            r2                                              state                model  rank
+15   2632.191594  6.522392e+07   2695.025520 -1.695139e+02                                            Albania           base_model  44.0
+2    2581.178662  6.071165e+07   2602.047841 -3.167458e+02                                            Albania  upper_middle_income  44.0
+4    1642.028185  2.418246e+07   1646.531825 -5.787537e+02                                            Belarus  upper_middle_income  43.0
+17   1620.472615  2.363601e+07   1625.215337 -4.692843e+02                                            Belarus           base_model  38.0
+24   1031.399785  1.018547e+07   1069.250274 -2.524699e+03                                           Bulgaria           base_model  38.0
+11   1121.733242  1.224270e+07   1174.365891 -3.538215e+03                                           Bulgaria  upper_middle_income  42.0
+14    710.352450  1.514528e+07   1300.784247 -5.652945e+04                             Caribbean small states           base_model  43.0
+1     706.771930  1.505811e+07   1297.141801 -6.817999e+04                             Caribbean small states  upper_middle_income  41.0
+7     431.747964  1.735676e+06    441.857078 -7.247897e+02                                         Costa Rica  upper_middle_income  17.0
+20    433.865213  1.755169e+06    444.005006 -5.124919e+02                                         Costa Rica           base_model  18.0
+6    5706.880786  6.018647e+08   8181.290948 -2.157088e+03                                   Egypt, Arab Rep.  upper_middle_income  64.0
+19   5707.069559  6.026889e+08   8187.092804 -2.316930e+03                                   Egypt, Arab Rep.           base_model  68.0
+8   27856.828698  1.845609e+10  45287.334180 -8.179778e+01                                             Jordan  upper_middle_income  65.0
+21  27856.863563  1.845606e+10  45287.367209 -1.103718e+02                                             Jordan           base_model  67.0
+9   45659.012876  2.313371e+10  50702.819887 -2.196899e+02  Latin America & Caribbean (excluding high income)  upper_middle_income  86.0
+22  45632.265938  2.311839e+10  50685.179942 -7.113234e+01  Latin America & Caribbean (excluding high income)           base_model  77.0
+0   41457.017654  1.972911e+10  46823.683147 -1.619316e+02  Latin America & the Caribbean (IDA & IBRD coun...  upper_middle_income  75.0
+13  41509.126653  1.975703e+10  46855.967305 -6.084556e+01  Latin America & the Caribbean (IDA & IBRD coun...           base_model  73.0
+18    819.493539  6.671314e+06    864.529881 -1.403228e+02                                             Panama           base_model  19.0
+5     818.487565  6.655474e+06    863.845238 -2.673912e+02                                             Panama  upper_middle_income  20.0
+12  33499.274002  1.010586e+10  33515.303268 -6.383972e+29                                 Russian Federation  upper_middle_income  84.0
+25  36762.277430  1.218432e+10  36799.428722 -2.522968e+30                                 Russian Federation           base_model  88.0
+16   2878.159030  2.815002e+08   5597.663321 -1.543327e+03                                          Sri Lanka           base_model  58.0
+3    2496.525623  2.072866e+08   4805.183023 -1.359652e+03                                          Sri Lanka  upper_middle_income  52.0
+23  12418.676036  1.441446e+09  12659.605839 -2.126723e+03                                           Viet Nam           base_model  69.0
+10  12801.303671  1.505781e+09  12939.962064 -2.104518e+03                                           Viet Nam  upper_middle_income  71.0
 ```
 
 
@@ -125,22 +125,22 @@ In the next feagure you can see each model predictions compared to each other an
 ## Model comparision prediction plot
 In the next feagure you can see each model predictions compared to each other and the reference data.
 
-![Model comparision prediction plot](./plots/lower_middle_income_South_Asia_(IDA_&_IBRD)_prediction_comparions.png)
+![Model comparision prediction plot](./plots/lower_middle_income_Mauritania_prediction_comparions.png)
 
 ## Per target metrics - model comparision
 ```
-                      target        mae         mse       rmse          r2                                       state                model   rank
-48                gdp growth  20.523823  424.197387  20.596053 -113.889606  East Asia & Pacific (IDA & IBRD countries)  lower_middle_income  629.0
-142         urban population   2.399251    6.770185   2.601958    0.515165  East Asia & Pacific (IDA & IBRD countries)           base_model  305.0
-52          urban population   2.923934   11.350016   3.368978    0.187189  East Asia & Pacific (IDA & IBRD countries)  lower_middle_income  368.0
-51   rural population growth   1.702965    2.933464   1.712736 -100.023251  East Asia & Pacific (IDA & IBRD countries)  lower_middle_income  372.0
-53         population growth   0.365304    0.154761   0.393397   -6.298351  East Asia & Pacific (IDA & IBRD countries)  lower_middle_income  172.0
-..                       ...        ...         ...        ...         ...                                         ...                  ...    ...
-16          urban population   3.197210   10.370359   3.220304 -241.523502                                     Ukraine  lower_middle_income  512.0
-11               arable land   1.968961    4.076546   2.019046 -325.399388                                     Ukraine  lower_middle_income  415.0
-103        death rate, crude   3.137448   11.623535   3.409331   -4.846685                                     Ukraine           base_model  435.0
-9      fertility rate, total   0.721485    0.553295   0.743838  -50.693755                                     Ukraine  lower_middle_income  290.0
-105  rural population growth   2.546981    6.550570   2.559408 -108.241243                                     Ukraine           base_model  443.0
+                      target            mae           mse           rmse            r2                                       state                model   rank
+47               arable land       0.730728  6.689595e-01       0.817899    -21.104238  East Asia & Pacific (IDA & IBRD countries)  lower_middle_income  242.0
+136            net migration  232098.860376  7.323044e+10  270611.235604     -1.987734  East Asia & Pacific (IDA & IBRD countries)           base_model  565.0
+137              arable land       0.528917  4.016197e-01       0.633735    -12.270604  East Asia & Pacific (IDA & IBRD countries)           base_model  195.0
+53         population growth       0.579765  3.750637e-01       0.612424    -16.687573  East Asia & Pacific (IDA & IBRD countries)  lower_middle_income  202.0
+143        population growth       0.540307  3.799909e-01       0.616434    -16.919938  East Asia & Pacific (IDA & IBRD countries)           base_model  204.0
+..                       ...            ...           ...            ...           ...                                         ...                  ...    ...
+15   rural population growth       1.783727  3.270142e+00       1.808354    -53.534859                                     Ukraine  lower_middle_income  363.0
+105  rural population growth       1.570347  2.800527e+00       1.673478    -45.703270                                     Ukraine           base_model  352.0
+12                gdp growth      15.717798  2.542480e+02      15.945156    -38.063946                                     Ukraine  lower_middle_income  550.0
+13         death rate, crude       4.907416  2.673485e+01       5.170576    -12.447738                                     Ukraine  lower_middle_income  419.0
+101              arable land      12.415405  1.544375e+02      12.427288 -12364.444725                                     Ukraine           base_model  590.0
 
 [180 rows x 8 columns]
 ```
@@ -149,26 +149,26 @@ In the next feagure you can see each model predictions compared to each other an
 ## Overall metrics - model comparision
 ```
               mae           mse           rmse            r2                                       state                model  rank
-5    35086.079142  1.334136e+10   38505.329447 -9.781603e+01  East Asia & Pacific (IDA & IBRD countries)  lower_middle_income  56.0
-15   33718.778926  1.231736e+10   36996.052560 -8.380275e+01  East Asia & Pacific (IDA & IBRD countries)           base_model  52.0
-0    36796.409642  1.681399e+10   43227.359128 -5.835555e+01                                       India  lower_middle_income  60.0
-10   36650.621165  1.669148e+10   43068.578956 -1.030609e+02                                       India           base_model  60.0
-14    1178.802396  1.400476e+07    1248.968034 -8.007703e+00                                     Lao PDR           base_model  16.0
-4     1258.753668  1.596487e+07    1335.139469 -1.824838e+01                                     Lao PDR  lower_middle_income  20.0
-9      545.158851  6.649296e+06     862.724455 -3.348768e+31                                  Mauritania  lower_middle_income  28.0
-19     648.296183  7.956719e+06     941.781354 -1.076278e+32                                  Mauritania           base_model  32.0
-7    25611.615701  7.201409e+09   28290.101526 -1.048295e+03                                       Nepal  lower_middle_income  57.0
-17   25411.919838  7.089273e+09   28067.605805 -1.204556e+03                                       Nepal           base_model  55.0
-6     2388.118655  5.405146e+07    2453.877116 -5.320161e+01                                   Nicaragua  lower_middle_income  29.0
-16    2247.481321  4.765425e+07    2302.892992 -1.745860e+02                                   Nicaragua           base_model  33.0
-2    10390.636881  1.482536e+09   12838.163200 -2.857673e+01                                 Philippines  lower_middle_income  39.0
-12   10223.535322  1.433210e+09   12621.196634 -2.942545e+01                                 Philippines           base_model  37.0
-8      147.082827  2.094230e+05     156.500552 -3.191161e+29                       Sao Tome and Principe  lower_middle_income  24.0
-18     101.009544  9.743446e+04     106.349386 -3.181770e+29                       Sao Tome and Principe           base_model  20.0
-13  230294.461136  5.509658e+11  247426.495990 -1.699924e+02                     South Asia (IDA & IBRD)           base_model  68.0
-3   230578.002946  5.520791e+11  247677.563787 -1.685770e+02                     South Asia (IDA & IBRD)  lower_middle_income  70.0
-11    2759.326162  1.235394e+08    3707.480124 -2.512482e+02                                     Ukraine           base_model  42.0
-1     2758.831948  1.236108e+08    3709.655128 -2.406966e+02                                     Ukraine  lower_middle_income  42.0
+15   25790.547268  8.136716e+09   30069.849861 -9.718792e+01  East Asia & Pacific (IDA & IBRD countries)           base_model  49.0
+5    32180.916542  1.172019e+10   36091.037093 -1.640230e+02  East Asia & Pacific (IDA & IBRD countries)  lower_middle_income  56.0
+0    32899.085069  1.414219e+10   39646.396412 -5.798320e+02                                       India  lower_middle_income  63.0
+10   30203.273055  1.222826e+10   36866.207638 -7.755120e+02                                       India           base_model  60.0
+4     1108.030537  1.287574e+07    1200.519455 -7.129177e+01                                     Lao PDR  lower_middle_income  20.0
+14    3141.788149  9.260878e+07    3212.040851 -4.676304e+02                                     Lao PDR           base_model  34.0
+9      430.816444  3.553806e+06     633.397589 -5.545808e+32                                  Mauritania  lower_middle_income  32.0
+19     400.361071  4.328273e+06     696.194410 -7.270036e+32                                  Mauritania           base_model  34.0
+7    12227.332723  3.112941e+09   18603.189707 -5.473418e+03                                       Nepal  lower_middle_income  54.0
+17   14457.218643  3.811234e+09   20583.204686 -6.775571e+03                                       Nepal           base_model  58.0
+16     263.794478  1.471866e+06     405.740775 -1.470763e+02                                   Nicaragua           base_model  15.0
+6     1924.463955  3.652798e+07    2017.967410 -4.756179e+01                                   Nicaragua  lower_middle_income  22.0
+12    8890.242964  9.899943e+08   10490.104778 -8.659806e+01                                 Philippines           base_model  36.0
+2    10310.372364  1.481661e+09   12834.525942 -9.777419e+01                                 Philippines  lower_middle_income  41.0
+18     134.245099  1.719403e+05     141.879738 -3.956160e+28                       Sao Tome and Principe           base_model  20.0
+8      167.272433  2.650939e+05     177.429349 -1.035547e+29                       Sao Tome and Principe  lower_middle_income  24.0
+3   222354.286533  5.164884e+11  239562.246316 -2.445479e+03                     South Asia (IDA & IBRD)  lower_middle_income  73.0
+13  215899.024956  4.902747e+11  233403.367023 -2.923399e+03                     South Asia (IDA & IBRD)           base_model  71.0
+1     2763.688334  1.236228e+08    3712.183668 -1.827940e+03                                     Ukraine  lower_middle_income  40.0
+11    2761.333026  1.235053e+08    3709.471919 -2.303532e+03                                     Ukraine           base_model  38.0
 ```
 
 
@@ -178,22 +178,22 @@ In the next feagure you can see each model predictions compared to each other an
 ## Model comparision prediction plot
 In the next feagure you can see each model predictions compared to each other and the reference data.
 
-![Model comparision prediction plot](./plots/low_income_Middle_East_&_North_Africa_(excluding_high_income)_prediction_comparions.png)
+![Model comparision prediction plot](./plots/low_income_IDA_only_prediction_comparions.png)
 
 ## Per target metrics - model comparision
 ```
-                      target           mae           mse          rmse          r2                     state       model   rank
-54     fertility rate, total      0.865659  8.314513e-01      0.911840 -550.641657  Central African Republic  low_income  297.0
-143        population growth      1.569961  3.242019e+00      1.800561   -4.316737  Central African Republic  base_model  290.0
-135    fertility rate, total      0.787606  7.082018e-01      0.841547 -468.869502  Central African Republic  base_model  286.0
-136            net migration  71255.339282  6.723835e+09  81998.995644   -3.104587  Central African Republic  base_model  511.0
-142         urban population      6.149482  4.287377e+01      6.547807  -26.882113  Central African Republic  base_model  504.0
-..                       ...           ...           ...           ...         ...                       ...         ...    ...
-24   rural population growth      1.356379  1.857941e+00      1.363063  -51.197997                      Togo  low_income  318.0
-20               arable land      6.755293  4.840217e+01      6.957167  -20.563509                      Togo  low_income  501.0
-107        population growth      1.351530  1.908163e+00      1.381363 -133.435218                      Togo  base_model  333.0
-23         agricultural land      3.544564  1.405115e+01      3.748487   -7.866956                      Togo  low_income  409.0
-25          urban population      0.877959  8.109377e-01      0.900521    0.790653                      Togo  low_income  154.0
+                      target           mae           mse          rmse            r2                     state       model   rank
+58         death rate, crude      4.120411  1.863812e+01      4.317189     -8.828335  Central African Republic  low_income  374.0
+135    fertility rate, total      0.692113  5.253309e-01      0.724797   -347.540473  Central African Republic  base_model  226.0
+54     fertility rate, total      0.971330  9.688144e-01      0.984284   -641.777753  Central African Republic  low_income  265.0
+139        death rate, crude      5.705410  3.357210e+01      5.794144    -16.703387  Central African Republic  base_model  428.0
+56               arable land      3.286481  1.087862e+01      3.298276 -11571.669457  Central African Republic  low_income  426.0
+..                       ...           ...           ...           ...           ...                       ...         ...    ...
+21                gdp growth      7.244167  5.379533e+01      7.334530    -42.274795                      Togo  low_income  490.0
+23         agricultural land      6.112259  4.591287e+01      6.775903    -27.973235                      Togo  low_income  461.0
+26         population growth      1.503105  2.265310e+00      1.505095   -158.597192                      Togo  low_income  284.0
+105  rural population growth      0.377497  2.472329e-01      0.497225     -5.945894                      Togo  base_model  108.0
+100            net migration  11524.996940  2.623914e+08  16198.500201  -2039.710064                      Togo  base_model  590.0
 
 [162 rows x 8 columns]
 ```
@@ -202,24 +202,24 @@ In the next feagure you can see each model predictions compared to each other an
 ## Overall metrics - model comparision
 ```
               mae           mse           rmse            r2                                              state       model  rank
-15    7919.757663  7.470928e+08    9114.361575 -1.800082e+03                           Central African Republic  base_model  35.0
-6     7953.098516  7.515620e+08    9141.751334 -1.342261e+03                           Central African Republic  low_income  37.0
-13   34030.079401  1.251031e+10   37284.660192 -8.334329e+01        East Asia & Pacific (excluding high income)  base_model  36.0
-4    36440.888520  1.437241e+10   39964.839360 -1.823888e+02        East Asia & Pacific (excluding high income)  low_income  42.0
-17    1887.864828  3.824563e+07    2063.342682 -4.108574e+02                                            Eritrea  base_model  26.0
-8     2055.088131  4.363028e+07    2203.890960 -5.024990e+02                                            Eritrea  low_income  30.0
-16      69.672980  4.934992e+04      75.478045 -2.609174e+29                                      Guinea-Bissau  base_model  20.0
-7      122.542536  1.362375e+05     125.044220 -3.821196e+29                                      Guinea-Bissau  low_income  24.0
-14  369830.033631  1.327620e+12  384075.272493 -1.875585e+01                                   IDA & IBRD total  base_model  52.0
-5   382125.242409  1.416653e+12  396746.011700 -8.835507e+01                                   IDA & IBRD total  low_income  62.0
-0   166877.911199  3.493673e+11  197025.829402 -6.846086e+01                                           IDA only  low_income  51.0
-9   168394.948295  3.553729e+11  198711.214639 -4.473778e+01                                           IDA only  base_model  52.0
-12   29564.136991  1.691059e+10   43348.427683 -5.058330e+01  Middle East & North Africa (excluding high inc...  base_model  36.0
-3    29681.709393  1.694329e+10   43391.195505 -1.055892e+02  Middle East & North Africa (excluding high inc...  low_income  43.0
-1    65318.824228  7.642415e+10   92154.047933 -1.495432e+04                               Syrian Arab Republic  low_income  55.0
-10   65416.872825  7.647608e+10   92185.514134 -7.772763e+03                               Syrian Arab Republic  base_model  57.0
-2      207.350345  3.910374e+05     211.307921 -2.302631e+01                                               Togo  low_income  14.0
-11     205.560292  3.886993e+05     209.624483 -3.261170e+01                                               Togo  base_model  12.0
+15    7924.904097  7.459826e+08    9107.726882 -1.297913e+04                           Central African Republic  base_model  36.0
+6     7961.975636  7.517191e+08    9143.725206 -1.452127e+04                           Central African Republic  low_income  40.0
+4    34747.495313  1.338466e+10   38568.049703 -1.809257e+02        East Asia & Pacific (excluding high income)  low_income  38.0
+13   26172.804835  8.341330e+09   30445.533911 -9.418788e+01        East Asia & Pacific (excluding high income)  base_model  31.0
+17    2093.613495  4.412789e+07    2217.635436 -4.116587e+03                                            Eritrea  base_model  28.0
+8     2212.941492  4.879276e+07    2332.196486 -2.083269e+03                                            Eritrea  low_income  30.0
+7       45.071881  2.208617e+04      52.758597 -1.697541e+30                                      Guinea-Bissau  low_income  21.0
+16     128.373803  1.545165e+05     132.981064 -1.125999e+30                                      Guinea-Bissau  base_model  23.0
+14  376445.408096  1.380029e+12  391583.410030 -8.010919e+01                                   IDA & IBRD total  base_model  54.0
+5   387149.050161  1.458129e+12  402513.248837 -4.146798e+02                                   IDA & IBRD total  low_income  63.0
+9   176808.841756  3.906764e+11  208348.628262 -1.261658e+02                                           IDA only  base_model  50.0
+0   177988.716879  3.957040e+11  209685.528682 -7.746826e+01                                           IDA only  low_income  50.0
+12   29563.053499  1.690911e+10   43347.533216 -7.653372e+02  Middle East & North Africa (excluding high inc...  base_model  43.0
+3    29567.963077  1.691164e+10   43350.952818 -4.487760e+02  Middle East & North Africa (excluding high inc...  low_income  45.0
+1    65419.525977  7.647798e+10   92186.058330 -3.908988e+02                               Syrian Arab Republic  low_income  47.0
+10   65601.399242  7.658132e+10   92248.307386 -5.117169e+03                               Syrian Arab Republic  base_model  56.0
+11    1283.144766  2.915462e+07    1802.649562 -2.442368e+02                                               Togo  base_model  19.0
+2      180.775225  3.940799e+05     214.073024 -5.384593e+01                                               Togo  low_income  10.0
 ```
 
 

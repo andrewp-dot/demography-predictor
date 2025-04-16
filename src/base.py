@@ -28,13 +28,13 @@ class LSTMHyperparameters:
     def __init__(
         self,
         input_size: int,
-        # output_size: int,
         hidden_size: int,
         sequence_length: int,
         learning_rate: float,
         epochs: int,
         batch_size: int,
         num_layers: int,
+        output_size: int | None = None,
         bidirectional: bool = False,
     ):
         """
@@ -42,7 +42,7 @@ class LSTMHyperparameters:
 
         Args:
             input_size (int): Defines the number of input features.
-            output_size (int): Defines the number of output features.
+            output_size (int): Defines the number of output features. If None the output_size is equal to the input size. Defaults to None.
             hidden_size (int): Defines the number of neurons in a layer.
             sequence_length (int): Length of the processing sequnece (number of past samples using for predicition).
             learning_rate (float): Defines how much does the model learn (step in gradient descend).
@@ -52,7 +52,9 @@ class LSTMHyperparameters:
             bidirectional (bool, optional): If you can go also forward and backward (for gatharing context from the past and also from future). Defaults to False.
         """
         self.input_size = input_size  # Number of input features
-        # self.output_size = output_size  # Number of output features
+        self.output_size = (
+            output_size if output_size else input_size
+        )  # Number of output features
         self.hidden_size = hidden_size  # Number of hidden units in the LSTM layer
         self.sequence_length = sequence_length  # Length of the input sequence, i.e., how many time steps the model will look back
         self.learning_rate = (

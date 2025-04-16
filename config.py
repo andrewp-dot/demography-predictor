@@ -9,7 +9,6 @@ DATASET_VERSION: Literal["v0", "v1", "v2"] = "v2"
 
 ALL_POSSIBLE_TARGET_FEATURES: List[str] = [
     "population, total",
-    # "population growth",
     "population ages 15-64",
     "population ages 0-14",
     "population ages 65 and above",

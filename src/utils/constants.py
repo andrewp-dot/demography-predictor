@@ -11,11 +11,13 @@ def get_core_hyperparameters(
     epochs: int = 10,
     batch_size: int = 1,
     num_layers: int = 3,
+    output_size: int | None = None,
     bidirectional: bool = False,
 ) -> LSTMHyperparameters:
     BASE_HYPERPARAMETERS: LSTMHyperparameters = LSTMHyperparameters(
         input_size=input_size,
         hidden_size=hidden_size,
+        output_size=output_size,
         sequence_length=sequence_length,
         learning_rate=learning_rate,
         epochs=epochs,

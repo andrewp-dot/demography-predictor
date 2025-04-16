@@ -189,7 +189,7 @@ class DataTransformer:
 
         return transformed_data_df
 
-    def scale_and_fit(
+    def __scale_and_fit(
         self,
         training_data: pd.DataFrame,
         validation_data: pd.DataFrame,
@@ -227,13 +227,7 @@ class DataTransformer:
         # Fit data on the training data
         scaler.fit(transformed_training_df)
 
-        # Save fitted scaler
-        self.SCALER = scaler
-
         # Scale data
-        # merged_data = pd.concat(
-        #     [transformed_training_df, transformed_validation_df], axis=0
-        # )  # Concat rows together
         scaled_training_data = scaler.transform(transformed_training_df)
         scaled_validation_data = scaler.transform(transformed_validation_df)
 
@@ -276,7 +270,62 @@ class DataTransformer:
             scaler,
         )
 
-    def scale_data(self, data: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
+    def scale_and_fit(
+        self,
+        training_data: pd.DataFrame,
+        validation_data: pd.DataFrame,
+        features: List[str],
+        targets: List[str] | None = None,
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        This method is scaling for the model training. Fit specified scaler on the training data.
+
+        Args:
+            training_data (pd.DataFrame): Training dataframe (X values).
+            validation_data (pd.DataFrame): Validation dataframe (y values).
+            columns (List[str]): The columns for scaling.
+            scaler (MinMaxScaler): Scaler to be fitted on training data.
+
+        Returns:
+            Tuple[pd.DataFrame, pd.DataFrame]: scaled_training_data, scaled_validation_data
+        """
+
+        FEATURES: List[str] = [f for f in features if not f in targets]
+        TARGETS: List[str] = targets
+
+        # Scale and fit feature data
+        training_feature_data, validation_feature_data, feature_scaler = (
+            self.__scale_and_fit(
+                training_data=training_data,
+                validation_data=validation_data,
+                columns=FEATURES,
+                scaler=MinMaxScaler(),
+            )
+        )
+
+        # print(training_feature_data.columns)
+
+        # Scale and fit targets
+        scaled_training_data, scaled_validation_data, target_scaler = (
+            self.__scale_and_fit(
+                training_data=training_feature_data,
+                validation_data=validation_feature_data,
+                columns=TARGETS,
+                scaler=MinMaxScaler(),
+            )
+        )
+
+        # print(scaled_training_data.columns)
+
+        # Save scalers
+        self.SCALER = feature_scaler
+        self.TARGET_SCALER = target_scaler
+
+        return scaled_training_data, scaled_validation_data
+
+    def scale_data(
+        self, data: pd.DataFrame, features: List[str], targets: List[str] | None = None
+    ) -> pd.DataFrame:
 
         if self.SCALER is None:
             raise ValueError(
@@ -287,18 +336,42 @@ class DataTransformer:
         ORIGINAL_COLUMNS = data.columns
 
         # Maintain the original column order
-        FEATURES = columns
-        to_scale_data = to_scale_data[FEATURES]
+        FEATURES = [f for f in features if not f in targets]
+        TARGETS = targets
+        to_scale_feature_data = to_scale_data[FEATURES]
 
-        transformed_data_df = self.transform_data(data=to_scale_data, columns=columns)
+        # Transform feature data
+        transformed_feature_data_df = self.transform_data(
+            data=to_scale_feature_data, columns=FEATURES
+        )
+        scaled_feature_data = self.SCALER.transform(transformed_feature_data_df)
+        scaled_feature_data_df = pd.DataFrame(
+            scaled_feature_data, columns=transformed_feature_data_df.columns
+        )
 
-        # Use scaler
-        scaled_data = self.SCALER.transform(transformed_data_df)
+        scaled_data_df = scaled_feature_data_df
 
-        scaled_data_df = pd.DataFrame(scaled_data, columns=transformed_data_df.columns)
+        if TARGETS:
+
+            to_scale_target_data = to_scale_data[TARGETS]
+
+            transformed_target_data_df = self.transform_data(
+                data=to_scale_target_data, columns=TARGETS
+            )
+            scaled_target_data = self.TARGET_SCALER.transform(
+                transformed_target_data_df
+            )
+            scaled_target_data_df = pd.DataFrame(
+                scaled_target_data, columns=transformed_target_data_df.columns
+            )
+
+            # Update scaled data if there is also a target scaling
+            scaled_data_df = pd.concat([scaled_data_df, scaled_target_data_df], axis=1)
 
         # Reconstruct the original dataframe
-        non_transformed_features = [f for f in ORIGINAL_COLUMNS if not f in FEATURES]
+        non_transformed_features = [
+            f for f in ORIGINAL_COLUMNS if not f in FEATURES and f not in TARGETS
+        ]
 
         scaled_data_df = pd.concat(
             [
@@ -313,10 +386,10 @@ class DataTransformer:
     def unscale_data(
         self,
         data: pd.DataFrame,
-        columns: List[str],
+        targets: List[str],
     ) -> pd.DataFrame:
 
-        if self.SCALER is None:
+        if self.TARGET_SCALER is None:
             raise ValueError(
                 "The scaler isnt fitted yet. Please use scale_and_fit first."
             )
@@ -327,16 +400,16 @@ class DataTransformer:
         ORIGINAL_COLUMNS = data.columns
 
         # Maintain the original column order
-        FEATURES = columns
+        FEATURES = targets
         to_unscale_data = to_unscale_data[FEATURES]
 
         # Unsale data
-        unscaled_data = self.SCALER.inverse_transform(to_unscale_data)
-        unscaled_data_df = pd.DataFrame(unscaled_data, columns=columns)
+        unscaled_data = self.TARGET_SCALER.inverse_transform(to_unscale_data)
+        unscaled_data_df = pd.DataFrame(unscaled_data, columns=targets)
 
         # Inverse transform data
         reverse_transformed_data_df = self.transform_data(
-            data=unscaled_data_df, columns=columns, inverse=True
+            data=unscaled_data_df, columns=targets, inverse=True
         )
 
         INTEGER_COLUMNS = ["year"]  # Add more if needed
@@ -462,6 +535,7 @@ class DataTransformer:
         data: pd.DataFrame,
         sequence_len: int,
         features: List[str],
+        targets: List[str] | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         From the states data creates the input sequences and the desired output of the sequnce.
@@ -479,7 +553,11 @@ class DataTransformer:
         current_data = data.copy()
 
         # Select features
-        current_data = current_data[features]
+        current_input_data = current_data[features]
+        current_target_data = current_data[features]
+
+        if not targets is None:
+            current_target_data = current_data[targets]
 
         # Get data using rolling window
         input_sequences = []
@@ -493,14 +571,16 @@ class DataTransformer:
             input_sequences.append(
                 # Converting to a PyTorch tensor
                 torch.tensor(
-                    current_data.iloc[i : i + sequence_len].values, dtype=torch.float32
+                    current_input_data.iloc[i : i + sequence_len].values,
+                    dtype=torch.float32,
                 )
             )
 
             # Get the expected output of the sequence
             sequence_output.append(
                 torch.tensor(
-                    current_data.iloc[i + sequence_len].values, dtype=torch.float32
+                    current_target_data.iloc[i + sequence_len].values,
+                    dtype=torch.float32,
                 )
             )
 
@@ -588,6 +668,7 @@ class DataTransformer:
         hyperparameters: LSTMHyperparameters,
         features: List[str],
         split_rate: float = 0.8,
+        targets: List[str] | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
 
         SEQUENCE_LEN: int = hyperparameters.sequence_length
@@ -612,6 +693,7 @@ class DataTransformer:
                 data=state_data,
                 sequence_len=SEQUENCE_LEN,
                 features=features,
+                targets=targets,
             )
 
             # Parse them to test and validation

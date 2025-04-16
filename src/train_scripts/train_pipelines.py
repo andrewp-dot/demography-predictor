@@ -71,40 +71,40 @@ def train_basic_pipeline(
 
 def main():
 
-    # Get local model features
-    LOCAL_MODEL_FEATURES: List[str] = [
-        col.lower()
-        for col in [
-            # "year",
-            "Fertility rate, total",
-            # "Population, total",
-            "Net migration",
-            "Arable land",
-            "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            "Rural population",
-            "Rural population growth",
-            "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            "Adolescent fertility rate",
-            "Life expectancy at birth, total",
-        ]
-    ]
-
+    # # Get local model features
     # LOCAL_MODEL_FEATURES: List[str] = [
-    #     "fertility rate, total",
-    #     "population, total",
-    #     "arable land",
-    #     "gdp growth",
-    #     "death rate, crude",
-    #     "agricultural land",
-    #     "rural population growth",
-    #     "urban population",
-    #     "population growth",
+    #     col.lower()
+    #     for col in [
+    #         # "year",
+    #         "Fertility rate, total",
+    #         # "Population, total",
+    #         "Net migration",
+    #         "Arable land",
+    #         "Birth rate, crude",
+    #         "GDP growth",
+    #         "Death rate, crude",
+    #         "Agricultural land",
+    #         "Rural population",
+    #         "Rural population growth",
+    #         "Age dependency ratio",
+    #         "Urban population",
+    #         "Population growth",
+    #         "Adolescent fertility rate",
+    #         "Life expectancy at birth, total",
+    #     ]
     # ]
+
+    LOCAL_MODEL_FEATURES: List[str] = [
+        "fertility rate, total",
+        "population, total",
+        "arable land",
+        "gdp growth",
+        "death rate, crude",
+        "agricultural land",
+        "rural population growth",
+        "urban population",
+        "population growth",
+    ]
 
     # Get global model settings
     GLOBAL_MODEL_ADDITIONAL_FEATURES: List[str] = [
@@ -174,12 +174,12 @@ def main():
     )
 
     czechia_data_dict = loader.load_states(states=["Czechia"])
-    test_X, test_y = loader.split_data(
+    X_test_states, y_test_states = loader.split_data(
         states_dict=czechia_data_dict, sequence_len=hyperparameters.sequence_length
     )
 
-    test_X = test_X[STATE]
-    test_y = test_y[STATE]
+    test_X = X_test_states[STATE]
+    test_y = y_test_states[STATE]
 
     evaluation_df = model_evaluation.eval(test_X=test_X, test_y=test_y)
 
@@ -201,6 +201,18 @@ def main():
         bbox_inches="tight",
         dpi=300,
     )
+
+    all_states_dict = states_loader.load_all_states()
+    # all_states_dict = loader.load_states(states=["Czechia", "United States"])
+    X_test_states, y_test_states = loader.split_data(
+        states_dict=all_states_dict, sequence_len=hyperparameters.sequence_length
+    )
+
+    overall_metrics = model_evaluation.eval_for_every_state_overall(
+        X_test_states=X_test_states, y_test_states=y_test_states
+    )
+
+    print(overall_metrics)
 
 
 if __name__ == "__main__":
