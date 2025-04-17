@@ -155,6 +155,31 @@ class GlobalModel:
 
         return history_target_df
 
+    def create_input(self, input_data: pd.DataFrame) -> pd.DataFrame:
+        # Get the last sequence_len data
+        if len(input_data) < self.sequence_len:
+            raise ValueError(
+                f"Insufficient input data. Need at least {self.sequence_len} last records of input values."
+            )
+
+        last_n_data: pd.DataFrame = input_data.tail(self.sequence_len)
+
+        # From the input sequence get features in time T
+        features_at_time_T = last_n_data.tail(1)
+
+        # From the input sequence get the targets from time (T - (sequence_length + 1)) to time T
+        target_history_df = self.get_target_history(input_data=last_n_data)
+
+        xgb_input = pd.concat(
+            [
+                features_at_time_T.reset_index(drop=True),
+                target_history_df.reset_index(drop=True),
+            ],
+            axis=1,
+        )
+
+        return xgb_input[self.FEATURES + self.HISTORY_TARGET_FEATURES]
+
     def create_state_inputs_outputs(
         self, states_dict: Dict[str, pd.DataFrame]
     ) -> Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
@@ -172,21 +197,7 @@ class GlobalModel:
                 # Add input sequence
                 state_input_sequence = df.iloc[i : i + self.sequence_len]
 
-                # From the input sequence get features in time T
-                features_at_time_T = state_input_sequence.tail(1)
-
-                # From the input sequence get the targets from time (T - (sequence_length + 1)) to time T
-                target_history_df = self.get_target_history(
-                    input_data=state_input_sequence
-                )
-
-                xgb_input = pd.concat(
-                    [
-                        features_at_time_T.reset_index(drop=True),
-                        target_history_df.reset_index(drop=True),
-                    ],
-                    axis=1,
-                )
+                xgb_input = self.create_input(input_data=state_input_sequence)
 
                 state_inputs.setdefault(state, []).append(xgb_input)
 
@@ -350,33 +361,22 @@ class GlobalModel:
         Returns:
             out: pd.DataFrame: The pandas dataframe with human readable predictions.
         """
-        predictions = self.model.predict(data)
+
+        # Adjust input to the correct format if needed
+        if not all(feature in data.columns for feature in self.HISTORY_TARGET_FEATURES):
+            xgb_input = self.create_input(data)
+            print("Here you sneaky little son of a me")
+
+        else:
+            xgb_input = data[self.FEATURES + self.HISTORY_TARGET_FEATURES]
+            print("Oopsie")
+
+        predictions = self.model.predict(xgb_input)
 
         # Create predictions dataframe
         predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
 
         return predictions_df
-
-    # def feature_importance(self, X_train: pd.DataFrame):
-    #     """
-    #     Create a plot or something using SHAP explainer.
-    #     """
-
-    #     if None is None:
-    #         raise NotImplementedError(
-    #             "Need to implement this for explaining features! Maybe you can implement training and for single prediction feature importance explainer."
-    #         )
-
-    #     explainer: shap.Explainer = shap.Explainer(self.model)
-    #     shap_values = explainer(X_train)
-
-    #     shap.summary_plot(shap_values, X_train)
-
-    #     # For a single prediction
-    #     shap.force_plot(explainer.expected_value, shap_values[0], X_train.iloc[0])
-
-    #     # Shows interaction effects
-    #     shap.dependence_plot("feature_name", shap_values, X_train)
 
 
 def try_single_target_global_model():
@@ -389,13 +389,21 @@ def try_single_target_global_model():
     # Merge data to single dataframe
     whole_dataset_df = states_loader.merge_states(state_dfs=state_dfs)
 
-    # Targets
-    # targets: List[str] = ["population, total"]
+    # Targets - yet cannot be just only one of the feature
+    # targets: List[str] = [
+    #     "population, total",
+    #     "population, male",
+    # ]
     targets: List[str] = [
         "population ages 15-64",
         "population ages 0-14",
         "population ages 65 and above",
     ]
+
+    # targets: List[str] = [
+    #     "population, female",
+    #     "population, male",
+    # ]
 
     # Features
     # Features
@@ -445,6 +453,8 @@ def try_single_target_global_model():
         sequence_len=5,
     )
 
+    logger.critical(gm.TARGETS)
+
     logger.info("Training the model....")
 
     # Create train and test data
@@ -453,6 +463,11 @@ def try_single_target_global_model():
         states_loader=states_loader,
         split_size=0.8,
     )
+
+    # logger.critical(X_train[gm.TARGETS].dtypes)
+
+    X_train.to_csv("x_train.csv")
+    X_test.to_csv("x_test.csv")
 
     # Scale inputs ?
 
@@ -466,6 +481,9 @@ def try_single_target_global_model():
     # Evaluate model
     logger.info("Evaluating the model...")
     gm.eval(X_test=X_test, y_test=y_test)
+
+    pred = gm.predict_human_readable(data=state_dfs["Czechia"])
+    print(pred)
 
 
 def try_sequences_creation():
@@ -485,7 +503,7 @@ def try_sequences_creation():
         "population ages 65 and above",
     ]
 
-    # Features
+    # # Features
     FEATURES = [
         col.lower()
         for col in [
