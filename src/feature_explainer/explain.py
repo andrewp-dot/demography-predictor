@@ -17,8 +17,10 @@ from src.utils.save_model import get_model
 from src.pipeline import LocalModelPipeline, GlobalModelPipeline
 
 from src.local_model.model import BaseLSTM
+from src.local_model.experimental import ExpLSTM
 from src.preprocessors.multiple_states_preprocessing import StateDataLoader
 from src.preprocessors.data_transformer import DataTransformer
+
 
 from src.utils.log import setup_logging
 
@@ -47,17 +49,25 @@ class LSTMExplainer:
             split_rate=0.8,
         )
 
+        print(self.pipeline.model.FEATURES)
+
         # Scale data
         scaled_state_df = self.pipeline.transformer.scale_data(
-            data=states_data, columns=self.pipeline.model.FEATURES
+            data=train_df,
+            features=self.pipeline.model.FEATURES,
+            targets=self.pipeline.model.TARGETS,
         )
 
         # Create sequences
         input_sequences = self.pipeline.transformer.create_sequences(
-            input_data=train_df,
+            input_data=scaled_state_df,
             columns=self.pipeline.model.FEATURES,
             sequence_len=self.pipeline.model.hyperparameters.sequence_length,
         )
+
+        # print(scaled_state_df)
+
+        # print(input_sequences.shape)
 
         input_sequences.requires_grad = True
         return input_sequences
@@ -87,6 +97,9 @@ class LSTMExplainer:
         explainer = shap.GradientExplainer(self.pipeline.model, input_sequences)
         shap_values = explainer.shap_values(input_sequences)
 
+        print("SHAP VALUES: ")
+        print(shap_values.shape)
+
         torch.backends.cudnn.enabled = True
 
         return shap_values
@@ -98,8 +111,12 @@ class LSTMExplainer:
         save_plot: bool = False,
     ) -> dict:
         # Aggregate SHAP values
+        shap_array = np.array(shap_values)
+
         # Assuming your task is sequence-based, we’ll average across time steps (axis=1) and instances (axis=0)
-        mean_shap = np.abs(shap_values[0]).mean(axis=(0, 1))
+        # mean_shap = np.abs(shap_values[0]).mean(axis=(0, 1))
+
+        mean_shap = np.abs(shap_array).mean(axis=(0, 1, 3))
 
         # Get feature names from model
         feature_names = self.pipeline.model.FEATURES  # assuming it's a list of strings
@@ -320,8 +337,10 @@ def main():
 
     # Get pipeline
     pipeline = LocalModelPipeline(
-        model=get_model("core_pipeline/local_model.pkl"),
-        transformer=get_model("core_pipeline/local_transformer.pkl"),
+        # model=get_model("core_pipeline/local_model.pkl"),
+        # transformer=get_model("core_pipeline/local_transformer.pkl"),
+        model=get_model("ExpLSTM_pop_total.pkl"),
+        transformer=get_model("ExpLSTM__pop_total_transformer.pkl"),
     )
 
     explainer = LSTMExplainer(pipeline=pipeline)

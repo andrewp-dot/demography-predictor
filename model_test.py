@@ -12,6 +12,8 @@ from src.local_model.experimental import ExpLSTM
 
 from src.pipeline import LocalModelPipeline
 
+
+from src.feature_explainer.explain import LSTMExplainer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 
@@ -22,15 +24,15 @@ def main():
     # Get data
     loader = StatesDataLoader()
 
-    all_states_dict = loader.load_all_states()
+    # all_states_dict = loader.load_all_states()
 
-    # all_states_dict = loader.load_states(
-    #     states=["Czechia", "United States", "New Zealand"]
-    # )
+    all_states_dict = loader.load_states(
+        states=["Czechia", "United States", "New Zealand"]
+    )
 
     # Get model
-    transformer = get_model("ExpLSTM_transformer.pkl")
-    model: ExpLSTM = get_model("ExpLSTM.pkl")
+    transformer = get_model("ExpLSTM__pop_total_transformer.pkl")
+    model: ExpLSTM = get_model("ExpLSTM_pop_total.pkl")
 
     # Split data
     X_states_dict, y_states_dict = loader.split_data(
@@ -38,6 +40,15 @@ def main():
     )
 
     pipeline = LocalModelPipeline(model=model, transformer=transformer)
+
+    # Explain
+    explainer = LSTMExplainer(pipeline=pipeline)
+
+    input_sequences = explainer.create_sequences(state="Czechia")
+    shap_values = explainer.get_shap_values(input_sequences)
+    feature_importance = explainer.get_feature_importance(shap_values, save_plot=True)
+
+    print(feature_importance)
 
     model_evaluation = EvaluateModel(transformer=transformer, model=pipeline)
 
@@ -53,7 +64,7 @@ def main():
         ascending=[True, True, True, False],
     )
 
-    with open("base_lstm_evaluation.json", "w") as f:
+    with open("base_lstm_evaluation_pop_total.json", "w") as f:
         all_states_evaluation_df.to_json(f, indent=4, orient="records")
 
     # Get the overall performace (weighted single metric)

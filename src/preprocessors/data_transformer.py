@@ -290,8 +290,10 @@ class DataTransformer:
             Tuple[pd.DataFrame, pd.DataFrame]: scaled_training_data, scaled_validation_data
         """
 
-        FEATURES: List[str] = [f for f in features if not f in targets]
-        TARGETS: List[str] = targets
+        FEATURES: List[str] = features
+        if targets:
+            FEATURES: List[str] = [f for f in features if not f in targets]
+            TARGETS: List[str] = targets
 
         # Scale and fit feature data
         training_feature_data, validation_feature_data, feature_scaler = (
@@ -302,24 +304,26 @@ class DataTransformer:
                 scaler=MinMaxScaler(),
             )
         )
-
-        # print(training_feature_data.columns)
+        print(training_feature_data.columns)
+        print(training_feature_data)
 
         # Scale and fit targets
-        scaled_training_data, scaled_validation_data, target_scaler = (
-            self.__scale_and_fit(
-                training_data=training_feature_data,
-                validation_data=validation_feature_data,
-                columns=TARGETS,
-                scaler=MinMaxScaler(),
+        if targets:
+            scaled_training_data, scaled_validation_data, target_scaler = (
+                self.__scale_and_fit(
+                    training_data=training_feature_data,
+                    validation_data=validation_feature_data,
+                    columns=TARGETS,
+                    scaler=MinMaxScaler(),
+                )
             )
-        )
-
-        # print(scaled_training_data.columns)
+            self.TARGET_SCALER = target_scaler
+        else:
+            scaled_training_data = training_feature_data
+            scaled_validation_data = validation_feature_data
 
         # Save scalers
         self.SCALER = feature_scaler
-        self.TARGET_SCALER = target_scaler
 
         return scaled_training_data, scaled_validation_data
 

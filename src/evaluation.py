@@ -458,9 +458,9 @@ class EvaluateModel(BaseEvaluation):
         # Make predictions and save reference data
         self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
 
-        print(self.reference_values)
+        # print(self.reference_values)
 
-        print(self.predicted)
+        # print(self.predicted)
 
         # Get overall metrics for model
         return self.get_overall_metrics()

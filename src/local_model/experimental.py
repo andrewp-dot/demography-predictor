@@ -56,9 +56,18 @@ class ExpLSTM(CustomModelBase):
             batch_first=True,
         )
 
+        # Dropout layer (e.g., 0.3 dropout rate)
+        self.dropout = nn.Dropout(p=0.3)
+
+        # Additional linear layers
+        self.fc1 = nn.Linear(
+            hyperparameters.hidden_size, hyperparameters.hidden_size // 2
+        )
+        self.relu = nn.ReLU()
+
         # Out layer: Linear layer
         self.linear = nn.Linear(
-            in_features=hyperparameters.hidden_size,
+            in_features=hyperparameters.hidden_size // 2,
             out_features=hyperparameters.output_size,
         )
 
@@ -110,19 +119,13 @@ class ExpLSTM(CustomModelBase):
         # Use the output from the last time step -> use fully connected layers
         out = out[:, -1, :]
 
-        # out = self.linear_1(out)  # Using the last time step's output
-        # out = self.relu_1(out)
+        out = self.dropout(out)
 
-        # out = self.linear_2(out)
-        # out = self.relu_2(out)
+        out = self.fc1(out)
+        out = self.relu(out)
 
         out = self.linear(out)  # Using the last time step's output
 
-        # Add argmax
-        # out = torch.softmax(out, dim=-1)  # Shape: (batch_size,)
-
-        # Return both output and the updated hidden state (for the next batch)
-        # return out, (h_n, c_n)
         return out
 
     def train_model(
@@ -349,35 +352,35 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
         for col in [
             "year",
             "Fertility rate, total",
-            "Population, total",
+            # "Population, total",
             "Net migration",
             "Arable land",
-            # "Birth rate, crude",
             "GDP growth",
             "Death rate, crude",
             "Agricultural land",
-            # "Rural population",
             "Rural population growth",
-            # "Age dependency ratio",
             "Urban population",
             "Population growth",
+            # Features with high correlation
+            # "Birth rate, crude",
+            # "Rural population",
+            # "Age dependency ratio",
             # "Adolescent fertility rate",
             # "Life expectancy at birth, total",
-            # Population total target
         ]
     ]
 
-    FEATURES: List[str] = [
-        "year",
-        "fertility rate, total",
-        "arable land",
-        "gdp growth",
-        "death rate, crude",
-        "agricultural land",
-        "rural population growth",
-        "urban population",
-        "population growth",
-    ]
+    # FEATURES: List[str] = [
+    #     "year",
+    #     "fertility rate, total",
+    #     "arable land",
+    #     "gdp growth",
+    #     "death rate, crude",
+    #     "agricultural land",
+    #     "rural population growth",
+    #     "urban population",
+    #     "population growth",
+    # ]
 
     TARGETS: List[str] = [
         # "population, total",
@@ -392,12 +395,15 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
 
     WHOLE_MODEL_FEATURES: List[str] = FEATURES + TARGETS
 
+    TARGETS = None
+
     # Setup model
     hyperparameters = get_core_hyperparameters(
         input_size=len(WHOLE_MODEL_FEATURES),
         epochs=epochs,
         batch_size=32,
-        output_size=len(TARGETS),  # TODO: make this more robust
+        # output_size=len(TARGETS),  # TODO: make this more robust
+        output_size=len(WHOLE_MODEL_FEATURES),  # TODO: make this more robust
     )
     rnn = ExpLSTM(hyperparameters, features=WHOLE_MODEL_FEATURES, targets=TARGETS)
 
@@ -457,8 +463,8 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
         fig.savefig(f"BaseLSTM_training_stats_{hyperparameters.epochs}_epochs.png")
 
     if to_save_model:
-        save_model(name=f"ExpLSTM.pkl", model=rnn)
-        save_model(name=f"ExpLSTM_transformer.pkl", model=transformer)
+        save_model(name=f"ExpLSTM_pop_total.pkl", model=rnn)
+        save_model(name=f"ExpLSTM__pop_total_transformer.pkl", model=transformer)
 
 
 if __name__ == "__main__":
@@ -467,4 +473,4 @@ if __name__ == "__main__":
     # Notes:
     # statefull vs stateless LSTM - can I pass data with different batch sizes?
 
-    main(save_plots=True, to_save_model=True, epochs=50)
+    main(save_plots=True, to_save_model=True, epochs=10)

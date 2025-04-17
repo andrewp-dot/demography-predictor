@@ -77,14 +77,22 @@ class GlobalModel:
         model: Union[XGBRegressor, GridSearchCV],
         features: List[str],
         targets: List[str],
+        sequence_len: int,
         params: XGBoostTuneParams | None = None,
     ):
-
         # Define model
         self.model: Union[XGBRegressor, MultiOutputRegressor] = model
         self.params: XGBoostTuneParams = params
 
-        # Define features and targest
+        # Define features and targets
+
+        # TODO: add to features history features also or not?
+        self.sequence_len: int = sequence_len
+        self.HISTORY_TARGET_FEATURES: List[str] = [
+            f"{col}_t-{i}"
+            for col in targets
+            for i in range(self.sequence_len - 1, -1, -1)
+        ]
         self.FEATURES: List[str] = features
         self.TARGETS: List[str] = targets
 
@@ -125,6 +133,85 @@ class GlobalModel:
 
         return X_train, X_test, y_train, y_test
 
+    def get_target_history(self, input_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Creates from the past target values creates features for as an input features for the specific timestep.
+
+        Args:
+            input_data (pd.DataFrame): All input data including past data
+
+        Returns:
+            out: pd.DataFrame: Dataframe with the faltten targets previous values.
+        """
+
+        # Add lagged features for the target data
+        last_n_targets: pd.DataFrame = input_data.tail(self.sequence_len)[self.TARGETS]
+
+        flattened_values = last_n_targets.T.values.flatten()
+
+        history_target_df = pd.DataFrame(
+            [flattened_values], columns=self.HISTORY_TARGET_FEATURES
+        )
+
+        return history_target_df
+
+    def create_state_inputs_outputs(
+        self, states_dict: Dict[str, pd.DataFrame]
+    ) -> Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
+        # print(states_dict["Czechia"])
+
+        # Create input and output sequences
+        state_inputs: Dict[str, List[pd.DataFrame]] = {}
+        state_outputs: Dict[str, List[pd.DataFrame]] = {}
+        for state, df in states_dict.items():
+
+            # Create rolling window
+            number_of_samples = df.shape[0] - self.sequence_len
+            for i in range(number_of_samples):
+
+                # Add input sequence
+                state_input_sequence = df.iloc[i : i + self.sequence_len]
+
+                # From the input sequence get features in time T
+                features_at_time_T = state_input_sequence.tail(1)
+
+                # From the input sequence get the targets from time (T - (sequence_length + 1)) to time T
+                target_history_df = self.get_target_history(
+                    input_data=state_input_sequence
+                )
+
+                xgb_input = pd.concat(
+                    [
+                        features_at_time_T.reset_index(drop=True),
+                        target_history_df.reset_index(drop=True),
+                    ],
+                    axis=1,
+                )
+
+                state_inputs.setdefault(state, []).append(xgb_input)
+
+                # Add sequence output - and convert series to dataframe
+                state_sequence_output = (
+                    df.iloc[i + self.sequence_len][self.TARGETS]
+                    .to_frame()
+                    .T.reset_index(drop=True)
+                )
+
+                state_outputs.setdefault(state, []).append(state_sequence_output)
+
+        # State input and output datapoints
+        state_inputs_dict: Dict[str, pd.DataFrame] = {}
+        state_outputs_dict: Dict[str, pd.DataFrame] = {}
+
+        # Create context input - output datatpoints
+        for state in state_inputs.keys():
+            state_inputs_dict[state] = pd.concat(state_inputs[state], ignore_index=True)
+            state_outputs_dict[state] = pd.concat(
+                state_outputs[state], ignore_index=True
+            )
+
+        return state_inputs_dict, state_outputs_dict
+
     def create_train_test_timeseries(
         self,
         states_dfs: Dict[str, pd.DataFrame],
@@ -144,27 +231,48 @@ class GlobalModel:
             out: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: X_train, X_test, y_train, y_test
         """
 
-        # Split by time series, sequence len is equal to 1 in order to include all states
-        states_train_dfs, states_test_dfs = states_loader.split_data(
-            states_dict=states_dfs, sequence_len=1, split_rate=split_size
+        states_inputs_dict, states_outputs_dict = self.create_state_inputs_outputs(
+            states_dict=states_dfs
         )
 
-        # Create X and y
-        train_df: pd.DataFrame = states_loader.merge_states(state_dfs=states_train_dfs)
-        test_df: pd.DataFrame = states_loader.merge_states(state_dfs=states_test_dfs)
+        # Split inputs
+        X_train_dfs, X_test_dfs = states_loader.split_data(
+            states_dict=states_inputs_dict,
+            sequence_len=1,
+            split_rate=split_size,
+        )
+
+        # Split outputs
+        y_train_dfs, y_test_dfs = states_loader.split_data(
+            states_dict=states_outputs_dict,
+            sequence_len=1,
+            split_rate=split_size,
+        )
+
+        # Convert inputs to dataframe
+        X_train = states_loader.merge_states(state_dfs=X_train_dfs)
+        y_train = states_loader.merge_states(state_dfs=y_train_dfs)
+
+        X_test = states_loader.merge_states(state_dfs=X_test_dfs)
+        y_test = states_loader.merge_states(state_dfs=y_test_dfs)
 
         # Set the country name as the categorical column
-        if "country name" in train_df.columns:
-            train_df["country name"] = train_df["country name"].astype(dtype="category")
+        if "country name" in X_train.columns:
+            X_train["country name"] = X_train["country name"].astype(dtype="category")
 
-        if "counrty name" in test_df.columns:
-            test_df["country name"] = test_df["country name"].astype(dtype="category")
+        if "counrty name" in X_test.columns:
+            X_test["country name"] = X_test["country name"].astype(dtype="category")
 
         # Create X
-        X_train, y_train = train_df[self.FEATURES], train_df[self.TARGETS]
-        X_test, y_test = test_df[self.FEATURES], test_df[self.TARGETS]
+        # X_train, y_train = train_df[self.FEATURES], train_df[self.TARGETS]
+        # X_test, y_test = test_df[self.FEATURES], test_df[self.TARGETS]
 
-        return X_train, X_test, y_train, y_test
+        return (
+            X_train[self.FEATURES + self.HISTORY_TARGET_FEATURES],
+            X_test[self.FEATURES + self.HISTORY_TARGET_FEATURES],
+            y_train,
+            y_test,
+        )
 
     def train(
         self,
@@ -290,8 +398,28 @@ def try_single_target_global_model():
     ]
 
     # Features
-    features: List[str] = [
-        col for col in whole_dataset_df.columns if col not in targets
+    # Features
+    FEATURES = [
+        col.lower()
+        for col in [
+            # "year",
+            "Fertility rate, total",
+            "Population, total",
+            "Net migration",
+            "Arable land",
+            # "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            # "Rural population",
+            "Rural population growth",
+            # "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            # "Adolescent fertility rate",
+            # "Life expectancy at birth, total",
+            # Population total target
+        ]
     ]
 
     # Tune params
@@ -305,34 +433,28 @@ def try_single_target_global_model():
     )
 
     # Simulation of scaler used to scale the data from the local model
-    scaler = MinMaxScaler()
-    fitted_scaler = scaler.fit(whole_dataset_df.drop(columns=["country name"]))
+    # scaler = MinMaxScaler()
+    # fitted_scaler = scaler.fit(whole_dataset_df.drop(columns=["country name"]))
 
     # Create global model
     gm = GlobalModel(
         model=XGBRegressor(objective="reg:squarederror", random_state=42),
-        features=features,
+        features=FEATURES,
         targets=targets,
         params=tune_parameters,
-        scaler=fitted_scaler,
+        sequence_len=5,
     )
 
     logger.info("Training the model....")
 
     # Create train and test data
-    X_train, X_test, y_train, y_test = gm.create_train_test_data(
-        data=whole_dataset_df,
+    X_train, X_test, y_train, y_test = gm.create_train_test_timeseries(
+        states_dfs=state_dfs,
+        states_loader=states_loader,
         split_size=0.8,
-        fitted_scaler=fitted_scaler,
     )
 
-    # Creater train and test data with timeseries
-    # X_train, X_test, y_train, y_test = gm.create_train_test_timeseries(
-    #     states_dfs=state_dfs,
-    #     states_loader=states_loader,
-    #     split_size=0.8,
-    #     fitted_scaler=fitted_scaler,
-    # )
+    # Scale inputs ?
 
     # Train model
     gm.train(
@@ -344,6 +466,53 @@ def try_single_target_global_model():
     # Evaluate model
     logger.info("Evaluating the model...")
     gm.eval(X_test=X_test, y_test=y_test)
+
+
+def try_sequences_creation():
+
+    states_loader = StatesDataLoader()
+    state_dfs = states_loader.load_all_states()
+    # state_dfs = states_loader.load_states(states=["Czechia", "United States"])
+
+    # Merge data to single dataframe
+    whole_dataset_df = states_loader.merge_states(state_dfs=state_dfs)
+
+    # Targets
+    # targets: List[str] = ["population, total"]
+    targets: List[str] = [
+        "population ages 15-64",
+        "population ages 0-14",
+        "population ages 65 and above",
+    ]
+
+    # Features
+    FEATURES = [
+        col.lower()
+        for col in [
+            # "year",
+            "Fertility rate, total",
+            "Population, total",
+            "Net migration",
+            "Arable land",
+            # "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            # "Rural population",
+            "Rural population growth",
+            # "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            # "Adolescent fertility rate",
+            # "Life expectancy at birth, total",
+            # Population total target
+        ]
+    ]
+
+    gm = GlobalModel(
+        model=XGBRegressor(), features=FEATURES, targets=targets, sequence_len=10
+    )
+    inputs, outputs = gm.create_state_inputs_outputs(states_dict=state_dfs)
 
 
 if __name__ == "__main__":

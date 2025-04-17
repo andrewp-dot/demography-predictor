@@ -54,7 +54,7 @@ def preprocess_data(
         scaled_train_data, scaled_validation_data, _ = transformer.scale_and_fit(
             training_data=train_states_df,
             validation_data=test_states_df,
-            columns=features,
+            features=features,
             scaler=MinMaxScaler(),
         )
 
