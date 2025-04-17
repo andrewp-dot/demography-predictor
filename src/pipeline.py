@@ -42,8 +42,6 @@ class LocalModelPipeline:
         self, state_data: pd.DataFrame, last_year: int, target_year: int
     ):
 
-        # print(state_data)
-
         model: ExpLSTM = self.model
 
         FEATURES: List[str] = self.model.FEATURES
@@ -181,17 +179,77 @@ class GlobalModelPipeline:
         self.model: GlobalModel = model
         self.transformer: DataTransformer = transformer
 
-    def predict(self, input_data: pd.DataFrame) -> pd.DataFrame:
+    def predict(
+        self, input_data: pd.DataFrame, last_year: int, target_year: int
+    ) -> pd.DataFrame:
+
+        # TODO:
+        # To deal with compounding errors
+
+        original_data = input_data.copy()
+
+        # Predict iterations
+        iterations_num: int = target_year - last_year
 
         # Scale data
         FEATURES: List[str] = self.model.FEATURES
 
-        scaled_data = self.transformer.scale_data(data=input_data, columns=FEATURES)
+        # Maybe just use scale features and scale targets function, or not to scale targets at all
+        scaled_data_df = self.transformer.scale_data(
+            data=input_data,
+            features=FEATURES,
+        )
 
-        # Predict
-        predictions_df = self.model.predict_human_readable(data=scaled_data)
+        # print(scaled_data_df)
+        # print("-" * 100)
 
-        return predictions_df
+        # Get the first year last known years of the features
+        scaled_data_for_pred = scaled_data_df.iloc[0:-iterations_num]
+
+        # Get the initial data
+        input_data = scaled_data_for_pred  # Here I should get the last known values of data points (sequence)
+        for i in range(iterations_num):
+
+            # Slice the predicted feature data
+
+            # Predict targets for next timestep
+            target_predictions_df = self.model.predict_human_readable(data=input_data)
+
+            # Update input data - get predicted features
+            scaled_features_for_pred = scaled_data_df.iloc[0 : -(iterations_num - i)][
+                FEATURES
+            ]
+
+            # Update targets and concat
+
+            # print(input_data[self.model.TARGETS])
+            # print(target_predictions_df)
+
+            updated_targets = pd.concat(
+                [input_data[self.model.TARGETS], target_predictions_df], axis=0
+            ).reset_index(drop=True)
+
+            # print(updated_targets)
+
+            # print(scaled_features_for_pred)
+
+            # print(updated_targets)
+
+            input_data = pd.concat(
+                [
+                    scaled_features_for_pred.reset_index(drop=True),
+                    updated_targets.reset_index(drop=True),
+                ],
+                axis=1,
+            )
+
+        # print("Original data:")
+        # print(original_data[self.model.TARGETS])
+
+        # print("Predicted data:")
+        # print(input_data[self.model.TARGETS])
+
+        return input_data[self.model.TARGETS]
 
 
 class PredictorPipeline:

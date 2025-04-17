@@ -183,7 +183,6 @@ class GlobalModel:
     def create_state_inputs_outputs(
         self, states_dict: Dict[str, pd.DataFrame]
     ) -> Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
-        # print(states_dict["Czechia"])
 
         # Create input and output sequences
         state_inputs: Dict[str, List[pd.DataFrame]] = {}
@@ -466,8 +465,8 @@ def try_single_target_global_model():
 
     # logger.critical(X_train[gm.TARGETS].dtypes)
 
-    X_train.to_csv("x_train.csv")
-    X_test.to_csv("x_test.csv")
+    # X_train.to_csv("x_train.csv")
+    # X_test.to_csv("x_test.csv")
 
     # Scale inputs ?
 

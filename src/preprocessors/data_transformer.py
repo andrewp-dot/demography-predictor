@@ -59,6 +59,7 @@ class DataTransformer:
 
     def __init__(self):
         self.SCALER: MinMaxScaler | None = None
+        self.TARGET_SCALER: MinMaxScaler | None = None
         self.__unused_states: List[str] = []
         self.LABEL_ENCODERS: Dict[str, LabelEncoder] | None = None
 
@@ -304,8 +305,8 @@ class DataTransformer:
                 scaler=MinMaxScaler(),
             )
         )
-        print(training_feature_data.columns)
-        print(training_feature_data)
+        # print(training_feature_data.columns)
+        # print(training_feature_data)
 
         # Scale and fit targets
         if targets:
@@ -340,8 +341,14 @@ class DataTransformer:
         ORIGINAL_COLUMNS = data.columns
 
         # Maintain the original column order
-        FEATURES = [f for f in features if not f in targets]
+        FEATURES = features
         TARGETS = targets
+
+        if not targets:
+            TARGETS = []
+
+        FEATURES = [f for f in features if not f in TARGETS]
+
         to_scale_feature_data = to_scale_data[FEATURES]
 
         # Transform feature data

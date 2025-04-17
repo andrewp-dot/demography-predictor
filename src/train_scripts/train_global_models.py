@@ -16,9 +16,10 @@ from src.global_model.model import GlobalModel, XGBoostTuneParams
 
 
 def train_global_model(
-    data: pd.DataFrame,
+    states_data: Dict[str, pd.DataFrame],
     features: List[str],
     targets: List[str],
+    sequence_len: int,
     tune_parameters: XGBoostTuneParams,
     transfomer: DataTransformer | None = None,
     split_size: float = 0.8,
@@ -28,22 +29,26 @@ def train_global_model(
         model=XGBRegressor(objective="reg:squarederror", random_state=42),
         features=features,
         targets=targets,
+        sequence_len=sequence_len,
         params=tune_parameters,
     )
 
+    states_loader = StatesDataLoader()
+
     # Create train and test for XGB (Global Model)
-    X_train, X_test, y_train, y_test = global_model.create_train_test_data(
-        data=data, split_size=split_size
+    X_train, X_test, y_train, y_test = global_model.create_train_test_timeseries(
+        states_dfs=states_data,
+        states_loader=states_loader,
+        split_size=split_size,
     )
 
     # Scale the training data
     if transfomer is None:
         transfomer = DataTransformer()
-        scaled_training_data, scaled_validation_data, _ = transfomer.scale_and_fit(
+        scaled_training_data, scaled_validation_data = transfomer.scale_and_fit(
             training_data=X_train,
             validation_data=X_test,
-            columns=features,
-            scaler=MinMaxScaler(),
+            features=features,
         )
     else:
         scaled_training_data = transfomer.scale_data(data=X_train)
