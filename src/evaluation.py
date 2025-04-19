@@ -8,6 +8,7 @@ from matplotlib.figure import Figure
 
 import logging
 import torch
+import numpy as np
 
 from src.local_model.experimental import ExpLSTM
 
@@ -333,65 +334,66 @@ class BaseEvaluation:
 
 class EvaluateModel(BaseEvaluation):
 
-    def __init__(self, transformer: DataTransformer, model: nn.Module):
+    def __init__(
+        self,
+        pipeline: Union[
+            "LocalModelPipeline", "GlobalModelPipeline", "PredictorPipeline"
+        ],
+    ):
         super().__init__()
-        self.transformer: DataTransformer = transformer
-        self.model: CustomModelBase = model
+        # self.transformer: DataTransformer = pipeline.transformer
+        # self.model: CustomModelBase = pipeline.model
+
+        self.pipeline: Union[
+            "LocalModelPipeline", "GlobalModelPipeline", "PredictorPipeline"
+        ] = pipeline
 
         # Reference values for every state
         # {"Czechia": {"predicted"..., "reference": ...}, "United States": ...}
-        # self.state_ref_predicted_dict: Dict[str, Dict[str, pd.DataFrame]] = {}
         self.multiple_states_evaluations: Dict[str, Dict[str, pd.DataFrame]] = {}
 
-    def __pipeline_predictions(
-        self, input_data: pd.DataFrame, last_year: int, target_year: int
-    ) -> pd.DataFrame:
+    # def __pipeline_predictions(
+    #     self, input_data: pd.DataFrame, last_year: int, target_year: int
+    # ) -> pd.DataFrame:
 
-        # Scale data
-        scaled_input_data = self.transformer.scale_data(
-            data=input_data, columns=self.model.FEATURES
-        )
+    #     # Scale data
+    #     TRANSFORMER = self.pipeline.transformer
+    #     MODEL = self.model.
 
-        # Predict
-        predictions = self.model.predict(
-            input_data=scaled_input_data, last_year=last_year, target_year=target_year
-        )
+    #     scaled_input_data = self.transformer.scale_data(
+    #         data=input_data, columns=self.model.FEATURES
+    #     )
 
-        predicions_df = pd.DataFrame(predictions, columns=scaled_input_data.columns)
+    #     # Predict
+    #     predictions = self.model.predict(
+    #         input_data=scaled_input_data, last_year=last_year, target_year=target_year
+    #     )
 
-        # Unscale data
-        unscaled_input_data = self.transformer.unscale_data(
-            data=predicions_df, columns=self.model.FEATURES
-        )
+    #     predicions_df = pd.DataFrame(predictions, columns=scaled_input_data.columns)
 
-        return unscaled_input_data
+    #     # Unscale data
+    #     unscaled_input_data = self.transformer.unscale_data(
+    #         data=predicions_df, columns=self.model.FEATURES
+    #     )
+
+    #     return unscaled_input_data
 
     def __get_refference_and_predicted_data(
         self, test_X: pd.DataFrame, test_y: pd.DataFrame
     ) -> None:
         # Get features and targets
 
-        if isinstance(self.model, LocalModelPipeline):
+        if isinstance(self.pipeline, LocalModelPipeline) or isinstance(
+            self.pipeline, GlobalModelPipeline
+        ):
             # Get features and targets
-            # self.model: LocalModelPipeline = self.model
-            FEATURES = self.model.model.FEATURES
-            TARGETS = self.model.model.TARGETS
+            FEATURES = self.pipeline.model.FEATURES
+            TARGETS = self.pipeline.model.TARGETS
 
-        elif isinstance(self.model, GlobalModelPipeline):
+        elif isinstance(self.pipeline, PredictorPipeline):
             # Get features and targets
-            self.model: GlobalModelPipeline = self.model
-            FEATURES = self.model.model.FEATURES
-            TARGETS = self.model.model.TARGETS
-
-        elif isinstance(self.model, PredictorPipeline):
-            # Get features and targets
-            self.model: PredictorPipeline = self.model
-            FEATURES = self.model.global_model_pipeline.model.FEATURES
-            TARGETS = self.model.global_model_pipeline.model.TARGETS
-
-        else:
-            FEATURES = self.model.FEATURES
-            TARGETS = self.model.TARGETS
+            FEATURES = self.pipeline.global_model_pipeline.model.FEATURES
+            TARGETS = self.pipeline.global_model_pipeline.model.TARGETS
 
         # Get year data
         last_year, target_year = self.get_last_and_target_year(
@@ -410,29 +412,55 @@ class EvaluateModel(BaseEvaluation):
 
         # Get predictions
 
-        if isinstance(self.model, LocalModelPipeline):
+        if isinstance(self.pipeline, LocalModelPipeline):
 
             input_data = test_X
 
-            if isinstance(self.model.model, ExpLSTM):
+            if isinstance(self.pipeline.model, ExpLSTM):
                 input_data = pd.concat([test_X, test_y], axis=0)
 
-            predictions_df = self.model.predict(
+            predictions_df = self.pipeline.predict(
                 input_data=input_data, last_year=last_year, target_year=target_year
             )
 
-        elif isinstance(self.model, GlobalModelPipeline):
-            predictions_df = self.model.predict(input_data=X_test)
+        elif isinstance(self.pipeline, GlobalModelPipeline):
 
-        elif isinstance(self.model, PredictorPipeline):
-            predictions_df = self.model.predict(
+            # This is ground truth evaluation, so the last year and target year are the same
+            input_data = test_X
+
+            # Get true feature values for testing ground truth
+            feature_df = pd.concat([test_X[FEATURES], test_y[FEATURES]], axis=0)
+            previous_targets_df = test_X[TARGETS]
+
+            # Pad previous_targets_df to match the length
+            pad_len = len(feature_df) - len(previous_targets_df)
+
+            # Delete the actual feature values
+            padding = pd.DataFrame(
+                np.nan, columns=previous_targets_df.columns, index=range(pad_len)
+            )
+            previous_targets_padded = pd.concat(
+                [previous_targets_df, padding], ignore_index=True
+            )
+
+            # Get the final input data
+            final_input = pd.concat(
+                [feature_df.reset_index(drop=True), previous_targets_padded], axis=1
+            )
+
+            predictions_df = self.pipeline.predict(
+                input_data=final_input, last_year=last_year, target_year=target_year
+            )
+
+        elif isinstance(self.pipeline, PredictorPipeline):
+            predictions_df = self.pipeline.predict(
                 input_data=X_test, target_year=target_year
             )
 
-        else:
-            predictions_df = self.__pipeline_predictions(
-                input_data=X_test, last_year=last_year, target_year=target_year
-            )
+        # else:
+        #     predictions_df = self.__pipeline_predictions(
+        #         input_data=X_test, last_year=last_year, target_year=target_year
+        #     )
 
         self.predicted = predictions_df[TARGETS]
 
@@ -458,10 +486,6 @@ class EvaluateModel(BaseEvaluation):
         # Make predictions and save reference data
         self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
 
-        # print(self.reference_values)
-
-        # print(self.predicted)
-
         # Get overall metrics for model
         return self.get_overall_metrics()
 
@@ -485,17 +509,19 @@ class EvaluateModel(BaseEvaluation):
         self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
 
         # Get metrics for per target evaluation
-        if isinstance(self.model, LocalModelPipeline):
-            TARGETS = self.model.model.TARGETS
+        if isinstance(self.pipeline, LocalModelPipeline):
+            TARGETS = self.pipeline.model.TARGETS
 
-        elif isinstance(self.model, GlobalModelPipeline):
-            TARGETS = self.model.model.TARGETS
+        elif isinstance(self.pipeline, GlobalModelPipeline):
+            TARGETS = self.pipeline.model.TARGETS
 
-        elif isinstance(self.model, PredictorPipeline):
-            TARGETS = self.model.global_model_pipeline.model.TARGETS
+        elif isinstance(self.pipeline, PredictorPipeline):
+            TARGETS = self.pipeline.global_model_pipeline.model.TARGETS
 
         else:
-            TARGETS = self.model.TARGETS
+            raise ValueError(
+                f"Not supported type of pipeline '{self.pipeline.__class__.__name__}'."
+            )
 
         return self.get_target_specific_metrics(targets=TARGETS)
 
@@ -647,18 +673,6 @@ class EvaluateARIMA(BaseEvaluation):
 
         # Get overall metrtics
         self.get_overall_metrics()
-
-
-class EvaluatePipeline(BaseEvaluation):
-
-    def __init__(
-        self,
-        pipeline: Union[LocalModelPipeline, GlobalModelPipeline, PredictorPipeline],
-    ):
-        # Get pipeline
-        self.pipeline: Union[
-            LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
-        ] = pipeline
 
 
 if __name__ == "__main__":

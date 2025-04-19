@@ -16,6 +16,7 @@ from src.global_model.model import GlobalModel, XGBoostTuneParams
 
 
 def train_global_model(
+    name: str,
     states_data: Dict[str, pd.DataFrame],
     features: List[str],
     targets: List[str],
@@ -58,7 +59,9 @@ def train_global_model(
     global_model.train(X_train=scaled_training_data, y_train=y_train)
 
     # Create Pipeline
-    pipeline = GlobalModelPipeline(model=global_model, transformer=transfomer)
+    pipeline = GlobalModelPipeline(
+        name=name, model=global_model, transformer=transfomer
+    )
     return pipeline
 
 

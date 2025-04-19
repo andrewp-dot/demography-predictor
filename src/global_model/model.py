@@ -41,6 +41,9 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 # For small datasets with 2-3 targets, train separate models.
 # For large datasets with many outputs, use MultiOutputRegressor.
 
+# TODO: fix data preparation
+# 1. transform any input data to model input data
+
 settings = Config()
 
 logger = logging.getLogger("global_model")
@@ -99,40 +102,6 @@ class GlobalModel:
         # Initialize evaluation results
         self.evaluation_results: pd.DataFrame | None = None
 
-    def create_train_test_data(
-        self,
-        data: pd.DataFrame,
-        split_size: float,
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        """
-        From the given dataframe creates and scales the data using fitted scaler. Use train_test_split function from sklearn.
-
-        Args:
-            data (pd.DataFrame): Preprocessed data for training split.
-            split_size (float): The size of the train part.
-            fitted_scaler (MinMaxScaler): Scaler used to scale the other features from the previous prediction model.
-
-        Returns:
-            out: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: X_train, X_test, y_train, y_test
-        """
-
-        # Set the country name as the categorical column
-        if "country name" in data.columns:
-            data.loc[:, "country name"] = data["country name"].astype("category")
-
-        # Split data
-        X: pd.DataFrame = data[self.FEATURES]
-        y: pd.DataFrame = data[self.TARGETS]
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
-            test_size=(1 - split_size),
-            random_state=42,
-        )
-
-        return X_train, X_test, y_train, y_test
-
     def get_target_history(self, input_data: pd.DataFrame) -> pd.DataFrame:
         """
         Creates from the past target values creates features for as an input features for the specific timestep.
@@ -145,15 +114,10 @@ class GlobalModel:
         """
 
         # Add lagged features for the target data
-        last_n_targets: pd.DataFrame = input_data.tail(self.sequence_len)[self.TARGETS]
+        last_n_targets = input_data[self.TARGETS].tail(self.sequence_len)
+        flattened = last_n_targets.to_numpy().T.flatten()
 
-        flattened_values = last_n_targets.T.values.flatten()
-
-        history_target_df = pd.DataFrame(
-            [flattened_values], columns=self.HISTORY_TARGET_FEATURES
-        )
-
-        return history_target_df
+        return pd.DataFrame([flattened], columns=self.HISTORY_TARGET_FEATURES)
 
     def create_input(self, input_data: pd.DataFrame) -> pd.DataFrame:
         # Get the last sequence_len data
@@ -164,15 +128,13 @@ class GlobalModel:
 
         last_n_data: pd.DataFrame = input_data.tail(self.sequence_len)
 
-        # From the input sequence get features in time T
-        features_at_time_T = last_n_data.tail(1)
-
         # From the input sequence get the targets from time (T - (sequence_length + 1)) to time T
         target_history_df = self.get_target_history(input_data=last_n_data)
 
         xgb_input = pd.concat(
             [
-                features_at_time_T.reset_index(drop=True),
+                # From the input sequence get features in time T
+                last_n_data.tail(1).reset_index(drop=True),
                 target_history_df.reset_index(drop=True),
             ],
             axis=1,
@@ -185,40 +147,44 @@ class GlobalModel:
     ) -> Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
 
         # Create input and output sequences
-        state_inputs: Dict[str, List[pd.DataFrame]] = {}
-        state_outputs: Dict[str, List[pd.DataFrame]] = {}
+        state_inputs_dict: Dict[str, List[pd.DataFrame]] = {}
+        state_outputs_dict: Dict[str, List[pd.DataFrame]] = {}
         for state, df in states_dict.items():
 
             # Create rolling window
             number_of_samples = df.shape[0] - self.sequence_len
+
+            # Skip if not enough data
+            if number_of_samples <= 0:
+                continue
+
+            inputs = []
+            outputs = []
+
+            # Pre-extract values for faster slicing
+            df_values = df.values
+            df_columns = df.columns
+
+            target_indices = [df_columns.get_loc(target) for target in self.TARGETS]
+
             for i in range(number_of_samples):
 
                 # Add input sequence
-                state_input_sequence = df.iloc[i : i + self.sequence_len]
+                window = df.iloc[i : i + self.sequence_len]
 
-                xgb_input = self.create_input(input_data=state_input_sequence)
+                xgb_input = self.create_input(input_data=window)
 
-                state_inputs.setdefault(state, []).append(xgb_input)
+                inputs.append(xgb_input)
 
                 # Add sequence output - and convert series to dataframe
-                state_sequence_output = (
-                    df.iloc[i + self.sequence_len][self.TARGETS]
-                    .to_frame()
-                    .T.reset_index(drop=True)
-                )
+                # Extract output (targets after window)
+                next_target_row = df_values[i + self.sequence_len, target_indices]
+                next_target_df = pd.DataFrame([next_target_row], columns=self.TARGETS)
+                outputs.append(next_target_df)
 
-                state_outputs.setdefault(state, []).append(state_sequence_output)
-
-        # State input and output datapoints
-        state_inputs_dict: Dict[str, pd.DataFrame] = {}
-        state_outputs_dict: Dict[str, pd.DataFrame] = {}
-
-        # Create context input - output datatpoints
-        for state in state_inputs.keys():
-            state_inputs_dict[state] = pd.concat(state_inputs[state], ignore_index=True)
-            state_outputs_dict[state] = pd.concat(
-                state_outputs[state], ignore_index=True
-            )
+            # Stack inputs and outputs once (much faster than incremental appends)
+            state_inputs_dict[state] = pd.concat(inputs, ignore_index=True)
+            state_outputs_dict[state] = pd.concat(outputs, ignore_index=True)
 
         return state_inputs_dict, state_outputs_dict
 
@@ -361,14 +327,14 @@ class GlobalModel:
             out: pd.DataFrame: The pandas dataframe with human readable predictions.
         """
 
+        # Create loop in here
+
         # Adjust input to the correct format if needed
         if not all(feature in data.columns for feature in self.HISTORY_TARGET_FEATURES):
             xgb_input = self.create_input(data)
-            print("Here you sneaky little son of a me")
 
         else:
             xgb_input = data[self.FEATURES + self.HISTORY_TARGET_FEATURES]
-            print("Oopsie")
 
         predictions = self.model.predict(xgb_input)
 

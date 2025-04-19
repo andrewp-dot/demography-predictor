@@ -11,8 +11,10 @@ from src.global_model.model import XGBoostTuneParams
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
+from src.evaluation import EvaluateModel
 
-def main():
+
+def train_pipeline(name: str, sequence_len: int):
 
     # Targets - yet cannot be just only one of the feature
     # targets: List[str] = [
@@ -67,24 +69,72 @@ def main():
     )
 
     pipeline: GlobalModelPipeline = train_global_model(
+        name=name,
         states_data=all_states_data,
         features=FEATURES,
         targets=targets,
-        sequence_len=5,
+        sequence_len=sequence_len,
         tune_parameters=tune_parameters,
     )
 
+    pipeline.save_pipeline()
+
     print("After training pipeline...")
+
+    print("-" * 100)
+    print(all_states_data["Czechia"][[*targets, "year"]])
+    print("-" * 100)
+
+    # Here is a problem
     predictions = pipeline.predict(
-        input_data=all_states_data["Czechia"].iloc[:-5],
+        input_data=all_states_data["Czechia"],
         last_year=2016,
         target_year=2021,
     )
     print(predictions)
+
+    print(all_states_data["Czechia"].iloc[-5:][[*targets, "year"]])
+
+
+def eval_pipeline(name: str, sequence_len: int):
+
+    # Evaluation
+    pipeline = GlobalModelPipeline.get_pipeline(name=name)
+    gmeval = EvaluateModel(pipeline=pipeline)
+
+    loader = StatesDataLoader()
+    states_data_dict = loader.load_states(
+        states=[
+            "Honduras",
+            "Czechia",
+            "United States",
+        ]
+        # states=["Czechia"]
+    )
+    train_states, test_states = loader.split_data(
+        states_dict=states_data_dict, sequence_len=sequence_len
+    )
+
+    every_state_eval = gmeval.eval_for_every_state(
+        X_test_states=train_states, y_test_states=test_states
+    )
+
+    import matplotlib.pyplot as plt
+
+    gmeval.plot_predictions()
+
+    plt.savefig("gm_test.png")
+
+    print(every_state_eval)
 
 
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
-    main()
+    SEQUENCE_LEN = 10
+    NAME = "test_gm"
+
+    # train_pipeline(name=NAME, sequence_len=SEQUENCE_LEN)
+
+    eval_pipeline(name=NAME, sequence_len=SEQUENCE_LEN)

@@ -1,6 +1,7 @@
 # Standard library imports
 import os
 import pandas as pd
+import numpy as np
 
 from typing import Union, Optional, List, Any
 
@@ -24,19 +25,71 @@ from src.global_model.model import GlobalModel
 settings = Config()
 
 
-class LocalModelPipeline:
+class BasePipeline:
+
+    def __init__(self, model: Any, transformer: DataTransformer, name: str):
+
+        self.name: str = name
+        self.model: Any = model
+        self.transformer: DataTransformer = transformer
+
+    def save_pipeline(self):
+        # Create a new pipeline directory if does not exist
+
+        trained_models_dir = os.path.abspath(settings.trained_models_dir)
+        pipeline_dir = os.path.join(trained_models_dir, self.name)
+
+        # Create pipeline dir if there is any
+        if not os.path.isdir(pipeline_dir):
+            os.makedirs(pipeline_dir)
+
+        def save_to_pipeline_dir(model: Any, name: str):
+            save_model(model=model, name=os.path.join(pipeline_dir, name))
+
+        # Save local model and its transformer
+        save_to_pipeline_dir(model=self.model, name="model.pkl")
+        save_to_pipeline_dir(model=self.transformer, name="transformer.pkl")
+
+    @classmethod
+    def get_pipeline(cls, name: str):
+        # Gets the pipeline by name
+
+        trained_models_dir = os.path.abspath(settings.trained_models_dir)
+        pipeline_dir = os.path.join(trained_models_dir, name)
+
+        # Check if directory exist
+        if not os.path.isdir(pipeline_dir):
+            raise NotADirectoryError(
+                f"Could not load pipeline '{name}. The pipeline directory ({pipeline_dir}) does not exist!"
+            )
+
+        def get_from_pipeline_dir(name: str) -> Any:
+            return get_model(name=os.path.join(pipeline_dir, name))
+
+        # Save local model and its transformer
+        model = get_from_pipeline_dir(name="model.pkl")
+        transformer = get_from_pipeline_dir(name="transformer.pkl")
+
+        return cls(name=name, model=model, transformer=transformer)
+
+
+class LocalModelPipeline(BasePipeline):
+
+    # Set the correct typehints
+    model: Union["BaseLSTM", "FineTunableLSTM", "PureEnsembleModel"]
+    training_stats: Optional["TrainingStats"]
 
     def __init__(
         self,
-        model: Union[BaseLSTM, FineTunableLSTM, PureEnsembleModel],
+        model: Union["BaseLSTM", "FineTunableLSTM", "PureEnsembleModel"],
         transformer: DataTransformer,
         name: str = "local_model_pipeline",
-        training_stats: Optional[TrainingStats] = None,
+        training_stats: Optional["TrainingStats"] = None,
     ):
-        self.name: str = name
-        self.model: Union[BaseLSTM, FineTunableLSTM, PureEnsembleModel] = model
-        self.transformer: DataTransformer = transformer
-        self.training_stats: Optional[TrainingStats] = training_stats
+        super(LocalModelPipeline, self).__init__(
+            model=model, transformer=transformer, name=name
+        )
+        self.training_stats = training_stats
 
     def __experimental_model_predict(
         self, state_data: pd.DataFrame, last_year: int, target_year: int
@@ -163,11 +216,7 @@ class LocalModelPipeline:
         return future_feature_values_df
 
 
-class GlobalModelPipeline:
-    # model: GlobalModel
-    # transformer: DataTransformer
-
-    # model_config = {"arbitrary_types_allowed": True}
+class GlobalModelPipeline(BasePipeline):
 
     def __init__(
         self,
@@ -179,77 +228,56 @@ class GlobalModelPipeline:
         self.model: GlobalModel = model
         self.transformer: DataTransformer = transformer
 
-    def predict(
-        self, input_data: pd.DataFrame, last_year: int, target_year: int
-    ) -> pd.DataFrame:
+    def predict(self, input_data: pd.DataFrame, last_year: int, target_year: int):
+        iterations_num = target_year - last_year
 
-        # TODO:
-        # To deal with compounding errors
+        FEATURES = self.model.FEATURES
+        TARGETS = self.model.TARGETS
 
-        original_data = input_data.copy()
+        # Scale features
+        scaled_data_df = self.transformer.scale_data(data=input_data, features=FEATURES)
 
-        # Predict iterations
-        iterations_num: int = target_year - last_year
+        # Convert to numpy
+        features_np = scaled_data_df[FEATURES].values  # shape (time, num_features)
+        targets_np = scaled_data_df[TARGETS].values  # shape (time, num_targets)
 
-        # Scale data
-        FEATURES: List[str] = self.model.FEATURES
+        # Initialize prediction input - here is a problem, because i delete current history of the target features
+        targets_for_pred = targets_np[:-iterations_num]
 
-        # Maybe just use scale features and scale targets function, or not to scale targets at all
-        scaled_data_df = self.transformer.scale_data(
-            data=input_data,
-            features=FEATURES,
-        )
+        # targets_for_pred = targets_np
 
-        # print(scaled_data_df)
-        # print("-" * 100)
+        # Prepare array to collect predictions
+        all_predictions = [targets_for_pred.copy()]  # list of arrays
 
-        # Get the first year last known years of the features
-        scaled_data_for_pred = scaled_data_df.iloc[0:-iterations_num]
-
-        # Get the initial data
-        input_data = scaled_data_for_pred  # Here I should get the last known values of data points (sequence)
         for i in range(iterations_num):
+            # Build input features (current features + last targets)
+            # Assume your model can handle concatenated features
 
-            # Slice the predicted feature data
+            current_features = features_np[: -(iterations_num - i)]
 
-            # Predict targets for next timestep
-            target_predictions_df = self.model.predict_human_readable(data=input_data)
-
-            # Update input data - get predicted features
-            scaled_features_for_pred = scaled_data_df.iloc[0 : -(iterations_num - i)][
-                FEATURES
-            ]
-
-            # Update targets and concat
-
-            # print(input_data[self.model.TARGETS])
-            # print(target_predictions_df)
-
-            updated_targets = pd.concat(
-                [input_data[self.model.TARGETS], target_predictions_df], axis=0
-            ).reset_index(drop=True)
-
-            # print(updated_targets)
-
-            # print(scaled_features_for_pred)
-
-            # print(updated_targets)
-
-            input_data = pd.concat(
-                [
-                    scaled_features_for_pred.reset_index(drop=True),
-                    updated_targets.reset_index(drop=True),
-                ],
-                axis=1,
+            input_batch = np.concatenate([current_features, targets_for_pred], axis=1)
+            input_batch_df = pd.DataFrame(
+                input_batch,
+                columns=self.model.FEATURES
+                + self.model.TARGETS,  # <- concat of feature and target names
             )
 
-        # print("Original data:")
-        # print(original_data[self.model.TARGETS])
+            # Predict next target
+            next_target_preds = self.model.predict_human_readable(input_batch_df)
 
-        # print("Predicted data:")
-        # print(input_data[self.model.TARGETS])
+            # Stack predicted next steps
+            targets_for_pred = np.vstack(
+                [targets_for_pred, next_target_preds[-1:]]
+            )  # only last prediction
+            all_predictions.append(next_target_preds[-1:])
 
-        return input_data[self.model.TARGETS]
+        # Stack all predicted targets
+        final_predictions = np.vstack(all_predictions)
+
+        predictions_df = pd.DataFrame(final_predictions, columns=TARGETS)
+
+        # Return only last predictions
+        return predictions_df.tail(iterations_num)
 
 
 class PredictorPipeline:
@@ -304,7 +332,9 @@ class PredictorPipeline:
         ]
 
         predicted_data_df = self.global_model_pipeline.predict(
-            input_data=future_feature_values_df
+            input_data=future_feature_values_df,
+            last_year=last_year,
+            target_year=target_year,
         )
 
         # Add years to final predictions
