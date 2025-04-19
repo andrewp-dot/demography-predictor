@@ -19,6 +19,7 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import LSTMHyperparameters, BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
+from src.local_model.statistical_models import LocalARIMA
 
 from src.pipeline import LocalModelPipeline
 
@@ -33,6 +34,7 @@ def preprocess_data(
     transformer: DataTransformer,
     split_rate: float = 0.8,
     is_fitted: bool = False,
+    targets: List[str] | None = None,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     # Create copy of the data to prevent the inplace modification
     original_data = data.copy()
@@ -51,11 +53,11 @@ def preprocess_data(
         train_states_df = states_loader.merge_states(train_data_dict)
         test_states_df = states_loader.merge_states(test_data_dict)
 
-        scaled_train_data, scaled_validation_data, _ = transformer.scale_and_fit(
+        scaled_train_data, scaled_validation_data = transformer.scale_and_fit(
             training_data=train_states_df,
             validation_data=test_states_df,
             features=features,
-            scaler=MinMaxScaler(),
+            targets=targets,
         )
 
         # Create a dictionary from the scaled data
@@ -74,6 +76,7 @@ def preprocess_data(
 
 
 def train_base_lstm(
+    name: str,
     hyperparameters: LSTMHyperparameters,
     data: Dict[str, pd.DataFrame],
     features: List[str],
@@ -109,6 +112,7 @@ def train_base_lstm(
 
     # Create pipeline
     return LocalModelPipeline(
+        name=name,
         model=base_lstm,
         transformer=transformer,
         training_stats=TrainingStats.from_dict(stats),
@@ -116,6 +120,7 @@ def train_base_lstm(
 
 
 def train_finetunable_model(
+    name: str,
     base_model_pipeline: LocalModelPipeline,
     finetunable_model_hyperparameters: LSTMHyperparameters,
     finetunable_model_data: Dict[str, pd.DataFrame],
@@ -150,6 +155,7 @@ def train_finetunable_model(
     )
 
     return LocalModelPipeline(
+        name=name,
         model=finetuneable_lstm,
         transformer=base_model_pipeline.transformer,
         training_stats=TrainingStats.from_dict(stats),
@@ -182,3 +188,85 @@ def train_finetunable_model_from_scratch(
         split_rate=split_rate,
         display_nth_epoch=display_nth_epoch,
     )
+
+
+def train_ensemble_model(
+    name: str,
+    hyperparameters: LSTMHyperparameters,
+    data: Dict[str, pd.DataFrame],
+    features: List[str],
+    split_rate: float = 0.8,
+    display_nth_epoch: int = 10,
+) -> PureEnsembleModel:
+
+    # Ensure the input / output size will be 1
+    ADJUSTED_PARAMS = hyperparameters
+    ADJUSTED_PARAMS.input_size = 1  # Predict 1 target at the time
+
+    trained_models: Dict[str, LocalModelPipeline] = {}
+    for feature in features:
+
+        # Preprocess data
+        transformer = DataTransformer()
+
+        (
+            batch_inputs,
+            batch_targets,
+            batch_validation_inputs,
+            batch_validation_targets,
+        ) = preprocess_data(
+            data=data,
+            hyperparameters=ADJUSTED_PARAMS,
+            features=[feature],
+            split_rate=split_rate,
+            transformer=transformer,
+            is_fitted=False,
+        )
+
+        # Create model
+        base_lstm = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=feature)
+
+        # Train model
+        stats = base_lstm.train_model(
+            batch_inputs=batch_inputs,
+            batch_targets=batch_targets,
+            batch_validation_inputs=batch_validation_inputs,
+            batch_validation_targets=batch_validation_targets,
+            display_nth_epoch=display_nth_epoch,
+        )
+
+        pipeline = LocalModelPipeline(
+            name=f"{name}-{feature}", model=base_lstm, transformer=transformer
+        )
+
+        trained_models[feature] = pipeline
+
+    # Create pipeline
+    return PureEnsembleModel(feature_models=trained_models)
+
+
+def train_arima_ensemble_model(
+    features: List[str], state: str, split_rate: float = 0.8
+) -> PureEnsembleModel:
+
+    # Load state data
+    state_loader = StateDataLoader(state=state)
+    state_data = state_loader.load_data()
+
+    # Split data
+    train_df, _ = state_loader.split_data(data=state_data, split_rate=split_rate)
+
+    # Train and save models
+    trained_models: Dict[str, LocalARIMA] = {}
+    for feature in features:
+
+        # Create ARIMA
+        arima = LocalARIMA(p=1, d=1, q=1, features=[], target=feature, index="year")
+
+        # Train model
+        arima.train_model(data=train_df)
+
+        # Save trained model
+        trained_models[feature] = arima
+
+    return PureEnsembleModel(feature_models=trained_models)

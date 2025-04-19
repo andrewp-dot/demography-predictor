@@ -183,9 +183,15 @@ class LocalModelPipeline(BasePipeline):
         TARGETS: List[str] = self.model.TARGETS
 
         # Scale data
-        scaled_data_df = self.transformer.scale_data(
-            data=input_data, features=FEATURES, targets=TARGETS
-        )
+        if FEATURES == TARGETS:
+            scaled_data_df = self.transformer.scale_data(
+                data=input_data,
+                features=FEATURES,
+            )
+        else:
+            scaled_data_df = self.transformer.scale_data(
+                data=input_data, features=FEATURES, targets=TARGETS
+            )
 
         # Predict
         # Predict values to the future

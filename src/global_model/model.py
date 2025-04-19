@@ -16,6 +16,8 @@ from sklearn.metrics import (
     r2_score,
 )
 
+from sklearn.model_selection import TimeSeriesSplit
+
 
 ## Import models
 import xgboost as xgb
@@ -115,6 +117,8 @@ class GlobalModel:
 
         # Add lagged features for the target data
         last_n_targets = input_data[self.TARGETS].tail(self.sequence_len)
+
+        # Switch rows and columns and create 1D array -> unpacking the history of targets
         flattened = last_n_targets.to_numpy().T.flatten()
 
         return pd.DataFrame([flattened], columns=self.HISTORY_TARGET_FEATURES)
@@ -273,13 +277,15 @@ class GlobalModel:
         # Tune hyperparams if neaded
         if tune_hyperparams:
 
+            tscv = TimeSeriesSplit(n_splits=3)
+
             if param_dict is not None:
                 logger.info("Tuning parameters....")
                 self.model = GridSearchCV(
                     estimator=self.model,
                     param_grid=param_dict,
+                    cv=tscv,
                     scoring="neg_mean_squared_error",  # Minimize MSE
-                    cv=3,
                     verbose=1,
                     n_jobs=2,  # Use all available CPUs
                 )

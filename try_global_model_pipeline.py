@@ -3,6 +3,9 @@ from typing import List
 
 
 # Custom imports
+from config import Config
+
+from src.state_groups import StatesByWealth
 from src.utils.log import setup_logging
 from src.pipeline import GlobalModelPipeline
 from src.train_scripts.train_global_models import train_global_model
@@ -14,12 +17,14 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.evaluation import EvaluateModel
 
 
+settings = Config()
+
+
 def train_pipeline(name: str, sequence_len: int):
 
     # Targets - yet cannot be just only one of the feature
     # targets: List[str] = [
     #     "population, total",
-    #     "population, male",
     # ]
     targets: List[str] = [
         "population ages 15-64",
@@ -39,7 +44,7 @@ def train_pipeline(name: str, sequence_len: int):
         for col in [
             # "year",
             "Fertility rate, total",
-            "Population, total",
+            # "population, total",
             "Net migration",
             "Arable land",
             # "Birth rate, crude",
@@ -53,19 +58,31 @@ def train_pipeline(name: str, sequence_len: int):
             "Population growth",
             # "Adolescent fertility rate",
             # "Life expectancy at birth, total",
-            # Population total target
         ]
     ]
 
     loader = StatesDataLoader()
-    all_states_data = loader.load_all_states()
+    # all_states_data = loader.load_all_states()
+    all_states_data = loader.load_states(
+        states=[
+            *StatesByWealth().high_income,
+            *StatesByWealth().upper_middle_income,
+            *StatesByWealth().lower_middle_income,
+            # *StatesByWealth().low_income,
+        ]
+        # states=[
+        #     "Honduras",
+        #     "Czechia",
+        #     "United States",
+        # ]
+    )
 
     tune_parameters = XGBoostTuneParams(
-        n_estimators=[50, 100],
-        learning_rate=[0.001, 0.01, 0.05],
+        n_estimators=[200, 400],
+        learning_rate=[0.01, 0.05, 0.1],
         max_depth=[3, 5, 7],
-        subsample=[0.5, 0.7],
-        colsample_bytree=[0.5, 0.7, 0.9, 1.0],
+        subsample=[0.8, 1.0],
+        colsample_bytree=[0.8, 1.0],
     )
 
     pipeline: GlobalModelPipeline = train_global_model(
@@ -104,13 +121,15 @@ def eval_pipeline(name: str, sequence_len: int):
 
     loader = StatesDataLoader()
     states_data_dict = loader.load_states(
-        states=[
-            "Honduras",
-            "Czechia",
-            "United States",
-        ]
-        # states=["Czechia"]
+        states=StatesByWealth().high_income
+        # states=[
+        #     "Honduras",
+        #     "Czechia",
+        #     "United States",
+        # ]
     )
+
+    states_data_dict = loader.load_all_states()
     train_states, test_states = loader.split_data(
         states_dict=states_data_dict, sequence_len=sequence_len
     )
@@ -125,6 +144,11 @@ def eval_pipeline(name: str, sequence_len: int):
 
     plt.savefig("gm_test.png")
 
+    every_state_eval.sort_values(by=["r2", "mae"], inplace=True)
+
+    with open("global_model_eval.json", "w") as f:
+        every_state_eval.to_json(f, indent=4, orient="records")
+
     print(every_state_eval)
 
 
@@ -135,6 +159,6 @@ if __name__ == "__main__":
     SEQUENCE_LEN = 10
     NAME = "test_gm"
 
-    # train_pipeline(name=NAME, sequence_len=SEQUENCE_LEN)
+    train_pipeline(name=NAME, sequence_len=SEQUENCE_LEN)
 
     eval_pipeline(name=NAME, sequence_len=SEQUENCE_LEN)

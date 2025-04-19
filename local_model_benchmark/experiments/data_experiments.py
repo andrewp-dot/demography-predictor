@@ -102,6 +102,7 @@ class DataUsedForTraining(BaseExperiment):
 
     def __train_by_single_state(
         self,
+        name: str,
         state: str,
         split_rate: float,
         display_nth_epoch: int = 10,
@@ -112,6 +113,7 @@ class DataUsedForTraining(BaseExperiment):
         state_data = states_loader.load_states(states=[state])
 
         base_model_pipeline = train_base_lstm(
+            name=name,
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
             data=state_data,
             features=self.FEATURES,
@@ -123,6 +125,7 @@ class DataUsedForTraining(BaseExperiment):
 
     def __train_group_of_states(
         self,
+        name: str,
         states: List[str],
         split_rate: float,
         display_nth_epoch: int = 10,
@@ -133,6 +136,7 @@ class DataUsedForTraining(BaseExperiment):
         states_data_dict = states_loader.load_states(states=states)
 
         base_model_pipeline = train_base_lstm(
+            name=name,
             hyperparameters=self.MULTISTATE_BASE_LSTM_HYPERPARAMETERS,
             data=states_data_dict,
             features=self.FEATURES,
@@ -144,6 +148,7 @@ class DataUsedForTraining(BaseExperiment):
 
     def __train_all_states(
         self,
+        name: str,
         split_rate: float,
         display_nth_epoch: int = 10,
     ) -> LocalModelPipeline:
@@ -153,6 +158,7 @@ class DataUsedForTraining(BaseExperiment):
         states_data_dict = states_loader.load_all_states()
 
         base_model_pipeline = train_base_lstm(
+            name=name,
             hyperparameters=self.MULTISTATE_BASE_LSTM_HYPERPARAMETERS,
             data=states_data_dict,
             features=self.FEATURES,
@@ -174,6 +180,7 @@ class DataUsedForTraining(BaseExperiment):
 
         # Create model trained on a single state
         single_state_model_pipeline = self.__train_by_single_state(
+            name="single-model",
             state=state,
             split_rate=split_rate,
             display_nth_epoch=1,
@@ -185,6 +192,7 @@ class DataUsedForTraining(BaseExperiment):
         # Train model using group of states
         # Get one loader for multiple states to save memmory
         group_states_model_pipeline = self.__train_group_of_states(
+            name="group-model",
             states=state_group,
             split_rate=split_rate,
             display_nth_epoch=1,
@@ -194,6 +202,7 @@ class DataUsedForTraining(BaseExperiment):
 
         # Train model using  all states data
         all_states_model_pipeline = self.__train_all_states(
+            name="all-states-model",
             split_rate=split_rate,
             display_nth_epoch=1,
         )

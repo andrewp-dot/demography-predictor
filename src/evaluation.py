@@ -587,9 +587,6 @@ class EvaluateModel(BaseEvaluation):
             X_test_states=X_test_states, y_test_states=y_test_states
         )
 
-        with open("per_state_metrics.json", "w") as f:
-            per_state_metric_df.to_json(f, indent=4, orient="records")
-
         state_lens: Dict[str, int] = {}
         states_len_sum: int = 0
         for state, df in X_test_states.items():

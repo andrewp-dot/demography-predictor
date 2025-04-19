@@ -56,7 +56,11 @@ def train_global_model(
         # scaled_validation_data = transfomer.scale_data(data=X_test)
 
     # Train XGB
-    global_model.train(X_train=scaled_training_data, y_train=y_train)
+    global_model.train(
+        X_train=scaled_training_data,
+        y_train=y_train,
+        # tune_hyperparams=True
+    )
 
     # Create Pipeline
     pipeline = GlobalModelPipeline(

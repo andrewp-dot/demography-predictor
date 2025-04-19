@@ -13,6 +13,8 @@ from src.local_model.model import BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.statistical_models import LocalARIMA
 
+from src.preprocessors.data_transformer import DataTransformer
+
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
@@ -94,12 +96,7 @@ def train_models_for_ensemble_model(
     ADJUSTED_PARAMS = hyperaparameters
     ADJUSTED_PARAMS.input_size = 1  # Predict 1 target at the time
 
-    # Split data
-    train_dict, _ = states_loader.split_data(
-        states_dict=states_data_dict,
-        sequence_len=ADJUSTED_PARAMS.sequence_length,
-        split_rate=split_rate,
-    )
+    transformer = DataTransformer()
 
     # Train and save models
     trained_models: Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]] = {}
@@ -110,25 +107,26 @@ def train_models_for_ensemble_model(
         # Set feature as a target
         target = feature
 
-        # Preprocess data for feature
-        input_batches, target_batches, scaler = (
-            states_loader.preprocess_train_data_batches(
-                states_train_data_dict=train_dict,
-                hyperparameters=ADJUSTED_PARAMS,
-                features=[target],
-            )
-        )
-
         # Create RNN
         rnn = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=[target])
 
-        # Set scaler
-        rnn.set_scaler(scaler=scaler)
+        (
+            train_inputs_tensor,
+            train_targets_tensor,
+            val_inputs_tensor,
+            val_targets_tensor,
+        ) = transformer.create_train_test_multiple_states_batches(
+            data=states_data_dict,
+            hyperparameters=ADJUSTED_PARAMS,
+            features=target,
+        )
 
         # Train model
         rnn.train_model(
-            batch_inputs=input_batches,
-            batch_targets=target_batches,
+            batch_inputs=train_inputs_tensor,
+            batch_targets=train_targets_tensor,
+            batch_validation_inputs=val_inputs_tensor,
+            batch_validation_targets=val_targets_tensor,
             display_nth_epoch=display_nth_epoch,
         )
 

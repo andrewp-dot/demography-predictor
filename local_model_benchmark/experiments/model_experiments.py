@@ -16,6 +16,14 @@ from local_model_benchmark.config import (
 from src.base import CustomModelBase
 from src.state_groups import StatesByGeolocation, StatesByWealth
 
+from src.pipeline import LocalModelPipeline
+from src.train_scripts.train_local_models import (
+    train_base_lstm,
+    train_finetunable_model,
+    train_ensemble_model,
+    train_arima_ensemble_model,
+)
+
 from src.compare_models.compare import ModelComparator
 
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
@@ -25,7 +33,7 @@ from src.evaluation import EvaluateModel
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import (
     PureEnsembleModel,
-    train_models_for_ensemble_model,
+    # train_models_for_ensemble_model,
     train_arima_models_for_ensemble_model,
 )
 
@@ -35,6 +43,10 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 settings = LocalModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
+
+
+# TODO:
+# make this work again -> make this compatible with pipelines?
 
 
 class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
@@ -81,61 +93,42 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
 
     def __train_base_lstm_model(
         self,
+        name: str,
         states_loader: StatesDataLoader,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> BaseLSTM:
-
-        model_all_states = BaseLSTM(
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
-            features=self.FEATURES,
-        )
+    ) -> LocalModelPipeline:
 
         # Preprocess data
         states_data_dict = states_loader.load_all_states()
 
-        states_loader.split_data(
-            states_dict=states_data_dict,
-            sequence_len=model_all_states.hyperparameters.sequence_length,
-            split_rate=split_rate,
-        )
-
-        train_states_dict, _ = states_loader.split_data(
-            states_dict=states_data_dict,
-            sequence_len=model_all_states.hyperparameters.sequence_length,
-            split_rate=split_rate,
-        )
-
-        train_batches, target_batches, scaler = (
-            states_loader.preprocess_train_data_batches(
-                states_train_data_dict=train_states_dict,
-                hyperparameters=model_all_states.hyperparameters,
-                features=model_all_states.FEATURES,
-            )
-        )
-
-        # Set fitted scaler
-        model_all_states.set_scaler(scaler=scaler)
-
-        model_all_states.train_model(
-            batch_inputs=train_batches,
-            batch_targets=target_batches,
+        # The train_base_lstm function splits the data automatically
+        lstm_pipeline = train_base_lstm(
+            name=name,
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            features=self.FEATURES,
+            data=states_data_dict,
             display_nth_epoch=display_nth_epoch,
+            split_rate=split_rate,
         )
-        return model_all_states
+
+        return lstm_pipeline
 
     def __train_ensemble_model(
         self, split_rate: float, display_nth_epoch=10
     ) -> PureEnsembleModel:
 
-        feature_models = train_models_for_ensemble_model(
+        loader = StatesDataLoader()
+        all_states_dict = loader.load_all_states()
+
+        ensemble_model = train_ensemble_model(
+            name="ensemble-model",
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            data=all_states_dict,
             features=self.FEATURES,
-            hyperaparameters=self.BASE_LSTM_HYPERPARAMETERS,
             split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
         )
-
-        ensemble_model = PureEnsembleModel(feature_models=feature_models)
 
         return ensemble_model
 
@@ -150,7 +143,10 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
 
         # Train base lstm
         TO_COMPARE_MODELS["base-lstm"] = self.__train_base_lstm_model(
-            states_loader=states_loader, split_rate=split_rate, display_nth_epoch=1
+            name="base-lstm",
+            states_loader=states_loader,
+            split_rate=split_rate,
+            display_nth_epoch=1,
         )
 
         # Train ensemble model
@@ -226,90 +222,53 @@ class FineTunedModels(BaseExperiment):
 
     def __train_base_lstm_model(
         self,
+        name: str,
         states_loader: StatesDataLoader,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> BaseLSTM:
+    ) -> LocalModelPipeline:
 
-        model_all_states = BaseLSTM(
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
-            features=self.FEATURES,
-        )
-
-        # Preprocess data
         states_data_dict = states_loader.load_all_states()
-
-        states_loader.split_data(
-            states_dict=states_data_dict,
-            sequence_len=model_all_states.hyperparameters.sequence_length,
-            split_rate=split_rate,
-        )
 
         train_states_dict, _ = states_loader.split_data(
             states_dict=states_data_dict,
-            sequence_len=model_all_states.hyperparameters.sequence_length,
+            sequence_len=self.BASE_LSTM_HYPERPARAMETERS.sequence_length,
             split_rate=split_rate,
         )
 
-        train_batches, target_batches, scaler = (
-            states_loader.preprocess_train_data_batches(
-                states_train_data_dict=train_states_dict,
-                hyperparameters=model_all_states.hyperparameters,
-                features=model_all_states.FEATURES,
-            )
-        )
-
-        # Set fitted scaler
-        model_all_states.set_scaler(scaler=scaler)
-
-        model_all_states.train_model(
-            batch_inputs=train_batches,
-            batch_targets=target_batches,
+        lstm_pipeline = train_base_lstm(
+            name=name,
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            features=self.FEATURES,
+            data=train_states_dict,
             display_nth_epoch=display_nth_epoch,
         )
-        return model_all_states
+
+        return lstm_pipeline
 
     def __train_finetuned_lstm_model(
         self,
-        base_model: BaseLSTM,
+        name: str,
+        base_pipeline: LocalModelPipeline,
         states_loader: StatesDataLoader,
         states: List[str],
         split_rate: float = 0.8,
         display_nth_epoch: int = 10,
-    ) -> FineTunableLSTM:
+    ) -> LocalModelPipeline:
 
         # Load states data and get training data
         states_data_dict = states_loader.load_states(states=states)
 
-        train_dict, _ = states_loader.split_data(
-            states_dict=states_data_dict,
-            sequence_len=base_model.hyperparameters.sequence_length,
+        fintunable_pipeline = train_finetunable_model(
+            name=name,
+            base_model_pipeline=base_pipeline,
+            finetunable_model_hyperparameters=self.FINETUNE_MODELS_HYPERPARAMETERS,
+            finetunable_model_data=states_data_dict,
             split_rate=split_rate,
-        )
-
-        train_batches, target_batches, scaler = (
-            states_loader.preprocess_train_data_batches(
-                states_train_data_dict=train_dict,
-                hyperparameters=self.FINETUNE_MODELS_HYPERPARAMETERS,
-                features=base_model.FEATURES,
-            )
-        )
-
-        # Create and train finetunable model
-        finetunable_model = FineTunableLSTM(
-            base_model=base_model, hyperparameters=self.FINETUNE_MODELS_HYPERPARAMETERS
-        )
-
-        # Set scaler for sure
-        finetunable_model.set_scaler(scaler=scaler)
-
-        finetunable_model.train_model(
-            batch_inputs=train_batches,
-            batch_targets=target_batches,
             display_nth_epoch=display_nth_epoch,
         )
 
-        return finetunable_model
+        return fintunable_pipeline
 
     def run(self, state: str, state_group: List[str], split_rate: float = 0.8):
         # Create readme
@@ -322,7 +281,10 @@ class FineTunedModels(BaseExperiment):
 
         # Train base lstm
         TO_COMPARE_MODELS["base-lstm"] = self.__train_base_lstm_model(
-            states_loader=states_loader, split_rate=split_rate, display_nth_epoch=1
+            name="base-lstm",
+            states_loader=states_loader,
+            split_rate=split_rate,
+            display_nth_epoch=1,
         )
 
         # Finetune base lstm using single state
@@ -408,85 +370,70 @@ class CompareWithStatisticalModels(BaseExperiment):
 
     def __train_base_lstm_model(
         self,
+        name: str,
         states_loader: StatesDataLoader,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> BaseLSTM:
-
-        model_all_states = BaseLSTM(
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
-            features=self.FEATURES,
-        )
+    ) -> LocalModelPipeline:
 
         # Preprocess data
         states_data_dict = states_loader.load_all_states()
 
-        states_loader.split_data(
-            states_dict=states_data_dict,
-            sequence_len=model_all_states.hyperparameters.sequence_length,
+        base_model_pipeline = train_base_lstm(
+            name=name,
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
             split_rate=split_rate,
-        )
-
-        train_states_dict, _ = states_loader.split_data(
-            states_dict=states_data_dict,
-            sequence_len=model_all_states.hyperparameters.sequence_length,
-            split_rate=split_rate,
-        )
-
-        train_batches, target_batches, scaler = (
-            states_loader.preprocess_train_data_batches(
-                states_train_data_dict=train_states_dict,
-                hyperparameters=model_all_states.hyperparameters,
-                features=model_all_states.FEATURES,
-            )
-        )
-
-        # Set fitted scaler
-        model_all_states.set_scaler(scaler=scaler)
-
-        model_all_states.train_model(
-            batch_inputs=train_batches,
-            batch_targets=target_batches,
             display_nth_epoch=display_nth_epoch,
         )
-        return model_all_states
+
+        return base_model_pipeline
 
     def __train_ensemble_model(
         self, split_rate: float, display_nth_epoch=10
     ) -> PureEnsembleModel:
 
-        feature_models = train_models_for_ensemble_model(
+        loader = StatesDataLoader()
+        all_states_dict = loader.load_all_states()
+
+        # Train ARIMA instead
+        ensemble_model = train_ensemble_model(
+            name="ensemble-model",
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            data=all_states_dict,
             features=self.FEATURES,
-            hyperaparameters=self.BASE_LSTM_HYPERPARAMETERS,
             split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
         )
-
-        ensemble_model = PureEnsembleModel(feature_models=feature_models)
 
         return ensemble_model
 
     def __train_arima_ensemble_model(
         self, split_rate: float, state: str
     ) -> PureEnsembleModel:
-        feature_models = train_arima_models_for_ensemble_model(
-            features=self.FEATURES, state=state
+        ensemble_model = train_arima_ensemble_model(
+            features=self.FEATURES, state=state, split_rate=split_rate
         )
-        ensemble_model = PureEnsembleModel(feature_models=feature_models)
+
         return ensemble_model
 
     def run(self, state: str, split_rate: float = 0.8):
         # Create readme
         self.create_readme()
 
-        TO_COMPARE_MODELS: Dict[str, Union[BaseLSTM, PureEnsembleModel]] = {}
+        TO_COMPARE_MODELS: Dict[str, Union[LocalModelPipeline, PureEnsembleModel]] = {}
 
         # Get data loader
         states_loader: StatesDataLoader = StatesDataLoader()
 
         # Train base lstm
         TO_COMPARE_MODELS["base-lstm"] = self.__train_base_lstm_model(
-            states_loader=states_loader, split_rate=split_rate, display_nth_epoch=1
+            name="base-lstm",
+            features=self.FEATURES,
+            states_loader=states_loader,
+            split_rate=split_rate,
+            display_nth_epoch=1,
         )
 
         TO_COMPARE_MODELS["ensemble-lstm"] = self.__train_ensemble_model(
@@ -505,10 +452,10 @@ class CompareWithStatisticalModels(BaseExperiment):
         # Evaluate models - per-target-performance
         comparator = ModelComparator()
         per_target_metrics_df = comparator.compare_models_by_states(
-            models=TO_COMPARE_MODELS, states=[state], by="per-features"
+            pipelines=TO_COMPARE_MODELS, states=[state], by="per-features"
         )
         overall_metrics_df = comparator.compare_models_by_states(
-            models=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
+            pipelines=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
         )
 
         # Print results to the readme
@@ -523,6 +470,133 @@ class CompareWithStatisticalModels(BaseExperiment):
         )
 
 
+class DifferentHiddenLayers(BaseExperiment):
+
+    FEATURES = [
+        col.lower()
+        for col in [
+            # "year",
+            "Fertility rate, total",
+            # "population, total",
+            # "Net migration",
+            "Arable land",
+            # "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            # "Rural population",
+            "Rural population growth",
+            # "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            # "Adolescent fertility rate",
+            # "Life expectancy at birth, total",
+        ]
+    ]
+
+    HIDDEN_SIZE_TO_TRY: List[int] = [32, 64, 128, 256, 512]
+
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        input_size=len(FEATURES), batch_size=16
+    )
+
+    def __init__(self, description: str):
+        super().__init__(name=self.__class__.__name__, description=description)
+
+    def run(self, split_rate: float = 0.8):
+        # Create readme
+        self.create_readme()
+
+        EVALUATION_STATES: List[str] = ["Czechia", "United States", "Honduras"]
+
+        # Load data
+        loader = StatesDataLoader()
+        all_states_dict = loader.load_all_states()
+
+        # Train models with different
+        TO_COMPARE_MODELS: Dict[str, LocalModelPipeline] = {}
+        for hidden_size in self.HIDDEN_SIZE_TO_TRY:
+
+            MODEL_NAME = f"lstm-{hidden_size}"
+            TO_COMPARE_MODELS[MODEL_NAME] = train_base_lstm(
+                name=MODEL_NAME,
+                features=self.FEATURES,
+                hyperparameters=get_core_parameters(
+                    input_size=len(self.FEATURES),
+                    batch_size=16,
+                    hidden_size=hidden_size,
+                ),
+                data=all_states_dict,
+                split_rate=split_rate,
+                display_nth_epoch=10,
+            )
+
+        comparator = ModelComparator()
+
+        per_target_metrics_df = comparator.compare_models_by_states(
+            pipelines=TO_COMPARE_MODELS, states=EVALUATION_STATES, by="per-features"
+        )
+        overall_metrics_df = comparator.compare_models_by_states(
+            pipelines=TO_COMPARE_MODELS, states=EVALUATION_STATES, by="overall-metrics"
+        )
+
+        # Print results to the readme
+        self.readme_add_section(
+            title="## Per target metrics - model comparision",
+            text=f"```\n{per_target_metrics_df.sort_values(by=['state'])}\n```\n\n",
+        )
+
+        self.readme_add_section(
+            title="## Overall metrics - model comparision",
+            text=f"```\n{overall_metrics_df.sort_values(by=['state'])}\n```\n\n",
+        )
+
+        # Print honduras plot
+        fig = comparator.create_state_comparison_plot(state="Honduras")
+
+        self.save_plot(fig_name="honduras_predictions.png", figure=fig)
+        self.readme_add_plot(
+            plot_name="Honduras predictions",
+            plot_description="Honduras feature predictions.",
+            fig_name="honduras_predictions.png",
+        )
+
+
+class DifferentArchitecturesComparision(BaseExperiment):
+
+    FEATURES = [
+        col.lower()
+        for col in [
+            # "year",
+            "Fertility rate, total",
+            # "population, total",
+            "Net migration",
+            "Arable land",
+            # "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            # "Rural population",
+            "Rural population growth",
+            # "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            # "Adolescent fertility rate",
+            # "Life expectancy at birth, total",
+        ]
+    ]
+
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        input_size=len(FEATURES), batch_size=16
+    )
+
+    def __init__(self, description: str):
+        super().__init__(name=self.__class__.__name__, description=description)
+        raise NotImplementedError(
+            "Comparision using different architecture not implemented yet."
+        )
+
+
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
@@ -533,18 +607,46 @@ if __name__ == "__main__":
         state=STATE
     )
 
+    failing_experiments = []
+
+    # TODO: Try this if it is runnable
+    # try:
     exp_1 = FeaturePredictionSeparatelyVSAtOnce(
         description="Compares single LSTM model vs LSTM for every feature."
     )
     exp_1.run(state="Czechia", split_rate=0.8)
+    # except Exception as e:
+    #     logger.error(f"exp 1: {e}")
+    #     failing_experiments.append("exp ")
+    # TODO: Try this if it is runnable
 
-    exp_2 = FineTunedModels(
-        description="See if finetuning the model helps the model to be more accurate."
-    )
+    exit()
 
-    exp_2.run(state="Czechia", state_group=SELECTED_GROUP, split_rate=0.8)
+    try:
+        exp_2 = FineTunedModels(
+            description="See if finetuning the model helps the model to be more accurate."
+        )
 
-    exp_3 = CompareWithStatisticalModels(
-        description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
-    )
-    exp_3.run(state="Czechia", split_rate=0.8)
+        exp_2.run(state="Czechia", state_group=SELECTED_GROUP, split_rate=0.8)
+    except Exception as e:
+        logger.error(f"exp 2: {e}")
+        failing_experiments.append("exp 2")
+
+    # TODO: Try this if it is runnable
+
+    try:
+        exp_3 = CompareWithStatisticalModels(
+            description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
+        )
+        exp_3.run(state="Czechia", split_rate=0.8)
+    except Exception as e:
+        logger.error(f"exp 3: {e}")
+        failing_experiments.append("exp 3")
+
+    # Runnable
+    # exp_4 = DifferentHiddenLayers(
+    #     description="Try to train BaseLSTM models with different layers."
+    # )
+    # exp_4.run(split_rate=0.8)
+
+    print(failing_experiments)

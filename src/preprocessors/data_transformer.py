@@ -400,10 +400,8 @@ class DataTransformer:
         targets: List[str],
     ) -> pd.DataFrame:
 
-        if self.TARGET_SCALER is None:
-            raise ValueError(
-                "The scaler isnt fitted yet. Please use scale_and_fit first."
-            )
+        if self.TARGET_SCALER is None and self.SCALER is None:
+            raise ValueError("No scaler is fitted yet. Please use scale_and_fit first.")
 
         # Check the fitted columns and specified columns compatibility?
         to_unscale_data = data.copy()
@@ -415,7 +413,11 @@ class DataTransformer:
         to_unscale_data = to_unscale_data[FEATURES]
 
         # Unsale data
-        unscaled_data = self.TARGET_SCALER.inverse_transform(to_unscale_data)
+        if not self.TARGET_SCALER is None:
+            unscaled_data = self.TARGET_SCALER.inverse_transform(to_unscale_data)
+        else:
+            unscaled_data = self.SCALER.inverse_transform(to_unscale_data)
+
         unscaled_data_df = pd.DataFrame(unscaled_data, columns=targets)
 
         # Inverse transform data

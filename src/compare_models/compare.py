@@ -223,7 +223,7 @@ class ModelComparator:
             )
 
             model_evaluation = EvaluateModel(
-                transformer=pipelines[model_name].transformer, model=model
+                pipeline=pipeline,
             )
 
             # Save the model evaluation refference
@@ -290,7 +290,7 @@ class ModelComparator:
         first_model_name = list(self.model_evaluations.keys())[0]
 
         # Get the refference data for the state
-        FEATURES = self.model_evaluations[first_model_name].model.FEATURES
+        FEATURES = self.model_evaluations[first_model_name].pipeline.model.FEATURES
         N_FEATURES = len(FEATURES)
 
         # Get evalution for the first model for the state to get refference data info
