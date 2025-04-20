@@ -29,6 +29,7 @@ class LSTMHyperparameters:
         self,
         input_size: int,
         hidden_size: int,
+        future_step_predict: int,
         sequence_length: int,
         learning_rate: float,
         epochs: int,
@@ -44,6 +45,7 @@ class LSTMHyperparameters:
             input_size (int): Defines the number of input features.
             output_size (int): Defines the number of output features. If None the output_size is equal to the input size. Defaults to None.
             hidden_size (int): Defines the number of neurons in a layer.
+            future_step_predict (int): Defines how many timestep forward it should the LSTM network predict using 1 sequence.
             sequence_length (int): Length of the processing sequnece (number of past samples using for predicition).
             learning_rate (float): Defines how much does the model learn (step in gradient descend).
             epochs (int): Number of epochs to train the nerual network.
@@ -56,6 +58,8 @@ class LSTMHyperparameters:
             output_size if output_size else input_size
         )  # Number of output features
         self.hidden_size = hidden_size  # Number of hidden units in the LSTM layer
+        self.future_step_predict = future_step_predict
+
         self.sequence_length = sequence_length  # Length of the input sequence, i.e., how many time steps the model will look back
         self.learning_rate = (
             learning_rate  # How much the model is learning from the data
@@ -71,6 +75,7 @@ class LSTMHyperparameters:
 
         repr_string = f"""
 Input size:         {self.input_size}
+Output size:        {self.output_size}
 Batch size:         {self.batch_size}
 
 Hidden size:        {self.hidden_size}

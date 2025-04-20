@@ -60,23 +60,25 @@ class BaseLSTM(CustomModelBase):
             batch_first=True,
         )
 
-        # Add some other layers
-        self.linear_1 = nn.Linear(
-            in_features=hyperparameters.hidden_size,
-            out_features=256,
-        )
-        self.relu_1 = nn.ReLU()  # Adds non-linearity
+        # # Add some other layers
+        # self.linear_1 = nn.Linear(
+        #     in_features=hyperparameters.hidden_size,
+        #     out_features=256,
+        # )
+        # self.relu_1 = nn.ReLU()  # Adds non-linearity
 
-        self.linear_2 = nn.Linear(
-            in_features=256,
-            out_features=128,
-        )
-        self.relu_2 = nn.ReLU()  # Adds non-linearity
+        # self.linear_2 = nn.Linear(
+        #     in_features=256,
+        #     out_features=128,
+        # )
+        # self.relu_2 = nn.ReLU()  # Adds non-linearity
 
         # Out layer: Linear layer
         self.linear = nn.Linear(
-            in_features=128,
-            out_features=hyperparameters.output_size,
+            in_features=hyperparameters.hidden_size,
+            out_features=(
+                hyperparameters.future_step_predict * hyperparameters.output_size
+            ),  # Future steps * number of features to predict
         )
 
     def __initialize_hidden_states(
@@ -127,16 +129,23 @@ class BaseLSTM(CustomModelBase):
         # Use the output from the last time step -> use fully connected layers
         out = out[:, -1, :]
 
-        out = self.linear_1(out)  # Using the last time step's output
-        out = self.relu_1(out)
+        # out = self.linear_1(out)  # Using the last time step's output
+        # out = self.relu_1(out)
 
-        out = self.linear_2(out)
-        out = self.relu_2(out)
+        # out = self.linear_2(out)
+        # out = self.relu_2(out)
 
         out = self.linear(out)  # Using the last time step's output
 
         # Return both output and the updated hidden state (for the next batch)
         # return out, (h_n, c_n)
+
+        # Transform prediction to the correct format
+        out = out.view(
+            -1,
+            self.hyperparameters.future_step_predict,
+            self.hyperparameters.output_size,
+        )
         return out
 
     def train_model(

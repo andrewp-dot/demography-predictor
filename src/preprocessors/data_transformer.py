@@ -3,13 +3,15 @@ import pandas as pd
 import numpy as np
 from typing import List, Tuple, Dict, Callable, Union
 from sklearn.preprocessing import MinMaxScaler
-from src.base import LSTMHyperparameters
+
 
 import torch
 from sklearn.preprocessing import LabelEncoder
 
 # Custom imports
 from src.preprocessors.state_preprocessing import StateDataLoader
+from src.base import LSTMHyperparameters
+from src.utils.constants import get_core_hyperparameters
 
 
 # TODO:
@@ -547,6 +549,7 @@ class DataTransformer:
         self,
         data: pd.DataFrame,
         sequence_len: int,
+        future_steps: int,
         features: List[str],
         targets: List[str] | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -556,6 +559,7 @@ class DataTransformer:
         Args:
             data (pd.DataFrame): _description_
             sequence_len (int): _description_
+            future_steps (int): _description_
             features (List[str]): _description_
 
         Returns:
@@ -577,7 +581,7 @@ class DataTransformer:
         sequence_output = []
 
         # + 1 in order to get also the last sample
-        number_of_samples = current_data.shape[0] - sequence_len
+        number_of_samples = current_data.shape[0] - sequence_len - future_steps + 1
         for i in range(number_of_samples):
 
             # Get the input sequence
@@ -590,12 +594,16 @@ class DataTransformer:
             )
 
             # Get the expected output of the sequence
-            sequence_output.append(
-                torch.tensor(
-                    current_target_data.iloc[i + sequence_len].values,
-                    dtype=torch.float32,
-                )
+            next_value_idx = i + sequence_len
+            output = torch.tensor(
+                current_target_data.iloc[
+                    next_value_idx : next_value_idx + future_steps
+                ].values,
+                dtype=torch.float32,
             )
+
+            # Reshape and append sequence output -> to match multiple timestep predictions
+            sequence_output.append(output.reshape(-1))
 
         return torch.stack(input_sequences), torch.stack(sequence_output)
 
@@ -623,7 +631,10 @@ class DataTransformer:
 
         # Create sequences and batches from the full training data
         input_sequences, sequences_outputs = self.create_train_test_sequences(
-            data=df, sequence_len=hyperparameters.sequence_length, features=FEATURES
+            data=df,
+            sequence_len=hyperparameters.sequence_length,
+            future_steps=hyperparameters.future_step_predict,
+            features=FEATURES,
         )
 
         # Convert to numpy
@@ -795,8 +806,10 @@ def main():
     print()
 
     # Scale training data
-    scaled_trainig_data, fitted_scaler = transformer.scale_and_fit(
-        training_data=train_df, columns=COLUMNS, scaler=MinMaxScaler()
+    scaled_trainig_data, scaled_test_data = transformer.scale_and_fit(
+        training_data=train_df,
+        validation_data=test_df,
+        features=COLUMNS,
     )
 
     print("Scaled train data:")
@@ -805,7 +818,7 @@ def main():
 
     # Unscale data
     unsacled_training_data = transformer.unscale_data(
-        data=scaled_trainig_data, columns=COLUMNS
+        data=scaled_trainig_data, targets=COLUMNS
     )
 
     print("Unscaled train data:")
@@ -821,16 +834,35 @@ def main():
     print(test_df.head())
     print()
 
-    scaled_test_data = transformer.scale_data(data=test_df, columns=COLUMNS)
+    scaled_test_data = transformer.scale_data(data=test_df, features=COLUMNS)
     print("Scaled test data:")
     print(scaled_test_data.head())
     print()
 
     unscaled_test_data = transformer.unscale_data(
-        data=scaled_test_data, columns=COLUMNS
+        data=scaled_test_data, targets=COLUMNS
     )
     print("Unscaled test data:")
     print(unscaled_test_data.head())
+    print()
+
+    # Test hyperparameters
+    test_hyperparams = get_core_hyperparameters(
+        input_size=len(COLUMNS), future_step_predict=3
+    )
+
+    batch_train_inputs, batch_train_targets, batch_val_inputs, batch_val_targets = (
+        transformer.create_train_test_data_batches(
+            data=train_df, hyperparameters=test_hyperparams, features=COLUMNS
+        )
+    )
+
+    print("Train test input / output batches:")
+    print(batch_train_inputs.shape)
+    print(batch_train_targets.shape)
+    print(batch_val_inputs.shape)
+    print(batch_val_targets.shape)
+
     print()
 
 

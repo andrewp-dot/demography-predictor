@@ -116,6 +116,7 @@ class StatesDataLoader:
         self,
         states_dict: Dict[str, pd.DataFrame],
         sequence_len: int,
+        future_steps: int = 1,
         split_rate: float = 0.8,
     ) -> Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
         """
@@ -145,7 +146,7 @@ class StatesDataLoader:
             )
 
             # Check if training data have enough records
-            if len(state_train_df) <= sequence_len:
+            if len(state_train_df) < sequence_len + future_steps:
                 logger.warning(
                     f"The training data of the state '{state_name}' does not have enough records to create training and target sequence. Therefore this state will be excluded from the training."
                 )
@@ -200,12 +201,13 @@ if __name__ == "__main__":
         exit(1)
 
     # Get features
-    FEATURES = list(states_loader["Czechia"].columns)
+    FEATURES = list(all_states_dict["Czechia"].columns)
     FEATURES.remove("country name")
 
     hyperparameters = LSTMHyperparameters(
         input_size=len(FEATURES),
         hidden_size=128,
+        future_step_predict=2,
         sequence_length=5,
         num_layers=2,
         learning_rate=0.0001,
@@ -215,7 +217,9 @@ if __name__ == "__main__":
 
     # Split data function
     train_data_dict, test_data_dict = states_loader.split_data(
-        all_states_dict, sequence_len=hyperparameters.sequence_length
+        all_states_dict,
+        sequence_len=hyperparameters.sequence_length,
+        future_steps=hyperparameters.future_step_predict,
     )
 
     logger.info(f"Train data: \n {train_data_dict['Czechia'].head()}")

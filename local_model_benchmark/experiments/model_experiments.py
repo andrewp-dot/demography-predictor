@@ -626,10 +626,10 @@ if __name__ == "__main__":
 
     # exp_2.run(state="Czechia", state_group=SELECTED_GROUP, split_rate=0.8)
 
-    exp_3 = CompareWithStatisticalModels(
-        description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
-    )
-    exp_3.run(state="Czechia", split_rate=0.8)
+    # exp_3 = CompareWithStatisticalModels(
+    #     description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
+    # )
+    # exp_3.run(state="Czechia", split_rate=0.8)
 
     # Runnable
     # exp_4 = DifferentHiddenLayers(
