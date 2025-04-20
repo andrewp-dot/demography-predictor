@@ -141,11 +141,18 @@ class BaseLSTM(CustomModelBase):
         # return out, (h_n, c_n)
 
         # Transform prediction to the correct format
+        # out = out.view(
+        #     -1,
+        #     self.hyperparameters.future_step_predict,
+        #     self.hyperparameters.output_size,
+        # )
+
         out = out.view(
-            -1,
+            self.hyperparameters.batch_size,
             self.hyperparameters.future_step_predict,
-            self.hyperparameters.output_size,
+            -1,
         )
+
         return out
 
     def train_model(

@@ -512,35 +512,66 @@ class DataTransformer:
         return input_batches
 
     def create_target_batches(
-        self, target_sequences: torch.Tensor, batch_size: int
+        self, target_sequences: torch.Tensor, batch_size: int, future_steps: int = 1
     ) -> torch.Tensor:
-        if len(target_sequences.shape) != 2:
+        # if len(target_sequences.shape) != 2:
+        #     raise ValueError(
+        #         "Target sequences must have shape (num_samples, num_features)"
+        #     )
+        if len(target_sequences.shape) != 3:
             raise ValueError(
-                "Target sequences must have shape (num_samples, num_features)"
+                "Target sequences must have shape (num_samples, timesteps, num_features)"
             )
 
         if batch_size <= 0:
             raise ValueError("batch_size must be a positive integer")
 
-        num_samples, num_features = (
+        num_samples, timesteps, num_features = (
             target_sequences.shape
-        )  # In shape (batch_size, num_features)
+        )  # In shape (num_samples, timesteps, num_features)
 
         if batch_size > num_samples:
             raise ValueError(
                 "batch_size cannot be larger than the number of available samples"
             )
 
-        # Calculate the number of batches and use trimming for correct reshaping
-        num_batches = num_samples // batch_size
-        trimmed_size = num_batches * batch_size  # Only keep full batches
+        if timesteps < future_steps:
+            raise ValueError(
+                "The number of timesteps must be greater than or equal to future_steps"
+            )
 
-        # Trim tensor to match full batches
-        trimmed_sequences = target_sequences[:trimmed_size]
+        # Calculate how many windows we can extract from each sequence
+        usable_timesteps = timesteps - future_steps + 1
 
-        # Reshape to (num_batches, batch_size, num_features)
-        target_batches = trimmed_sequences.reshape(
-            num_batches, batch_size, num_features
+        # Prepare target windows
+        target_windows = []
+        for i in range(usable_timesteps):
+            future_window = target_sequences[
+                :, i : i + future_steps, :
+            ]  # (num_samples, future_steps, num_features)
+            target_windows.append(
+                future_window.unsqueeze(1)
+            )  # (num_samples, 1, future_steps, num_features)
+
+        target_windows = torch.cat(
+            target_windows, dim=1
+        )  # (num_samples, usable_timesteps, future_steps, num_features)
+
+        # Now flatten num_samples and usable_timesteps into one dimension
+        all_samples = target_windows.reshape(
+            -1, future_steps, num_features
+        )  # (num_samples * usable_timesteps, future_steps, num_features)
+
+        # Trim to have full batches
+        total_samples = all_samples.shape[0]
+        num_batches = total_samples // batch_size
+        trimmed_size = num_batches * batch_size
+
+        all_samples = all_samples[:trimmed_size]
+
+        # Reshape into batches
+        target_batches = all_samples.reshape(
+            num_batches, batch_size, future_steps, num_features
         )
 
         return target_batches
@@ -595,6 +626,8 @@ class DataTransformer:
 
             # Get the expected output of the sequence
             next_value_idx = i + sequence_len
+
+            # Shape (timesteps, features)
             output = torch.tensor(
                 current_target_data.iloc[
                     next_value_idx : next_value_idx + future_steps
@@ -602,8 +635,10 @@ class DataTransformer:
                 dtype=torch.float32,
             )
 
-            # Reshape and append sequence output -> to match multiple timestep predictions
-            sequence_output.append(output.reshape(-1))
+            # Reshape to match multiple timestep predictions - shape (timesteps * features vector)
+            # output = output.reshape(-1)
+
+            sequence_output.append(output)
 
         return torch.stack(input_sequences), torch.stack(sequence_output)
 
@@ -671,11 +706,13 @@ class DataTransformer:
         train_targets_tensor = self.create_target_batches(
             batch_size=hyperparameters.batch_size,
             target_sequences=train_targets_tensor,
+            future_steps=hyperparameters.future_step_predict,
         )
 
         val_targets_tensor = self.create_target_batches(
             batch_size=hyperparameters.batch_size,
             target_sequences=val_targets_tensor,
+            future_steps=hyperparameters.future_step_predict,
         )
 
         return (
@@ -718,6 +755,7 @@ class DataTransformer:
                 sequence_len=SEQUENCE_LEN,
                 features=features,
                 targets=targets,
+                future_steps=hyperparameters.future_step_predict,
             )
 
             # Parse them to test and validation
@@ -771,11 +809,13 @@ class DataTransformer:
         train_targets_tensor = self.create_target_batches(
             batch_size=hyperparameters.batch_size,
             target_sequences=train_targets_all,
+            future_steps=hyperparameters.future_step_predict,
         )
 
         val_targets_tensor = self.create_target_batches(
             batch_size=hyperparameters.batch_size,
             target_sequences=test_targets_all,
+            future_steps=hyperparameters.future_step_predict,
         )
 
         return (
@@ -848,7 +888,9 @@ def main():
 
     # Test hyperparameters
     test_hyperparams = get_core_hyperparameters(
-        input_size=len(COLUMNS), future_step_predict=3
+        input_size=len(COLUMNS),
+        future_step_predict=4,
+        batch_size=2,
     )
 
     batch_train_inputs, batch_train_targets, batch_val_inputs, batch_val_targets = (

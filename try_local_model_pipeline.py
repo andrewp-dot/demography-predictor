@@ -89,7 +89,11 @@ def train_including_targets(epochs: int):
     custom_features = FEATURES + TARGETS
 
     hyperparameters: LSTMHyperparameters = get_core_hyperparameters(
-        input_size=len(custom_features), batch_size=32, epochs=epochs, hidden_size=128
+        input_size=len(custom_features),
+        batch_size=32,
+        epochs=epochs,
+        hidden_size=128,
+        future_step_predict=4,
     )
 
     pipeline = train_base_lstm(
@@ -156,7 +160,7 @@ if __name__ == "__main__":
     setup_logging()
 
     EPOCHS: int = 50
-    train_only_features(epochs=EPOCHS)
+    # train_only_features(epochs=EPOCHS)
     train_including_targets(epochs=EPOCHS)
 
-    evaluate_pipelines()
+    # evaluate_pipelines()
