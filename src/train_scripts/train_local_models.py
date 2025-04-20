@@ -190,6 +190,7 @@ def train_finetunable_model_from_scratch(
     )
 
 
+# TODO: fix this -> make pure ensemble model compatibile for pipeline
 def train_ensemble_model(
     name: str,
     hyperparameters: LSTMHyperparameters,
@@ -202,6 +203,7 @@ def train_ensemble_model(
     # Ensure the input / output size will be 1
     ADJUSTED_PARAMS = hyperparameters
     ADJUSTED_PARAMS.input_size = 1  # Predict 1 target at the time
+    ADJUSTED_PARAMS.output_size = 1
 
     trained_models: Dict[str, LocalModelPipeline] = {}
     for feature in features:
@@ -224,7 +226,7 @@ def train_ensemble_model(
         )
 
         # Create model
-        base_lstm = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=feature)
+        base_lstm = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=[feature])
 
         # Train model
         stats = base_lstm.train_model(
@@ -242,7 +244,9 @@ def train_ensemble_model(
         trained_models[feature] = pipeline
 
     # Create pipeline
-    return PureEnsembleModel(feature_models=trained_models)
+    return LocalModelPipeline(
+        transformer=transformer, model=PureEnsembleModel(feature_models=trained_models)
+    )
 
 
 def train_arima_ensemble_model(

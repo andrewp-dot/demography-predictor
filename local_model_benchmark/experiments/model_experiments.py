@@ -49,6 +49,7 @@ logger = logging.getLogger("benchmark")
 # make this work again -> make this compatible with pipelines?
 
 
+# TODO: Fix ensemble model
 class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
     """
     Compares performance of 2 models:
@@ -81,11 +82,15 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
     ]
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
-        input_size=len(FEATURES), batch_size=16, hidden_size=256
+        input_size=len(FEATURES),
+        batch_size=16,
+        hidden_size=256,
     )
 
     ENSEMBLE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
-        input_size=1, batch_size=16, hidden_size=64
+        input_size=1,
+        batch_size=16,
+        hidden_size=64,
     )
 
     def __init__(self, description: str):
@@ -136,7 +141,7 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
         # Create readme
         self.create_readme()
 
-        TO_COMPARE_MODELS: Dict[str, Union[BaseLSTM, PureEnsembleModel]] = {}
+        TO_COMPARE_MODELS: Dict[str, Union[LocalModelPipeline]] = {}
 
         # Get data loader
         states_loader: StatesDataLoader = StatesDataLoader()
@@ -157,10 +162,10 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
         # Evaluate models - per-target-performance
         comparator = ModelComparator()
         per_target_metrics_df = comparator.compare_models_by_states(
-            models=TO_COMPARE_MODELS, states=[state], by="per-features"
+            pipelines=TO_COMPARE_MODELS, states=[state], by="per-features"
         )
         overall_metrics_df = comparator.compare_models_by_states(
-            models=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
+            pipelines=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
         )
 
         # Print results to the readme
@@ -175,6 +180,7 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
         )
 
 
+# TODO: Fix ensemble model
 class FineTunedModels(BaseExperiment):
     """
     Experiment compares following models:
@@ -308,10 +314,10 @@ class FineTunedModels(BaseExperiment):
         # Evaluate models - per-target-performance
         comparator = ModelComparator()
         per_target_metrics_df = comparator.compare_models_by_states(
-            models=TO_COMPARE_MODELS, states=[state], by="per-features"
+            pipelines=TO_COMPARE_MODELS, states=[state], by="per-features"
         )
         overall_metrics_df = comparator.compare_models_by_states(
-            models=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
+            pipelines=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
         )
 
         # Print results to the readme
@@ -326,6 +332,7 @@ class FineTunedModels(BaseExperiment):
         )
 
 
+# TODO: Fix ensemble model
 class CompareWithStatisticalModels(BaseExperiment):
     """
     In this experiment the statistical models (ARIMA(1,1,1) and GM(1,1) models) are compared with BaseLSTM model.
@@ -607,46 +614,25 @@ if __name__ == "__main__":
         state=STATE
     )
 
-    failing_experiments = []
+    # TODO: EXP 1 - 3 are nto runnable due to broken (incompatibile) PureEnsembleModel with pipeline creation.
+    # exp_1 = FeaturePredictionSeparatelyVSAtOnce(
+    #     description="Compares single LSTM model vs LSTM for every feature."
+    # )
+    # exp_1.run(state="Czechia", split_rate=0.8)
 
-    # TODO: Try this if it is runnable
-    # try:
-    exp_1 = FeaturePredictionSeparatelyVSAtOnce(
-        description="Compares single LSTM model vs LSTM for every feature."
+    # exp_2 = FineTunedModels(
+    #     description="See if finetuning the model helps the model to be more accurate."
+    # )
+
+    # exp_2.run(state="Czechia", state_group=SELECTED_GROUP, split_rate=0.8)
+
+    exp_3 = CompareWithStatisticalModels(
+        description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
     )
-    exp_1.run(state="Czechia", split_rate=0.8)
-    # except Exception as e:
-    #     logger.error(f"exp 1: {e}")
-    #     failing_experiments.append("exp ")
-    # TODO: Try this if it is runnable
-
-    exit()
-
-    try:
-        exp_2 = FineTunedModels(
-            description="See if finetuning the model helps the model to be more accurate."
-        )
-
-        exp_2.run(state="Czechia", state_group=SELECTED_GROUP, split_rate=0.8)
-    except Exception as e:
-        logger.error(f"exp 2: {e}")
-        failing_experiments.append("exp 2")
-
-    # TODO: Try this if it is runnable
-
-    try:
-        exp_3 = CompareWithStatisticalModels(
-            description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
-        )
-        exp_3.run(state="Czechia", split_rate=0.8)
-    except Exception as e:
-        logger.error(f"exp 3: {e}")
-        failing_experiments.append("exp 3")
+    exp_3.run(state="Czechia", split_rate=0.8)
 
     # Runnable
     # exp_4 = DifferentHiddenLayers(
     #     description="Try to train BaseLSTM models with different layers."
     # )
     # exp_4.run(split_rate=0.8)
-
-    print(failing_experiments)

@@ -23,6 +23,7 @@ logger = logging.getLogger("local_model")
 
 
 # TODO: add hyperparameters or something...
+# TODO: fix this -> make pure ensemble model compatibile for pipeline
 class PureEnsembleModel:
 
     def __init__(

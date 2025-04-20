@@ -213,7 +213,10 @@ class ModelComparator:
                     model_sequence_len = (
                         pipeline.local_model_pipeline.model.hyperparameters.sequence_length
                     )
-
+            elif isinstance(pipeline.model, PureEnsembleModel):
+                model_sequence_len = get_core_hyperparameters(
+                    input_size=1
+                ).sequence_length
             else:
                 model_sequence_len = pipeline.model.hyperparameters.sequence_length
 
