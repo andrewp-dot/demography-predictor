@@ -85,12 +85,14 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
+        epochs=1,
     )
 
     ENSEMBLE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
         input_size=1,
         batch_size=16,
         hidden_size=64,
+        epochs=1,
     )
 
     def __init__(self, description: str):
@@ -121,21 +123,21 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
 
     def __train_ensemble_model(
         self, split_rate: float, display_nth_epoch=10
-    ) -> PureEnsembleModel:
+    ) -> LocalModelPipeline:
 
         loader = StatesDataLoader()
         all_states_dict = loader.load_all_states()
 
-        ensemble_model = train_ensemble_model(
+        pipeline = train_ensemble_model(
             name="ensemble-model",
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            hyperparameters=self.ENSEMBLE_MODELS_HYPERPARAMETERS,
             data=all_states_dict,
             features=self.FEATURES,
             split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
         )
 
-        return ensemble_model
+        return pipeline
 
     def run(self, state: str, split_rate: float = 0.8):
         # Create readme
@@ -399,13 +401,13 @@ class CompareWithStatisticalModels(BaseExperiment):
 
     def __train_ensemble_model(
         self, split_rate: float, display_nth_epoch=10
-    ) -> PureEnsembleModel:
+    ) -> LocalModelPipeline:
 
         loader = StatesDataLoader()
         all_states_dict = loader.load_all_states()
 
         # Train ARIMA instead
-        ensemble_model = train_ensemble_model(
+        pipeline = train_ensemble_model(
             name="ensemble-model",
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
             data=all_states_dict,
@@ -414,7 +416,7 @@ class CompareWithStatisticalModels(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
         )
 
-        return ensemble_model
+        return pipeline
 
     def __train_arima_ensemble_model(
         self, split_rate: float, state: str
@@ -615,10 +617,10 @@ if __name__ == "__main__":
     )
 
     # TODO: EXP 1 - 3 are nto runnable due to broken (incompatibile) PureEnsembleModel with pipeline creation.
-    # exp_1 = FeaturePredictionSeparatelyVSAtOnce(
-    #     description="Compares single LSTM model vs LSTM for every feature."
-    # )
-    # exp_1.run(state="Czechia", split_rate=0.8)
+    exp_1 = FeaturePredictionSeparatelyVSAtOnce(
+        description="Compares single LSTM model vs LSTM for every feature."
+    )
+    exp_1.run(state="Czechia", split_rate=0.8)
 
     # exp_2 = FineTunedModels(
     #     description="See if finetuning the model helps the model to be more accurate."

@@ -2,6 +2,7 @@
 import pandas as pd
 import logging
 from typing import Dict, Union, List
+import torch
 
 # Custom library imports
 from src.utils.log import setup_logging
@@ -39,6 +40,7 @@ class PureEnsembleModel:
             feature_models
         )
 
+    # TODO: put the tensor on the same device as the model is.
     def predict(
         self, input_data: pd.DataFrame, last_year: int, target_year: int
     ) -> pd.DataFrame:
@@ -46,7 +48,8 @@ class PureEnsembleModel:
         # Preprocess data
         years_to_predict = range(last_year + 1, target_year + 1)
 
-        timestep_predictions: pd.DataFrame | None = None
+        # timestep_predictions: pd.DataFrame | None = None
+        timestep_predictions: torch.Tensor | None = None
 
         # Predict each feature for every year
         for feature in self.FEATURES:
@@ -54,16 +57,22 @@ class PureEnsembleModel:
             current_model = self.model[feature]
             # By type
             if isinstance(current_model, LocalARIMA):
+
                 feature_prediction_df = current_model.predict(
-                    data=input_data, steps=len(years_to_predict)
+                    data=input_data[feature], steps=len(years_to_predict)
+                )
+
+                # TODO: make the tensor from this
+                feature_prediction = torch.tensor(
+                    feature_prediction_df.values, dtype=torch.float32
                 )
 
             if isinstance(current_model, BaseLSTM) or isinstance(
                 current_model, FineTunableLSTM
             ):
                 # Predict featue for X years
-                feature_prediction_df = current_model.predict(
-                    input_data=input_data,
+                feature_prediction = current_model.predict(
+                    input_data=input_data[feature],
                     last_year=last_year,
                     target_year=target_year,
                 )
@@ -71,15 +80,20 @@ class PureEnsembleModel:
             # Rows - years
             # Columns -> features
             if timestep_predictions is None:
-                timestep_predictions = feature_prediction_df
+                # timestep_predictions = feature_prediction_df
+                timestep_predictions = feature_prediction
             else:
                 # Concat by columns
-                timestep_predictions = pd.concat(
-                    [timestep_predictions, feature_prediction_df], axis=1
+                timestep_predictions = torch.cat(
+                    [timestep_predictions, feature_prediction], dim=1
                 )
 
-        # return prediction_df
-        return timestep_predictions
+        # At the end, after the loop
+        prediction_df = pd.DataFrame(
+            data=timestep_predictions.numpy(),  # or .cpu().numpy() if tensor is on GPU
+            columns=self.FEATURES,
+        )
+        return prediction_df
 
 
 def train_models_for_ensemble_model(

@@ -324,6 +324,8 @@ class BaseLSTM(CustomModelBase):
             out: torch.Tensor: Generated predictions.
         """
 
+        print(input_data)
+
         to_predict_years_num = (
             target_year - last_year
         )  # To include also the target year
@@ -339,6 +341,8 @@ class BaseLSTM(CustomModelBase):
 
         # Move input to the appropriate device
         input_sequence = torch.tensor(data=input_data.values, dtype=torch.float32)
+
+        print(input_sequence.shape)
 
         input_sequence.to(self.device)
         self.to(device=self.device)

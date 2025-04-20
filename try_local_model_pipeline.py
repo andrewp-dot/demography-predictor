@@ -27,8 +27,8 @@ settings = Config()
 # ]
 TARGETS: List[str] = [
     "population ages 15-64",
-    "population ages 0-14",
-    "population ages 65 and above",
+    # "population ages 0-14",
+    # "population ages 65 and above",
 ]
 
 # targets: List[str] = [
@@ -40,21 +40,21 @@ FEATURES = [
     col.lower()
     for col in [
         # "year",
-        "Fertility rate, total",
-        # "population, total",
-        # "Net migration",
-        "Arable land",
-        # "Birth rate, crude",
-        "GDP growth",
-        "Death rate, crude",
-        "Agricultural land",
-        # "Rural population",
-        "Rural population growth",
-        # "Age dependency ratio",
-        "Urban population",
-        "Population growth",
-        # "Adolescent fertility rate",
-        # "Life expectancy at birth, total",
+        # "Fertility rate, total",
+        "population, total",
+        # # "Net migration",
+        # "Arable land",
+        # # "Birth rate, crude",
+        # "GDP growth",
+        # "Death rate, crude",
+        # "Agricultural land",
+        # # "Rural population",
+        # "Rural population growth",
+        # # "Age dependency ratio",
+        # "Urban population",
+        # "Population growth",
+        # # "Adolescent fertility rate",
+        # # "Life expectancy at birth, total",
     ]
 ]
 
@@ -62,20 +62,31 @@ FEATURES = [
 def train_only_features(epochs: int):
 
     loader = StatesDataLoader()
-    states_data_dict = loader.load_all_states()
+    # states_data_dict = loader.load_all_states()
+    states_data_dict = loader.load_states(
+        states=[
+            *StatesByWealth().high_income,
+            *StatesByWealth().upper_middle_income,
+            *StatesByWealth().lower_middle_income,
+        ]
+    )
+
+    # custom_features = FEATURES
+    custom_features = TARGETS
 
     hyperparameters: LSTMHyperparameters = get_core_hyperparameters(
-        input_size=len(FEATURES),
+        input_size=len(custom_features),
         batch_size=32,
         epochs=epochs,
         hidden_size=128,
+        future_step_predict=1,
     )
 
     pipeline = train_base_lstm(
         name="lstm_features_only",
         hyperparameters=hyperparameters,
         data=states_data_dict,
-        features=FEATURES,
+        features=custom_features,
     )
 
     pipeline.save_pipeline()
@@ -84,16 +95,25 @@ def train_only_features(epochs: int):
 def train_including_targets(epochs: int):
 
     loader = StatesDataLoader()
-    states_data_dict = loader.load_all_states()
+    # states_data_dict = loader.load_all_states()
+    states_data_dict = loader.load_states(
+        states=[
+            *StatesByWealth().high_income,
+            *StatesByWealth().upper_middle_income,
+            *StatesByWealth().lower_middle_income,
+        ]
+    )
 
-    custom_features = FEATURES + TARGETS
+    # custom_features = FEATURES
+    custom_features = TARGETS
+    # custom_features = FEATURES + TARGETS
 
     hyperparameters: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(custom_features),
         batch_size=32,
         epochs=epochs,
         hidden_size=128,
-        future_step_predict=4,
+        future_step_predict=2,
     )
 
     pipeline = train_base_lstm(
@@ -123,7 +143,13 @@ def evaluate_pipelines():
     )
 
     # Split data
-    X_test_dict, y_test_dict = loader.split_data(
+    f_only_X_test_dict, f_only_y_test_dict = loader.split_data(
+        states_dict=states_data_dict,
+        sequence_len=features_only_pipeline.model.hyperparameters.sequence_length,
+        future_steps=features_only_pipeline.model.hyperparameters.future_step_predict,
+    )
+
+    tragets_included_X_test_dict, tragets_included_y_test_dict = loader.split_data(
         states_dict=states_data_dict,
         sequence_len=features_only_pipeline.model.hyperparameters.sequence_length,
         future_steps=features_only_pipeline.model.hyperparameters.future_step_predict,
@@ -133,11 +159,12 @@ def evaluate_pipelines():
     including_targets_eval = EvaluateModel(pipeline=including_targets_pipeline)
 
     f_only_df = features_only_eval.eval_for_every_state(
-        X_test_states=X_test_dict, y_test_states=y_test_dict
+        X_test_states=f_only_X_test_dict, y_test_states=f_only_y_test_dict
     )
 
     eval_targets_df = including_targets_eval.eval_for_every_state(
-        X_test_states=X_test_dict, y_test_states=y_test_dict
+        X_test_states=tragets_included_X_test_dict,
+        y_test_states=tragets_included_y_test_dict,
     )
 
     # Sort them by
@@ -161,7 +188,11 @@ if __name__ == "__main__":
     setup_logging()
 
     EPOCHS: int = 50
-    # train_only_features(epochs=EPOCHS)
-    # train_including_targets(epochs=EPOCHS)
+
+    # future_step_predict=1,
+    train_only_features(epochs=EPOCHS)
+
+    # future_step_predict=2,
+    train_including_targets(epochs=EPOCHS)
 
     evaluate_pipelines()

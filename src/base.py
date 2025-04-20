@@ -186,6 +186,8 @@ class CustomModelBase(nn.Module):
         self,
         batch_inputs: torch.Tensor,
         batch_targets: torch.Tensor,
+        batch_validation_inputs: torch.Tensor | None = None,
+        batch_validation_targets: torch.Tensor | None = None,
         display_nth_epoch: int = 10,
     ) -> None:
         raise NotImplementedError("Train function for your model is not implemented!")

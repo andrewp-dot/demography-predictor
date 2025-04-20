@@ -21,6 +21,7 @@ def get_experiment_result_dir() -> DirectoryPath:
 def get_core_parameters(
     input_size: int,
     hidden_size: int = 256,
+    future_step_predict: int = 1,
     sequence_length: int = 10,
     learning_rate: float = 0.0001,
     epochs: int = 10,
@@ -30,6 +31,7 @@ def get_core_parameters(
     BASE_HYPERPARAMETERS: LSTMHyperparameters = LSTMHyperparameters(
         input_size=input_size,
         hidden_size=hidden_size,
+        future_step_predict=future_step_predict,
         sequence_length=sequence_length,
         learning_rate=learning_rate,
         epochs=epochs,

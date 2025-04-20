@@ -198,54 +198,63 @@ def train_ensemble_model(
     features: List[str],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
-) -> PureEnsembleModel:
+) -> LocalModelPipeline:
 
     # Ensure the input / output size will be 1
     ADJUSTED_PARAMS = hyperparameters
     ADJUSTED_PARAMS.input_size = 1  # Predict 1 target at the time
     ADJUSTED_PARAMS.output_size = 1
 
-    trained_models: Dict[str, LocalModelPipeline] = {}
-    for feature in features:
+    # Preprocess data
+    transformer = DataTransformer()
 
-        # Preprocess data
-        transformer = DataTransformer()
+    (
+        batch_inputs,
+        batch_targets,
+        batch_validation_inputs,
+        batch_validation_targets,
+    ) = preprocess_data(
+        data=data,
+        hyperparameters=ADJUSTED_PARAMS,
+        features=features,
+        split_rate=split_rate,
+        transformer=transformer,
+        is_fitted=False,
+    )
 
-        (
-            batch_inputs,
-            batch_targets,
-            batch_validation_inputs,
-            batch_validation_targets,
-        ) = preprocess_data(
-            data=data,
-            hyperparameters=ADJUSTED_PARAMS,
-            features=[feature],
-            split_rate=split_rate,
-            transformer=transformer,
-            is_fitted=False,
-        )
+    trained_models: Dict[str, BaseLSTM] = {}
+    for i, feature in enumerate(features):
 
         # Create model
         base_lstm = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=[feature])
 
+        # Select only the i-th feature for this model
+        feature_batch_inputs = batch_inputs[
+            :, :, :, i : i + 1
+        ]  # (num_samples, batch_size, seq_len, 1)
+        feature_batch_targets = batch_targets[
+            :, :, :, i : i + 1
+        ]  # Same and for validation it is the same
+
+        feature_batch_validation_inputs = batch_validation_inputs[:, :, :, i : i + 1]
+        feature_batch_validation_targets = batch_validation_targets[:, :, :, i : i + 1]
+
         # Train model
         stats = base_lstm.train_model(
-            batch_inputs=batch_inputs,
-            batch_targets=batch_targets,
-            batch_validation_inputs=batch_validation_inputs,
-            batch_validation_targets=batch_validation_targets,
+            batch_inputs=feature_batch_inputs,
+            batch_targets=feature_batch_targets,
+            batch_validation_inputs=feature_batch_validation_inputs,
+            batch_validation_targets=feature_batch_validation_targets,
             display_nth_epoch=display_nth_epoch,
         )
 
-        pipeline = LocalModelPipeline(
-            name=f"{name}-{feature}", model=base_lstm, transformer=transformer
-        )
-
-        trained_models[feature] = pipeline
+        trained_models[feature] = base_lstm
 
     # Create pipeline
     return LocalModelPipeline(
-        transformer=transformer, model=PureEnsembleModel(feature_models=trained_models)
+        name=name,
+        transformer=transformer,
+        model=PureEnsembleModel(feature_models=trained_models),
     )
 
 
