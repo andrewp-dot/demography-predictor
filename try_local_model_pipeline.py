@@ -126,6 +126,7 @@ def evaluate_pipelines():
     X_test_dict, y_test_dict = loader.split_data(
         states_dict=states_data_dict,
         sequence_len=features_only_pipeline.model.hyperparameters.sequence_length,
+        future_steps=features_only_pipeline.model.hyperparameters.future_step_predict,
     )
 
     features_only_eval = EvaluateModel(pipeline=features_only_pipeline)
@@ -161,6 +162,6 @@ if __name__ == "__main__":
 
     EPOCHS: int = 50
     # train_only_features(epochs=EPOCHS)
-    train_including_targets(epochs=EPOCHS)
+    # train_including_targets(epochs=EPOCHS)
 
-    # evaluate_pipelines()
+    evaluate_pipelines()

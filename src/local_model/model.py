@@ -148,9 +148,9 @@ class BaseLSTM(CustomModelBase):
         # )
 
         out = out.view(
-            self.hyperparameters.batch_size,
+            batch_size,
             self.hyperparameters.future_step_predict,
-            -1,
+            self.hyperparameters.output_size,
         )
 
         return out
@@ -305,9 +305,7 @@ class BaseLSTM(CustomModelBase):
 
         return pred
 
-    # TODO:
-    # Rewrite this for prediction -> input (scaled data - tensor?) -> output (scaled data -> tensor?)
-    # Make prediction method in pipeline
+    # TODO: edit this to use future timesteps + autoregression
     def predict(
         self,
         input_data: pd.DataFrame,
@@ -345,60 +343,44 @@ class BaseLSTM(CustomModelBase):
         input_sequence.to(self.device)
         self.to(device=self.device)
 
-        num_timesteps, input_size = input_sequence.shape
         sequence_length = self.hyperparameters.sequence_length
+
+        PREDICTED_STEPS: int = self.hyperparameters.future_step_predict
 
         # Array of predicions of previous values
         predictions = []
 
-        # Predictions for new years (from last to target_year)
-        new_predictions = []
         with torch.no_grad():
-
-            # NOTE: predivous data has no effect on this.
-            # # Use past data for further context
-            # logger.critical("Using context")
-            # for i in range(num_timesteps - sequence_length + 1):
-
-            #     # Slide over the sequence
-            #     window = input_sequence[i : i + sequence_length]  # Extract window
-            #     window = window.unsqueeze(0).to(
-            #         device=self.device
-            #     )  # Add batch dimension: (1, sequence_length, input_size)
-
-            #     # Forward pass
-            #     pred = self(window)
-
-            #     predictions.append(pred.cpu())
 
             current_window = (
                 input_sequence[-sequence_length:].unsqueeze(0).to(device=self.device)
             )
 
-            # logger.critical("Kokot")
-
-            # Predict new data using autoregression
-            for _ in range(to_predict_years_num):
+            # Calculate number of iterations
+            num_of_iterations = (
+                to_predict_years_num + PREDICTED_STEPS - 1
+            ) // PREDICTED_STEPS
+            for _ in range(num_of_iterations):
                 logger.debug(f"Current input window: {current_window}")
 
                 # Forward pass
-                pred = self(current_window)  # Shape: (1, output_size)
-                pred_value = pred.squeeze(0)  # Remove batch dim
-                logger.debug(f"New prediction value: {pred_value}")
+                pred = self(current_window)  # Shape: (1, future_steps, output_size)
 
-                predictions.append(pred.cpu())  # Store new prediction
-                new_predictions.append(pred.cpu())
+                pred_values = pred.squeeze(0)  # (future_steps, output_size)
+
+                # Store new predictions
+                predictions.append(pred_values.cpu())
 
                 # Shift the window by removing the first value and adding the new prediction
                 current_window = torch.cat(
-                    (current_window[:, 1:, :], pred.unsqueeze(0)), dim=1
+                    (current_window[:, PREDICTED_STEPS:, :], pred_values.unsqueeze(0)),
+                    dim=1,
                 )
 
-        # Combine with years
-        for year, pred in zip(range(last_year + 1, target_year + 1), new_predictions):
-            logger.debug(f"{year}: {pred}")
+        new_predictions_tensor = torch.cat(predictions, dim=0)
 
-        new_predictions_tensor = torch.cat(new_predictions, dim=0)
+        # Get only prediction to the target year
+        new_predictions_tensor = new_predictions_tensor[:to_predict_years_num]
 
         return new_predictions_tensor
 
