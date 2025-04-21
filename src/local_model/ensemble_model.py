@@ -72,7 +72,7 @@ class PureEnsembleModel:
             ):
                 # Predict featue for X years
                 feature_prediction = current_model.predict(
-                    input_data=input_data[feature],
+                    input_data=input_data[feature].to_frame(),
                     last_year=last_year,
                     target_year=target_year,
                 )

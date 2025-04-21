@@ -85,14 +85,12 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
-        epochs=1,
     )
 
     ENSEMBLE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
         input_size=1,
         batch_size=16,
         hidden_size=64,
-        epochs=1,
     )
 
     def __init__(self, description: str):
