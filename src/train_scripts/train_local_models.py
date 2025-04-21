@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 from typing import List, Tuple, Union, Dict, Optional
 
+import copy
 
 from config import Config
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
@@ -202,7 +203,7 @@ def train_ensemble_model(
 ) -> LocalModelPipeline:
 
     # Ensure the input / output size will be 1
-    ADJUSTED_PARAMS = hyperparameters
+    ADJUSTED_PARAMS = copy.deepcopy(hyperparameters)
     ADJUSTED_PARAMS.input_size = 1  # Predict 1 target at the time
     ADJUSTED_PARAMS.output_size = 1
 

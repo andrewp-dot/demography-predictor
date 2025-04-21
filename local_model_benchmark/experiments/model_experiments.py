@@ -166,7 +166,9 @@ class FineTunedModels(BaseExperiment):
     FEATURES: List[str] = basic_features()
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
-        input_size=len(FEATURES), batch_size=16, hidden_size=256, epochs=1
+        input_size=len(FEATURES),
+        batch_size=16,
+        hidden_size=256,
     )
 
     FINETUNE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
@@ -297,7 +299,10 @@ class CompareWithStatisticalModels(BaseExperiment):
     FEATURES: List[str] = basic_features()
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
-        input_size=len(FEATURES), batch_size=16, hidden_size=256
+        input_size=len(FEATURES),
+        batch_size=16,
+        hidden_size=256,
+        epochs=1,
     )
 
     FINETUNE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(

@@ -185,11 +185,13 @@ class LocalModelPipeline(BasePipeline):
         # Scale data
 
         # If it is pure ensemble model and transformer is None, it is supposed that it is ensemble local arima model
+        SUPPOSED_ARIMA_MODEL: bool = False
         if (
             isinstance(self.model, PureEnsembleModel)
             and self.transformer.SCALER is None
         ):
             scaled_data_df = input_data
+            SUPPOSED_ARIMA_MODEL = True
 
         elif FEATURES == TARGETS:
             scaled_data_df = self.transformer.scale_data(
@@ -223,9 +225,12 @@ class LocalModelPipeline(BasePipeline):
         )
 
         # Unscale targets
-        future_feature_values_df = self.transformer.unscale_data(
-            data=future_feature_values_scaled_df, targets=TARGETS
-        )
+        if SUPPOSED_ARIMA_MODEL:
+            future_feature_values_df = future_feature_values_scaled_df
+        else:
+            future_feature_values_df = self.transformer.unscale_data(
+                data=future_feature_values_scaled_df, targets=TARGETS
+            )
 
         return future_feature_values_df
 

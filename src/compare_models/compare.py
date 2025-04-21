@@ -201,7 +201,9 @@ class ModelComparator:
 
         # Getnerate evaluation for every model
         for model_name, pipeline in pipelines.items():
-            # Preprocess data for the model - suppoorts different sequence length, by type
+            # Preprocess data for the model - supports different sequence length, by type
+
+            print(model_name)
 
             # Adjust hyperparameters by the model type
             if isinstance(pipeline, PredictorPipeline):
