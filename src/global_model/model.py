@@ -297,6 +297,9 @@ class GlobalModel:
         # Fit the model
         logger.info("Fitting model...")
 
+        print(X_train.head())
+        print(y_train.head())
+
         self.model.fit(X_train, y_train)
         logger.info("Model succesfuly fitted!")
 

@@ -7,13 +7,14 @@ from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
 from src.utils.log import setup_logging
+from src.utils.constants import basic_features
+
 from local_model_benchmark.config import (
     LocalModelBenchmarkSettings,
     get_core_parameters,
 )
 
 # from src.utils.save_model import save_experiment_model, get_experiment_model
-from src.base import CustomModelBase
 from src.state_groups import StatesByGeolocation, StatesByWealth
 
 from src.pipeline import LocalModelPipeline
@@ -29,15 +30,12 @@ from src.compare_models.compare import ModelComparator
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
 from src.local_model.model import LSTMHyperparameters, BaseLSTM
 
-from src.evaluation import EvaluateModel
-from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import (
     PureEnsembleModel,
     # train_models_for_ensemble_model,
-    train_arima_models_for_ensemble_model,
+    # train_arima_models_for_ensemble_model,
 )
 
-from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 
@@ -45,11 +43,7 @@ settings = LocalModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
 
 
-# TODO:
-# make this work again -> make this compatible with pipelines?
-
-
-# TODO: Fix ensemble model
+# TODO: set the features using constants in src.utils.constatns
 class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
     """
     Compares performance of 2 models:
@@ -59,27 +53,8 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
     Models are compared by evaluation on the specific (chosen) states data.
     """
 
-    FEATURES: List[str] = [
-        col.lower()
-        for col in [
-            "year",
-            "Fertility rate, total",
-            # "Population, total",
-            "Net migration",
-            "Arable land",
-            "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            "Rural population",
-            "Rural population growth",
-            "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            "Adolescent fertility rate",
-            "Life expectancy at birth, total",
-        ]
-    ]
+    SKIP_FEATURES: List[str] = []
+    FEATURES: List[str] = basic_features()
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
         input_size=len(FEATURES),
@@ -189,30 +164,11 @@ class FineTunedModels(BaseExperiment):
     - FineTunableLSTM - group of states
     """
 
-    FEATURES: List[str] = [
-        col.lower()
-        for col in [
-            "year",
-            "Fertility rate, total",
-            # "Population, total",
-            "Net migration",
-            "Arable land",
-            "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            "Rural population",
-            "Rural population growth",
-            "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            "Adolescent fertility rate",
-            "Life expectancy at birth, total",
-        ]
-    ]
+    SKIP_FEATURES: List[str] = []
+    FEATURES: List[str] = basic_features()
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
-        input_size=len(FEATURES), batch_size=16, hidden_size=256
+        input_size=len(FEATURES), batch_size=16, hidden_size=256, epochs=1
     )
 
     FINETUNE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
@@ -295,7 +251,8 @@ class FineTunedModels(BaseExperiment):
 
         # Finetune base lstm using single state
         TO_COMPARE_MODELS["single-state-finetuned"] = self.__train_finetuned_lstm_model(
-            base_model=TO_COMPARE_MODELS["base-lstm"],
+            name="single-state-finetuned",
+            base_pipeline=TO_COMPARE_MODELS["base-lstm"],
             states_loader=states_loader,
             states=[state],
             split_rate=split_rate,
@@ -304,7 +261,8 @@ class FineTunedModels(BaseExperiment):
 
         # Finetune base lstm using group of states state
         TO_COMPARE_MODELS["group-states-finetuned"] = self.__train_finetuned_lstm_model(
-            base_model=TO_COMPARE_MODELS["base-lstm"],
+            name="group-states-finetuned",
+            base_pipeline=TO_COMPARE_MODELS["base-lstm"],
             states=state_group,
             states_loader=states_loader,
             split_rate=split_rate,
@@ -338,27 +296,8 @@ class CompareWithStatisticalModels(BaseExperiment):
     In this experiment the statistical models (ARIMA(1,1,1) and GM(1,1) models) are compared with BaseLSTM model.
     """
 
-    FEATURES: List[str] = [
-        col.lower()
-        for col in [
-            "year",
-            "Fertility rate, total",
-            # "Population, total",
-            "Net migration",
-            "Arable land",
-            "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            "Rural population",
-            "Rural population growth",
-            "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            "Adolescent fertility rate",
-            "Life expectancy at birth, total",
-        ]
-    ]
+    SKIP_FEATURES: List[str] = []
+    FEATURES: List[str] = basic_features()
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
         input_size=len(FEATURES), batch_size=16, hidden_size=256
@@ -417,10 +356,13 @@ class CompareWithStatisticalModels(BaseExperiment):
         return pipeline
 
     def __train_arima_ensemble_model(
-        self, split_rate: float, state: str
+        self, name: str, split_rate: float, state: str
     ) -> PureEnsembleModel:
         ensemble_model = train_arima_ensemble_model(
-            features=self.FEATURES, state=state, split_rate=split_rate
+            name=name,
+            features=self.FEATURES,
+            state=state,
+            split_rate=split_rate,
         )
 
         return ensemble_model
@@ -437,7 +379,6 @@ class CompareWithStatisticalModels(BaseExperiment):
         # Train base lstm
         TO_COMPARE_MODELS["base-lstm"] = self.__train_base_lstm_model(
             name="base-lstm",
-            features=self.FEATURES,
             states_loader=states_loader,
             split_rate=split_rate,
             display_nth_epoch=1,
@@ -451,7 +392,7 @@ class CompareWithStatisticalModels(BaseExperiment):
 
         # TODO: train ARIMA
         TO_COMPARE_MODELS["ensemble-arima"] = self.__train_arima_ensemble_model(
-            split_rate=split_rate, state=state
+            name="ensemble-arima", split_rate=split_rate, state=state
         )
 
         # TODO: train GM model
@@ -479,27 +420,8 @@ class CompareWithStatisticalModels(BaseExperiment):
 
 class DifferentHiddenLayers(BaseExperiment):
 
-    FEATURES = [
-        col.lower()
-        for col in [
-            # "year",
-            "Fertility rate, total",
-            # "population, total",
-            # "Net migration",
-            "Arable land",
-            # "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            # "Rural population",
-            "Rural population growth",
-            # "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            # "Adolescent fertility rate",
-            # "Life expectancy at birth, total",
-        ]
-    ]
+    SKIP_FEATURES: List[str] = []
+    FEATURES: List[str] = basic_features()
 
     HIDDEN_SIZE_TO_TRY: List[int] = [32, 64, 128, 256, 512]
 
@@ -614,11 +536,10 @@ if __name__ == "__main__":
         state=STATE
     )
 
-    # TODO: EXP 1 - 3 are nto runnable due to broken (incompatibile) PureEnsembleModel with pipeline creation.
-    exp_1 = FeaturePredictionSeparatelyVSAtOnce(
-        description="Compares single LSTM model vs LSTM for every feature."
-    )
-    exp_1.run(state="Czechia", split_rate=0.8)
+    # exp_1 = FeaturePredictionSeparatelyVSAtOnce(
+    #     description="Compares single LSTM model vs LSTM for every feature."
+    # )
+    # exp_1.run(state="Czechia", split_rate=0.8)
 
     # exp_2 = FineTunedModels(
     #     description="See if finetuning the model helps the model to be more accurate."
@@ -626,10 +547,11 @@ if __name__ == "__main__":
 
     # exp_2.run(state="Czechia", state_group=SELECTED_GROUP, split_rate=0.8)
 
-    # exp_3 = CompareWithStatisticalModels(
-    #     description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
-    # )
-    # exp_3.run(state="Czechia", split_rate=0.8)
+    # 3 are nto runnable due to broken (incompatibile) PureEnsembleModel with pipeline creation.
+    exp_3 = CompareWithStatisticalModels(
+        description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
+    )
+    exp_3.run(state="Czechia", split_rate=0.8)
 
     # Runnable
     # exp_4 = DifferentHiddenLayers(

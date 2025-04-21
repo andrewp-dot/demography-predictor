@@ -63,7 +63,8 @@ def preprocess_data(
         # Create a dictionary from the scaled data
         scaled_data = pd.concat([scaled_train_data, scaled_validation_data], axis=0)
     else:
-        scaled_data = transformer.scale_data(data=original_data, columns=features)
+        original_data = states_loader.merge_states(original_data)
+        scaled_data = transformer.scale_data(data=original_data, features=features)
 
     scaled_states_dict = states_loader.parse_states(scaled_data)
 
@@ -259,8 +260,8 @@ def train_ensemble_model(
 
 
 def train_arima_ensemble_model(
-    features: List[str], state: str, split_rate: float = 0.8
-) -> PureEnsembleModel:
+    name: str, features: List[str], state: str, split_rate: float = 0.8
+) -> LocalModelPipeline:
 
     # Load state data
     state_loader = StateDataLoader(state=state)
@@ -282,4 +283,9 @@ def train_arima_ensemble_model(
         # Save trained model
         trained_models[feature] = arima
 
-    return PureEnsembleModel(feature_models=trained_models)
+    # Create pipeline
+    return LocalModelPipeline(
+        name=name,
+        transformer=DataTransformer(),
+        model=PureEnsembleModel(feature_models=trained_models),
+    )

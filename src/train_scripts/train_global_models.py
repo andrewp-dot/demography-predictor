@@ -37,22 +37,27 @@ def train_global_model(
     states_loader = StatesDataLoader()
 
     # Create train and test for XGB (Global Model)
-    X_train, X_test, y_train, y_test = global_model.create_train_test_timeseries(
+    X_train, X_test, y_train, _ = global_model.create_train_test_timeseries(
         states_dfs=states_data,
         states_loader=states_loader,
         split_size=split_size,
     )
 
+    print(features)
+    print(targets)
+    print(X_train.shape)
+    print(X_test.shape)
+
     # Scale the training data
     if transfomer is None:
         transfomer = DataTransformer()
-        scaled_training_data, scaled_validation_data = transfomer.scale_and_fit(
+        scaled_training_data, _ = transfomer.scale_and_fit(
             training_data=X_train,
             validation_data=X_test,
             features=features,
         )
     else:
-        scaled_training_data = transfomer.scale_data(data=X_train)
+        scaled_training_data = transfomer.scale_data(data=X_train, features=features)
         # scaled_validation_data = transfomer.scale_data(data=X_test)
 
     # Train XGB
@@ -79,7 +84,7 @@ def main():
     TARGETS: List[str] = [""]
 
     global_model_pipeline = train_global_model(
-        data=state_df_merged, features=FEATURES, targets=TARGETS
+        states_data=state_df_merged, features=FEATURES, targets=TARGETS
     )
 
 

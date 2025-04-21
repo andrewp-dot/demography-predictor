@@ -1,5 +1,6 @@
 # Custom library imports
 from src.base import LSTMHyperparameters
+from typing import List
 
 
 # Create or load base model
@@ -29,3 +30,59 @@ def get_core_hyperparameters(
     )
 
     return BASE_HYPERPARAMETERS
+
+
+# Feature constants
+def hihgly_correlated_features() -> List[str]:
+    return [
+        "life expectancy at birth, total",
+        "age dependency ratio",
+        "rural population",
+        "birth rate, crude",
+        "adolescent fertility rate",
+    ]
+
+
+def basic_features(exclude: List[str] | None = None) -> List[str]:
+    return [
+        col.lower()
+        for col in [
+            "year",
+            "Fertility rate, total",
+            "population, total",
+            "Net migration",
+            "Arable land",
+            "Birth rate, crude",
+            "GDP growth",
+            "Death rate, crude",
+            "Agricultural land",
+            "Rural population",
+            "Rural population growth",
+            "Age dependency ratio",
+            "Urban population",
+            "Population growth",
+            "Adolescent fertility rate",
+            "Life expectancy at birth, total",
+        ]
+        if col not in exclude
+    ]
+
+
+# Targets constants
+def aging_targets() -> List[str]:
+    return [
+        "population ages 15-64",
+        "population ages 0-14",
+        "population ages 65 and above",
+    ]
+
+
+def gender_distribution_targets() -> List[str]:
+    return [
+        "population, female",
+        "population, male",
+    ]
+
+
+def population_total_targets() -> List[str]:
+    return ["population, total"]

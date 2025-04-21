@@ -24,7 +24,7 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 def train_basic_pipeline(
     name: str,
-    global_model_data: pd.DataFrame,
+    global_model_data_dict: Dict[str, pd.DataFrame],
     local_model_data_dict: Dict[str, pd.DataFrame],
     hyperparameters: LSTMHyperparameters,
     local_model_features: List[str],
@@ -36,6 +36,7 @@ def train_basic_pipeline(
 
     # Train local model pipeline
     local_model_pipeline = train_base_lstm(
+        name="base-lstm",
         hyperparameters=hyperparameters,
         data=local_model_data_dict,
         features=local_model_features,
@@ -53,9 +54,11 @@ def train_basic_pipeline(
     )
 
     global_model_pipeline = train_global_model(
-        data=global_model_data,
-        features=[*local_model_features, *additional_global_model_features],
+        name="xgb-gm",
+        states_data=global_model_data_dict,
+        features=list(set([*local_model_features, *additional_global_model_features])),
         targets=global_model_targets,
+        sequence_len=5,
         tune_parameters=tune_parameters,
     )
 

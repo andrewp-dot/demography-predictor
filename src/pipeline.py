@@ -183,7 +183,15 @@ class LocalModelPipeline(BasePipeline):
         TARGETS: List[str] = self.model.TARGETS
 
         # Scale data
-        if FEATURES == TARGETS:
+
+        # If it is pure ensemble model and transformer is None, it is supposed that it is ensemble local arima model
+        if (
+            isinstance(self.model, PureEnsembleModel)
+            and self.transformer.SCALER is None
+        ):
+            scaled_data_df = input_data
+
+        elif FEATURES == TARGETS:
             scaled_data_df = self.transformer.scale_data(
                 data=input_data,
                 features=FEATURES,
