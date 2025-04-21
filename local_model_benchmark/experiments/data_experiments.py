@@ -13,8 +13,9 @@ import pprint
 from src.utils.log import setup_logging
 from local_model_benchmark.config import (
     LocalModelBenchmarkSettings,
-    get_core_parameters,
 )
+
+from src.utils.constants import get_core_hyperparameters, basic_features
 
 # from src.utils.save_model import save_experiment_model, get_experiment_model
 from src.base import CustomModelBase
@@ -89,12 +90,12 @@ class DataUsedForTraining(BaseExperiment):
         # if col.lower() not in HIGHLY_CORRELATED_COLUMNS
     ]
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES)
     )
 
-    MULTISTATE_BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
-        input_size=len(FEATURES), batch_size=16, epochs=10
+    MULTISTATE_BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = (
+        get_core_hyperparameters(input_size=len(FEATURES), batch_size=16, epochs=10)
     )
 
     def __init__(self, description: str):
@@ -295,7 +296,7 @@ class StatesByGroup(BaseExperiment):
         if col.lower() not in HIGHLY_CORRELATED_COLUMNS
     ]
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
     )
@@ -503,7 +504,7 @@ class FeatureSelectionExperiment(BaseExperiment):
         if col.lower() not in HIGHLY_CORRELATED_COLUMNS
     ]
 
-    BASE_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    BASE_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         len(FEATURES), batch_size=32
     )
 
@@ -545,7 +546,7 @@ class FeatureSelectionExperiment(BaseExperiment):
                 current_features = [f for f in all_features if f != excluded_feature]
 
                 # Train model
-                hyperparams = get_core_parameters(
+                hyperparams = get_core_hyperparameters(
                     input_size=len(current_features),
                     batch_size=batch_size,
                     epochs=epochs,
@@ -597,6 +598,33 @@ class FeatureSelectionExperiment(BaseExperiment):
             text=f"```\n{bad_performing_features_formated}\n```\n\n",
             title="## Bad performing features",
         )
+
+
+class StatesSubsetExperiment(BaseExperiment):
+
+    FEATURES: List[str] = basic_features()
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+        input_size=len(FEATURES)
+    )
+
+    def __init__(self, description: str):
+        super().__init__(name=self.__class__.__name__, description=description)
+
+    def run(self):
+
+        # TODO: group selection of states
+
+        # Train a base lstm model using a group
+        BEST_GROUP: List[str] = []
+
+        # Train model using created group of states
+        pipeline = train_base_lstm(
+            name="base-lstm", hyperparameters=self.BASE_LSTM_HYPERPARAMETERS
+        )
+
+        # Eval pipeline
+
+        # If the overall score is better, save the group
 
 
 def main():

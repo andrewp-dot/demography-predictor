@@ -494,6 +494,12 @@ class DifferentHiddenLayers(BaseExperiment):
         )
 
 
+# Exp Ideas
+
+# From simple to more complex models
+# Different Features -> target experiments
+
+
 class DifferentArchitecturesComparision(BaseExperiment):
 
     FEATURES: List[str] = basic_features()
