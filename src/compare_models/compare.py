@@ -203,7 +203,7 @@ class ModelComparator:
         for model_name, pipeline in pipelines.items():
             # Preprocess data for the model - supports different sequence length, by type
 
-            print(model_name)
+            logger.info(f"Evaluating model: {model_name}")
 
             # Adjust hyperparameters by the model type
             if isinstance(pipeline, PredictorPipeline):

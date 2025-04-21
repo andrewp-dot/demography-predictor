@@ -13,7 +13,7 @@ from src.local_model.experimental import ExpLSTM
 from src.pipeline import LocalModelPipeline
 
 
-from src.feature_explainer.explain import LSTMExplainer
+from feature_explainer.explainers import LSTMExplainer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 

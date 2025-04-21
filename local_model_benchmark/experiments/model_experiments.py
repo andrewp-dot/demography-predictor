@@ -21,6 +21,7 @@ from src.pipeline import LocalModelPipeline
 from src.train_scripts.train_local_models import (
     train_base_lstm,
     train_finetunable_model,
+    train_finetunable_model_from_scratch,
     train_ensemble_model,
     train_arima_ensemble_model,
 )
@@ -281,7 +282,7 @@ class FineTunedModels(BaseExperiment):
         # Print results to the readme
         self.readme_add_section(
             title="## Per target metrics - model comparision",
-            text=f"```\n{per_target_metrics_df}\n```\n\n",
+            text=f"```\n{per_target_metrics_df.sort_values(by=['state','target'])}\n```\n\n",
         )
 
         self.readme_add_section(
@@ -290,7 +291,6 @@ class FineTunedModels(BaseExperiment):
         )
 
 
-# TODO: Fix ARIMA ensemble model
 class CompareWithStatisticalModels(BaseExperiment):
     """
     In this experiment the statistical models (ARIMA(1,1,1) and GM(1,1) models) are compared with BaseLSTM model.
@@ -390,9 +390,6 @@ class CompareWithStatisticalModels(BaseExperiment):
             split_rate=split_rate, display_nth_epoch=1
         )
 
-        # TODO: statistical models in here
-
-        # TODO: train ARIMA
         TO_COMPARE_MODELS["ensemble-arima"] = self.__train_arima_ensemble_model(
             name="ensemble-arima", split_rate=split_rate, state=state
         )
@@ -471,10 +468,15 @@ class DifferentHiddenLayers(BaseExperiment):
         )
 
         # Print results to the readme
+        # Add per metric rankings
+        # Print all dataframe
+        pd.set_option("display.max_rows", None)
         self.readme_add_section(
             title="## Per target metrics - model comparision",
-            text=f"```\n{per_target_metrics_df.sort_values(by=['state'])}\n```\n\n",
+            text=f"```\n{per_target_metrics_df.sort_values(by=['state', 'target'])}\n```\n\n",
         )
+
+        pd.reset_option("display.max_rows")
 
         self.readme_add_section(
             title="## Overall metrics - model comparision",
@@ -496,29 +498,130 @@ class DifferentArchitecturesComparision(BaseExperiment):
 
     FEATURES: List[str] = basic_features()
 
+    # Base LSTM
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
-        input_size=len(FEATURES), batch_size=16
+        input_size=len(FEATURES),
+        batch_size=16,
     )
 
-    # TODO:
-    # Start with simple architectures -> low number of layers
-    NUMBER_OF_LAYERS: List[int] = [1, 3, 5]
+    # Base LSTM with more then 1 future prediction
+    FUTURE_BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        input_size=len(FEATURES),
+        batch_size=16,
+        future_step_predict=3,
+    )
 
-    # Try to train model to predict more then 1 point
-    FUTURE_POINTS_TO_PREDICT: List[int] = [1, 2, 3, 4]
+    # Funnel architecture
+    WIDE_LAYERS_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        input_size=len(FEATURES),
+        batch_size=16,
+        hidden_size=256,
+        num_layers=1,
+    )
 
-    # Try different architectures
+    NARROW_LAYERS_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+        input_size=len(FEATURES),
+        batch_size=16,
+        hidden_size=128,
+        num_layers=1,
+    )
 
-    # Base LSTM
-    # Finetuned model
-    # Ensemble model
-    # Seq2seq
+    EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
+
+    # TODO: to add
+    # Seq2seq - encoder decoder model
+    # LSTM + BPNN
+    # BPNN
+    # Ensemble model (?)
 
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
-        raise NotImplementedError(
-            "Comparision using different architecture not implemented yet."
+
+    def run(self, split_rate: float = 0.8):
+
+        # Setup readme
+        self.create_readme()
+
+        # Load data
+        loader = StatesDataLoader()
+        states_data_dict = loader.load_all_states()
+
+        TO_COMPARE_PIPELINES: Dict[str, LocalModelPipeline] = {}
+
+        DISPLAY_NTH_EPOCH = 1
+
+        # Create base lstm
+        TO_COMPARE_PIPELINES["base-lstm"] = train_base_lstm(
+            name="base-lstm",
+            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=DISPLAY_NTH_EPOCH,
         )
+
+        # Create same LSTM but with prediction to future
+        TO_COMPARE_PIPELINES["future-base-lstm"] = train_base_lstm(
+            name="future-base-lstm",
+            hyperparameters=self.FUTURE_BASE_LSTM_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=DISPLAY_NTH_EPOCH,
+        )
+
+        # Create simple base LSTM - 1 layer with 256 hidden size + 1 layer with 128 hidden size
+        TO_COMPARE_PIPELINES["simple-funnel-lstm"] = (
+            train_finetunable_model_from_scratch(
+                name="simple-funnel-lstm",
+                base_model_hyperparameters=self.WIDE_LAYERS_LSTM_HYPERPARAMETERS,
+                finetunable_model_hyperparameters=self.NARROW_LAYERS_LSTM_HYPERPARAMETERS,
+                base_model_data=states_data_dict,
+                finetunable_model_data=states_data_dict,
+                features=self.FEATURES,
+                split_rate=split_rate,
+                display_nth_epoch=DISPLAY_NTH_EPOCH,
+            )
+        )
+
+        comparator = ModelComparator()
+
+        EVALUATION_STATES = self.EVALUATION_STATES
+
+        per_target_metrics_df = comparator.compare_models_by_states(
+            pipelines=TO_COMPARE_PIPELINES, states=EVALUATION_STATES, by="per-features"
+        )
+        overall_metrics_df = comparator.compare_models_by_states(
+            pipelines=TO_COMPARE_PIPELINES,
+            states=EVALUATION_STATES,
+            by="overall-metrics",
+        )
+
+        # Print results to the readme
+        # Add per metric rankings
+        # Print all dataframe
+        pd.set_option("display.max_rows", None)
+        self.readme_add_section(
+            title="## Per target metrics - model comparision",
+            text=f"```\n{per_target_metrics_df.sort_values(by=['state', 'target'])}\n```\n\n",
+        )
+
+        pd.reset_option("display.max_rows")
+
+        self.readme_add_section(
+            title="## Overall metrics - model comparision",
+            text=f"```\n{overall_metrics_df.sort_values(by=['state'])}\n```\n\n",
+        )
+
+        # Print honduras plot
+        # fig = comparator.create_state_comparison_plot(state="Honduras")
+
+        # self.save_plot(fig_name="honduras_predictions.png", figure=fig)
+        # self.readme_add_plot(
+        #     plot_name="Honduras predictions",
+        #     plot_description="Honduras feature predictions.",
+        #     fig_name="honduras_predictions.png",
+        # )
 
 
 if __name__ == "__main__":
@@ -543,13 +646,18 @@ if __name__ == "__main__":
     # exp_2.run(state="Czechia", state_group=SELECTED_GROUP, split_rate=0.8)
 
     # 3 are nto runnable due to broken (incompatibile) PureEnsembleModel with pipeline creation.
-    exp_3 = CompareWithStatisticalModels(
-        description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
-    )
-    exp_3.run(state="Czechia", split_rate=0.8)
+    # exp_3 = CompareWithStatisticalModels(
+    #     description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
+    # )
+    # exp_3.run(state="Czechia", split_rate=0.8)
 
     # Runnable
     # exp_4 = DifferentHiddenLayers(
     #     description="Try to train BaseLSTM models with different layers."
     # )
     # exp_4.run(split_rate=0.8)
+
+    exp_5 = DifferentArchitecturesComparision(
+        description="Compares performance of different architecture models."
+    )
+    exp_5.run(split_rate=0.8)

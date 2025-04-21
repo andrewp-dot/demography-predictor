@@ -165,6 +165,7 @@ def train_finetunable_model(
 
 
 def train_finetunable_model_from_scratch(
+    name: str,
     base_model_hyperparameters: LSTMHyperparameters,
     finetunable_model_hyperparameters: LSTMHyperparameters,
     base_model_data: Dict[str, pd.DataFrame],
@@ -176,6 +177,7 @@ def train_finetunable_model_from_scratch(
 
     # Train base lstm
     base_model_pipeline = train_base_lstm(
+        name=name,
         hyperparameters=base_model_hyperparameters,
         data=base_model_data,
         features=features,
@@ -184,6 +186,7 @@ def train_finetunable_model_from_scratch(
     )
 
     return train_finetunable_model(
+        name=name,
         base_model_pipeline=base_model_pipeline,
         finetunable_model_hyperparameters=finetunable_model_hyperparameters,
         finetunable_model_data=finetunable_model_data,
