@@ -282,7 +282,7 @@ class GlobalModelPipeline(BasePipeline):
             # Stack predicted next steps
             targets_for_pred = np.vstack(
                 [targets_for_pred, next_target_preds[-1:]]
-            )  # only last prediction
+            )  # only last predicton
             all_predictions.append(next_target_preds[-1:])
 
         # Stack all predicted targets
