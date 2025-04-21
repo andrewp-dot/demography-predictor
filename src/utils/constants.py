@@ -45,26 +45,35 @@ def hihgly_correlated_features() -> List[str]:
 
 def basic_features(exclude: List[str] | None = None) -> List[str]:
     return [
-        col.lower()
-        for col in [
-            "year",
-            "Fertility rate, total",
-            "population, total",
-            "Net migration",
-            "Arable land",
-            "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            "Rural population",
-            "Rural population growth",
-            "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            "Adolescent fertility rate",
-            "Life expectancy at birth, total",
-        ]
-        if col not in exclude
+        "fertility rate, total",
+        "population, total",
+        "arable land",
+        "gdp growth",
+        "death rate, crude",
+        "agricultural land",
+        "rural population growth",
+        "urban population",
+        "population growth",
+        # col.lower()
+        # for col in [
+        #     "year",
+        #     "Fertility rate, total",
+        #     "population, total",
+        #     "Net migration",
+        #     "Arable land",
+        #     "Birth rate, crude",
+        #     "GDP growth",
+        #     "Death rate, crude",
+        #     "Agricultural land",
+        #     "Rural population",
+        #     "Rural population growth",
+        #     "Age dependency ratio",
+        #     "Urban population",
+        #     "Population growth",
+        #     "Adolescent fertility rate",
+        #     "Life expectancy at birth, total",
+        # ]
+        # if col not in exclude
     ]
 
 

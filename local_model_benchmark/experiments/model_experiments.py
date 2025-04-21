@@ -53,7 +53,6 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
     Models are compared by evaluation on the specific (chosen) states data.
     """
 
-    SKIP_FEATURES: List[str] = []
     FEATURES: List[str] = basic_features()
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
@@ -164,7 +163,6 @@ class FineTunedModels(BaseExperiment):
     - FineTunableLSTM - group of states
     """
 
-    SKIP_FEATURES: List[str] = []
     FEATURES: List[str] = basic_features()
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
@@ -290,13 +288,12 @@ class FineTunedModels(BaseExperiment):
         )
 
 
-# TODO: Fix ensemble model
+# TODO: Fix ARIMA ensemble model
 class CompareWithStatisticalModels(BaseExperiment):
     """
     In this experiment the statistical models (ARIMA(1,1,1) and GM(1,1) models) are compared with BaseLSTM model.
     """
 
-    SKIP_FEATURES: List[str] = []
     FEATURES: List[str] = basic_features()
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
@@ -420,7 +417,6 @@ class CompareWithStatisticalModels(BaseExperiment):
 
 class DifferentHiddenLayers(BaseExperiment):
 
-    SKIP_FEATURES: List[str] = []
     FEATURES: List[str] = basic_features()
 
     HIDDEN_SIZE_TO_TRY: List[int] = [32, 64, 128, 256, 512]
@@ -493,31 +489,25 @@ class DifferentHiddenLayers(BaseExperiment):
 
 class DifferentArchitecturesComparision(BaseExperiment):
 
-    FEATURES = [
-        col.lower()
-        for col in [
-            # "year",
-            "Fertility rate, total",
-            # "population, total",
-            "Net migration",
-            "Arable land",
-            # "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            # "Rural population",
-            "Rural population growth",
-            # "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            # "Adolescent fertility rate",
-            # "Life expectancy at birth, total",
-        ]
-    ]
+    FEATURES: List[str] = basic_features()
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
         input_size=len(FEATURES), batch_size=16
     )
+
+    # TODO:
+    # Start with simple architectures -> low number of layers
+    NUMBER_OF_LAYERS: List[int] = [1, 3, 5]
+
+    # Try to train model to predict more then 1 point
+    FUTURE_POINTS_TO_PREDICT: List[int] = [1, 2, 3, 4]
+
+    # Try different architectures
+
+    # Base LSTM
+    # Finetuned model
+    # Ensemble model
+    # Seq2seq
 
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)

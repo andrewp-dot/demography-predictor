@@ -28,9 +28,22 @@ FEATURES = basic_features(exclude=["year"])
 
 def main():
     loader = StatesDataLoader()
-    all_states_dict = loader.load_all_states()
+    # all_states_dict = loader.load_all_states()
 
-    hyperparameters = get_core_hyperparameters(input_size=len(FEATURES), epochs=10)
+    all_states_dict = loader.load_states(
+        states=[
+            *StatesByWealth().high_income,
+            *StatesByWealth().upper_middle_income,
+            *StatesByWealth().lower_middle_income,
+        ]
+    )
+
+    hyperparameters = get_core_hyperparameters(
+        input_size=len(FEATURES),
+        epochs=20,
+        hidden_size=256,
+        batch_size=32,
+    )
 
     predictor_pipeline = train_basic_pipeline(
         name="test_predictor",
@@ -40,6 +53,7 @@ def main():
         local_model_features=FEATURES,
         hyperparameters=hyperparameters,
         additional_global_model_features=["year", "country name"],
+        display_nth_epoch=2,
     )
 
     predictor_pipeline.save_pipeline()
@@ -48,7 +62,16 @@ def main():
 def eval():
 
     loader = StatesDataLoader()
-    test_data_dict = loader.load_states(states=["Czechia", "Honduras", "United States"])
+    # test_data_dict = loader.load_states(states=["Czechia", "Honduras", "United States"])
+    # test_data_dict = loader.load_all_states()
+
+    test_data_dict = loader.load_states(
+        states=[
+            *StatesByWealth().high_income,
+            *StatesByWealth().upper_middle_income,
+            *StatesByWealth().lower_middle_income,
+        ]
+    )
 
     pipeline = PredictorPipeline.get_pipeline("test_predictor")
 
@@ -59,10 +82,16 @@ def eval():
 
     evaluation = EvaluateModel(pipeline=pipeline)
 
-    eval_df = evaluation.eval_for_every_state_overall(
+    eval_df = evaluation.eval_for_every_state(
         X_test_states=X_test_states, y_test_states=y_test_states
     )
-    print(eval_df)
+
+    # Save to json file
+    with open("test_pred_eval_all_states_20.json", "w") as f:
+
+        # Sort
+        eval_df.sort_values(by=["r2", "mse"], ascending=[False, True], inplace=True)
+        eval_df.to_json(f, indent=4, orient="records")
 
 
 if __name__ == "__main__":
