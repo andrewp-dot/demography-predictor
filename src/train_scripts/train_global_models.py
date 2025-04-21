@@ -43,11 +43,6 @@ def train_global_model(
         split_size=split_size,
     )
 
-    print(features)
-    print(targets)
-    print(X_train.shape)
-    print(X_test.shape)
-
     # Scale the training data
     if transfomer is None:
         transfomer = DataTransformer()

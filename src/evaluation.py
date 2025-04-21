@@ -454,7 +454,7 @@ class EvaluateModel(BaseEvaluation):
 
         elif isinstance(self.pipeline, PredictorPipeline):
             predictions_df = self.pipeline.predict(
-                input_data=X_test, target_year=target_year
+                input_data=test_X, target_year=target_year
             )
 
         # else:

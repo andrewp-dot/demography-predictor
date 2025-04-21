@@ -39,7 +39,7 @@ def main():
         local_model_data_dict=all_states_dict,
         local_model_features=FEATURES,
         hyperparameters=hyperparameters,
-        additional_global_model_features=["year"],
+        additional_global_model_features=["year", "country name"],
     )
 
     predictor_pipeline.save_pipeline()
@@ -59,7 +59,7 @@ def eval():
 
     evaluation = EvaluateModel(pipeline=pipeline)
 
-    eval_df = evaluation.eval_for_every_state(
+    eval_df = evaluation.eval_for_every_state_overall(
         X_test_states=X_test_states, y_test_states=y_test_states
     )
     print(eval_df)

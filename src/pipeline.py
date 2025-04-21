@@ -291,7 +291,7 @@ class GlobalModelPipeline(BasePipeline):
         predictions_df = pd.DataFrame(final_predictions, columns=TARGETS)
 
         # Return only last predictions
-        return predictions_df.tail(iterations_num)
+        return predictions_df.tail(iterations_num).reset_index(drop=True)
 
 
 class PredictorPipeline:
@@ -341,12 +341,47 @@ class PredictorPipeline:
             )
 
         # Adjust the order of the features
+        # TODO: concat future_feature_values with previous target values
         future_feature_values_df = future_feature_values_df[
             self.global_model_pipeline.model.FEATURES
         ]
 
+        ### CHANGE THIS
+        # Append the values of the future predictions to the input data
+        future_feature_values_df = pd.concat(
+            [
+                input_data[self.global_model_pipeline.model.FEATURES],
+                future_feature_values_df,
+            ],
+            axis=0,
+        )
+
+        # Get history of the previous targets
+        previous_targets_df = input_data[self.global_model_pipeline.model.TARGETS]
+
+        # Pad previous_targets_df to match the length
+        pad_len = len(future_feature_values_df) - len(previous_targets_df)
+
+        # Append nan for unknown -> to predict values
+        padding = pd.DataFrame(
+            np.nan, columns=previous_targets_df.columns, index=range(pad_len)
+        )
+
+        previous_targets_padded = pd.concat(
+            [previous_targets_df, padding], ignore_index=True
+        )
+
+        # Get the final input data
+        final_input = pd.concat(
+            [
+                future_feature_values_df.reset_index(drop=True),
+                previous_targets_padded.reset_index(drop=True),
+            ],
+            axis=1,
+        )
+
         predicted_data_df = self.global_model_pipeline.predict(
-            input_data=future_feature_values_df,
+            input_data=final_input,
             last_year=last_year,
             target_year=target_year,
         )
