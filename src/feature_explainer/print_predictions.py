@@ -2,8 +2,10 @@
 # For each given states and given model create evaluation and plot prediction
 
 # Standard library imports
+import os
 from typing import List, Dict, Union
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 
 # Cutsom imports
 from src.utils.log import setup_logging
@@ -59,8 +61,19 @@ def create_prediction_plots(
     return plots
 
 
-def save_plots(plot_dict: Dict[str, Figure], save_dir: str) -> None:
-    raise NotImplementedError("Cannot save the figures")
+def save_plots(pipeline_name: str, plot_dict: Dict[str, Figure], save_dir: str) -> None:
+
+    # Create save directory
+    os.makedirs(save_dir, exist_ok=True)
+
+    for state, fig in plot_dict.items():
+        file_path = os.path.join(
+            save_dir, f"{pipeline_name}_{state}.png"
+        )  # Save each figure as a PNG
+
+        # Save the figure
+        fig.savefig(file_path)
+        plt.close(fig)
 
 
 if __name__ == "__main__":
@@ -68,11 +81,12 @@ if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
-    # TODO: fill this
     TO_PLOT_STATES: List[str] = ["Czechia", "Honduras"]
 
-    PIPELINE = None
+    # PIPELINE = LocalModelPipeline.get_pipeline(name="lstm_features_only")
+    # PIPELINE = GlobalModelPipeline.get_pipeline(name="test_gm")
+    PIPELINE = PredictorPipeline.get_pipeline(name="test_predictor")
 
     plot_dict = create_prediction_plots(pipeline=PIPELINE, states=TO_PLOT_STATES)
 
-    save_plots(plot_dict=plot_dict, save_dir="your save dir in here")
+    save_plots(pipeline_name=PIPELINE.name, plot_dict=plot_dict, save_dir="./imgs")
