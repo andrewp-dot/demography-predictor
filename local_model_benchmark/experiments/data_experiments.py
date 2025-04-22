@@ -1,7 +1,7 @@
 # Standard library imports
 import logging
 import pandas as pd
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Literal
 import random
 
 from sklearn.preprocessing import MinMaxScaler
@@ -610,24 +610,107 @@ class StatesSubsetExperiment(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def run(self):
+    GEOLOCATION_GROUPS: Dict[str, List[str]] = {
+        "europe": StatesByGeolocation().europe,
+        "asia": StatesByGeolocation().asia,
+        "africa": StatesByGeolocation().africa,
+        "north_america": StatesByGeolocation().north_america,
+        "south_america": StatesByGeolocation().south_america,
+        "oceania": StatesByGeolocation().oceania,
+    }
 
-        # TODO: group selection of states
+    WEALTH_GROUPS: Dict[str, List[str]] = {
+        "high_income": StatesByWealth().high_income,
+        "upper_middle_income": StatesByWealth().upper_middle_income,
+        "lower_middle_income": StatesByWealth().lower_middle_income,
+        "low_income": StatesByWealth().low_income,
+    }
 
-        # Train a base lstm model using a group
-        BEST_GROUP: List[str] = []
+    HIDDEN_SIZE_TO_TRY: List[int] = [32, 64, 128, 256, 512]
 
-        # Train model using created group of states
-        pipeline = train_base_lstm(
-            name="base-lstm", hyperparameters=self.BASE_LSTM_HYPERPARAMETERS
+    def __train_models_for_group(
+        self,
+        group_name: str,
+        group_data: Dict[str, pd.DataFrame],
+        split_rate: float = 0.8,
+    ):
+
+        all_states_dict = group_data
+
+        # Train models with different
+        TO_COMPARE_MODELS: Dict[str, LocalModelPipeline] = {}
+        for hidden_size in self.HIDDEN_SIZE_TO_TRY:
+
+            MODEL_NAME = f"lstm-{hidden_size}"
+            TO_COMPARE_MODELS[MODEL_NAME] = train_base_lstm(
+                name=MODEL_NAME,
+                features=self.FEATURES,
+                hyperparameters=get_core_hyperparameters(
+                    input_size=len(self.FEATURES),
+                    batch_size=16,
+                    hidden_size=hidden_size,
+                ),
+                data=all_states_dict,
+                split_rate=split_rate,
+                display_nth_epoch=10,
+            )
+
+        comparator = ModelComparator()
+
+        # Evaluate on the group states
+        EVAL_STATES = list(all_states_dict.keys())
+
+        overall_metrics_df = comparator.compare_models_by_states(
+            pipelines=TO_COMPARE_MODELS, states=EVAL_STATES, by="overall-one-metric"
         )
 
-        # Eval pipeline
+        # per_target_metrics_df = comparator.compare_models_by_states(
+        #     pipelines=TO_COMPARE_MODELS, states=EVAL_STATES, by="per-features"
+        # )
 
-        # If the overall score is better, save the group
+        # Print results to the readme
+        # Add per metric rankings
+        # Print all dataframe
+        # pd.set_option("display.max_rows", None)
+        # self.readme_add_section(
+        #     title="## Per target metrics - model comparision",
+        #     text=f"```\n{per_target_metrics_df.sort_values(by=['state', 'target'])}\n```\n\n",
+        # )
+
+        # pd.reset_option("display.max_rows")
+
+        self.readme_add_section(
+            title=f"## Overall metrics for {group_name}  - model comparision",
+            text=f"```\n{overall_metrics_df}\n```\n\n",
+        )
+
+    def run(
+        self,
+        split_rate: float = 0.8,
+    ):
+        # Create readme
+        self.create_readme()
+
+        loader = StatesDataLoader()
+
+        ALL_GROUPS: Dict[str, List[str]] = {
+            **self.WEALTH_GROUPS,
+            **self.GEOLOCATION_GROUPS,
+        }
+
+        # For every group tran the models and see which models you can use for which groups
+        for group_name, states in ALL_GROUPS.items():
+
+            states = loader.load_states(states=states)
+
+            # Trains and evaluates the model
+            self.__train_models_for_group(
+                group_name=group_name, group_data=states, split_rate=split_rate
+            )
 
 
 def main():
+
     # Setup logging
     setup_logging()
 
@@ -645,6 +728,10 @@ def main():
         description="Feature selection experiment. It will output the features which are not performing well."
     )
 
+    exp_states_subset = StatesSubsetExperiment(
+        description="Trains the model from the simpliest to more complex ones by hidden size for each group and reveals which models performs best for each group."
+    )
+
     STATE: str = "Czechia"
     GROUPS_BY_WEALTH = StatesByWealth()
     GROUPS_BY_GEOLOCATION = StatesByGeolocation()
@@ -654,19 +741,21 @@ def main():
     )
 
     # Get the group of the selected state
-    exp_data.run(state=STATE, state_group=SELECTED_GROUP, split_rate=0.8)
+    # exp_data.run(state=STATE, state_group=SELECTED_GROUP, split_rate=0.8)
 
-    exp_wealth_groups.run(
-        state_groups=GROUPS_BY_WEALTH,
-        split_rate=0.8,
-    )
+    # exp_wealth_groups.run(
+    #     state_groups=GROUPS_BY_WEALTH,
+    #     split_rate=0.8,
+    # )
 
-    exp_geolocation_groups.run(
-        state_groups=GROUPS_BY_GEOLOCATION,
-        split_rate=0.8,
-    )
+    # exp_geolocation_groups.run(
+    #     state_groups=GROUPS_BY_GEOLOCATION,
+    #     split_rate=0.8,
+    # )
 
-    exp_feature_selection.run()
+    # exp_feature_selection.run()
+
+    exp_states_subset.run()
 
 
 if __name__ == "__main__":

@@ -46,7 +46,7 @@ def hihgly_correlated_features() -> List[str]:
 def basic_features(exclude: List[str] | None = None) -> List[str]:
     return [
         "fertility rate, total",
-        "population, total",
+        # "population, total",
         "arable land",
         "gdp growth",
         "death rate, crude",

@@ -11,8 +11,9 @@ from src.utils.constants import basic_features
 
 from local_model_benchmark.config import (
     LocalModelBenchmarkSettings,
-    get_core_parameters,
 )
+
+from src.utils.constants import get_core_hyperparameters
 
 # from src.utils.save_model import save_experiment_model, get_experiment_model
 from src.state_groups import StatesByGeolocation, StatesByWealth
@@ -56,13 +57,13 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
 
     FEATURES: List[str] = basic_features()
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
     )
 
-    ENSEMBLE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    ENSEMBLE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=1,
         batch_size=16,
         hidden_size=64,
@@ -166,13 +167,13 @@ class FineTunedModels(BaseExperiment):
 
     FEATURES: List[str] = basic_features()
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
     )
 
-    FINETUNE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    FINETUNE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         hidden_size=124,
         batch_size=1,
@@ -298,14 +299,14 @@ class CompareWithStatisticalModels(BaseExperiment):
 
     FEATURES: List[str] = basic_features()
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
         epochs=1,
     )
 
-    FINETUNE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    FINETUNE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         hidden_size=124,
         batch_size=1,
@@ -423,7 +424,7 @@ class DifferentHiddenLayers(BaseExperiment):
 
     HIDDEN_SIZE_TO_TRY: List[int] = [32, 64, 128, 256, 512]
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES), batch_size=16
     )
 
@@ -448,7 +449,7 @@ class DifferentHiddenLayers(BaseExperiment):
             TO_COMPARE_MODELS[MODEL_NAME] = train_base_lstm(
                 name=MODEL_NAME,
                 features=self.FEATURES,
-                hyperparameters=get_core_parameters(
+                hyperparameters=get_core_hyperparameters(
                     input_size=len(self.FEATURES),
                     batch_size=16,
                     hidden_size=hidden_size,
@@ -505,27 +506,27 @@ class DifferentArchitecturesComparision(BaseExperiment):
     FEATURES: List[str] = basic_features()
 
     # Base LSTM
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
     )
 
     # Base LSTM with more then 1 future prediction
-    FUTURE_BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    FUTURE_BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         future_step_predict=3,
     )
 
     # Funnel architecture
-    WIDE_LAYERS_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    WIDE_LAYERS_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
         num_layers=1,
     )
 
-    NARROW_LAYERS_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_parameters(
+    NARROW_LAYERS_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=128,

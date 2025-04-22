@@ -146,7 +146,9 @@ class ModelComparator:
             str, Union[LocalModelPipeline, GlobalModelPipeline, PredictorPipeline]
         ],
         states: List[str] | None = None,
-        by: Literal["overall-metrics", "per-features"] = "overall-metrics",
+        by: Literal[
+            "overall-metrics", "per-features", "overall-one-metric"
+        ] = "overall-metrics",
     ) -> pd.DataFrame:
         """
         Compares model performance by metrics. Returns ranking dataframe.
@@ -238,6 +240,12 @@ class ModelComparator:
             if "overall-metrics" == by:
                 model_evaluations[model_name] = model_evaluation.eval_for_every_state(
                     X_test_states=train_data_dict, y_test_states=test_data_dict
+                )
+            elif "overall-one-metric" == by:
+                model_evaluations[model_name] = (
+                    model_evaluation.eval_for_every_state_overall(
+                        X_test_states=train_data_dict, y_test_states=test_data_dict
+                    )
                 )
 
             elif "per-features" == by:
