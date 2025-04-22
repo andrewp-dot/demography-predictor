@@ -93,11 +93,17 @@ def eval():
         eval_df.sort_values(by=["r2", "mse"], ascending=[False, True], inplace=True)
         eval_df.to_json(f, indent=4, orient="records")
 
+    # Print top 5 states and the worst 5 states
+
+    print(f"Best performance states:\n{eval_df.head(5)}")
+
+    print(f"Worst performance for states:\n{eval_df.tail(5)}")
+
 
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
-    main()
+    # main()
 
     eval()

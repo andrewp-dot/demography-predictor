@@ -87,6 +87,21 @@ if __name__ == "__main__":
     # PIPELINE = GlobalModelPipeline.get_pipeline(name="test_gm")
     PIPELINE = PredictorPipeline.get_pipeline(name="test_predictor")
 
+    BEST_PERFORMING_STATES: List[str] = [
+        "Guatemala",
+        "St. Vincent and the Grenadines",
+        "Nepal",
+        "Venezuela, RB",
+        "Philippines",
+    ]
+    WORST_PERFORMING_STATES: List[str] = [
+        "Egypt, Arab Rep.",
+        "Chile",
+        "Vanuatu",
+        "Senegal",
+        "Solomon Islands",
+    ]
+
     plot_dict = create_prediction_plots(pipeline=PIPELINE, states=TO_PLOT_STATES)
 
     save_plots(pipeline_name=PIPELINE.name, plot_dict=plot_dict, save_dir="./imgs")
