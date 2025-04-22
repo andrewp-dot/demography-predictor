@@ -33,6 +33,16 @@ logger = logging.getLogger("method_selection")
 
 class LSTMExplainer:
 
+    class ReducedModelWrapper(torch.nn.Module):
+        def __init__(self, model, predicted_timestep_index: int = 0):
+            super().__init__()
+            self.model = model
+            self.predicted_timestep_index = predicted_timestep_index
+
+        def forward(self, x):
+            out = self.model(x)
+            return out[:, self.predicted_timestep_index, :]
+
     def __init__(self, pipeline: LocalModelPipeline):
         self.pipeline: LocalModelPipeline = pipeline
 
@@ -50,12 +60,19 @@ class LSTMExplainer:
         )
 
         print(self.pipeline.model.FEATURES)
+        print(self.pipeline.model.TARGETS)
 
         # Scale data
+        FEATURES = self.pipeline.model.FEATURES
+        TARGETS = self.pipeline.model.TARGETS
+
+        if FEATURES == TARGETS:
+            TARGETS = None
+
         scaled_state_df = self.pipeline.transformer.scale_data(
             data=train_df,
-            features=self.pipeline.model.FEATURES,
-            targets=self.pipeline.model.TARGETS,
+            features=FEATURES,
+            targets=TARGETS,
         )
 
         # Create sequences
@@ -72,17 +89,36 @@ class LSTMExplainer:
         input_sequences.requires_grad = True
         return input_sequences
 
-    def get_shap_values(self, input_sequences: torch.Tensor) -> torch.Tensor:
+    def get_shap_values(
+        self, input_sequences: torch.Tensor, predicted_timestep: int = 0
+    ) -> torch.Tensor:
         """
         Compute SHAP values for the given input sequences.
+
+        Args:
+            input_sequences (torch.Tensor): Input sequences for computing the shap values.
+            predicted_timestep (int): The predicted timestep to compute values for (if the model predicts values for multiple timesteps). Defaults to 0.
+
+        Returns:
+            out: torch.Tensor: The shap values.
         """
 
+        # Get the device
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         # Put the model to the device
-        self.pipeline.model.to(device=self.pipeline.model.device)
+        self.pipeline.model.to(device=device)
 
         # Set training batches as input_x
+
         self.pipeline.model.train()
         self.pipeline.model.lstm.train()
+
+        # Get the model to the wrapper to get the time step output of the feature in index
+        model = self.ReducedModelWrapper(
+            model=self.pipeline.model,
+            predicted_timestep_index=predicted_timestep,
+        )
 
         # # Set model to evaluation mode
         # self.pipeline.model.eval()
@@ -91,10 +127,10 @@ class LSTMExplainer:
         torch.backends.cudnn.enabled = False
 
         # Move input sequences to the same device as the model
-        input_sequences = input_sequences.to(device=self.pipeline.model.device)
+        input_sequences = input_sequences.to(device=device)
 
         # Compute SHAP values
-        explainer = shap.GradientExplainer(self.pipeline.model, input_sequences)
+        explainer = shap.GradientExplainer(model, input_sequences)
         shap_values = explainer.shap_values(input_sequences)
 
         print("SHAP VALUES: ")

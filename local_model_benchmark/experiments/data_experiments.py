@@ -15,7 +15,11 @@ from local_model_benchmark.config import (
     LocalModelBenchmarkSettings,
 )
 
-from src.utils.constants import get_core_hyperparameters, basic_features
+from src.utils.constants import (
+    get_core_hyperparameters,
+    basic_features,
+    hihgly_correlated_features,
+)
 
 # from src.utils.save_model import save_experiment_model, get_experiment_model
 from src.base import CustomModelBase
@@ -47,16 +51,6 @@ logger = logging.getLogger("benchmark")
 # 3. To exclude states? ... find out which population or what makes the problem.
 
 
-# Load the dataset (replace 'your_dataset.csv' with the actual file path)
-HIGHLY_CORRELATED_COLUMNS: List[str] = [
-    "life expectancy at birth, total",
-    "age dependency ratio",
-    "rural population",
-    "birth rate, crude",
-    "adolescent fertility rate",
-]
-
-
 class DataUsedForTraining(BaseExperiment):
     """
     Trains models using dfferent data:
@@ -67,28 +61,7 @@ class DataUsedForTraining(BaseExperiment):
     Models are compared by evaluation on the specific (chosen) state data used for training for the first model.
     """
 
-    FEATURES: List[str] = [
-        col.lower()
-        for col in [
-            # "year",
-            "Fertility rate, total",
-            # "Population, total",
-            "Net migration",
-            "Arable land",
-            "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            "Rural population",
-            "Rural population growth",
-            "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            "Adolescent fertility rate",
-            "Life expectancy at birth, total",
-        ]
-        # if col.lower() not in HIGHLY_CORRELATED_COLUMNS
-    ]
+    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES)
@@ -273,28 +246,7 @@ class StatesByGroup(BaseExperiment):
     Experiment for the states by wealth.
     """
 
-    FEATURES: List[str] = [
-        col.lower()
-        for col in [
-            # "year",
-            "Fertility rate, total",
-            # "Population, total",
-            "Net migration",
-            "Arable land",
-            "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            "Rural population",
-            "Rural population growth",
-            "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            "Adolescent fertility rate",
-            "Life expectancy at birth, total",
-        ]
-        if col.lower() not in HIGHLY_CORRELATED_COLUMNS
-    ]
+    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
 
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
@@ -481,28 +433,7 @@ class StatesByGroup(BaseExperiment):
 # TODO: Make this work for all pipelines -> use better evaluation method
 class FeatureSelectionExperiment(BaseExperiment):
 
-    FEATURES: List[str] = [
-        col.lower()
-        for col in [
-            # "year",
-            "Fertility rate, total",
-            "Population, total",
-            "Net migration",
-            "Arable land",
-            "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            "Rural population",
-            "Rural population growth",
-            "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            "Adolescent fertility rate",
-            "Life expectancy at birth, total",
-        ]
-        if col.lower() not in HIGHLY_CORRELATED_COLUMNS
-    ]
+    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
 
     BASE_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         len(FEATURES), batch_size=32
@@ -511,6 +442,8 @@ class FeatureSelectionExperiment(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(self.__class__.__name__, description)
 
+    # TODO:
+    # Maybe be optimized removing more then 1 feature at the time, or random selection for combination of features, iteration limits etc.
     def output_bad_performing_features(
         self,
         all_features: List[str],
@@ -553,14 +486,15 @@ class FeatureSelectionExperiment(BaseExperiment):
                 )
                 data = StatesDataLoader().load_all_states()
 
-                model = train_base_lstm(
+                pipeline = train_base_lstm(
+                    name="base-lstm",
                     hyperparameters=hyperparams,
                     data=data,
                     features=current_features,
                     split_rate=0.8,
                 )
 
-                val_loss = model.training_stats.validation_loss[-1]
+                val_loss = pipeline.training_stats.validation_loss[-1]
                 rank_features[excluded_feature] = val_loss
 
                 # Save the combination of features
@@ -602,7 +536,8 @@ class FeatureSelectionExperiment(BaseExperiment):
 
 class StatesSubsetExperiment(BaseExperiment):
 
-    FEATURES: List[str] = basic_features()
+    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
+
     BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES)
     )

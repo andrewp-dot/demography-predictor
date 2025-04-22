@@ -7,7 +7,11 @@ from config import Config
 
 
 from src.base import LSTMHyperparameters
-from src.utils.constants import get_core_hyperparameters
+from src.utils.constants import (
+    get_core_hyperparameters,
+    basic_features,
+    hihgly_correlated_features,
+)
 from src.state_groups import StatesByWealth
 from src.utils.log import setup_logging
 from src.pipeline import LocalModelPipeline
@@ -26,7 +30,7 @@ settings = Config()
 #     "population, total",
 # ]
 TARGETS: List[str] = [
-    "population ages 15-64",
+    # "population ages 15-64",
     # "population ages 0-14",
     # "population ages 65 and above",
 ]
@@ -36,27 +40,7 @@ TARGETS: List[str] = [
 #     "population, male",
 # ]
 
-FEATURES = [
-    col.lower()
-    for col in [
-        # "year",
-        # "Fertility rate, total",
-        "population, total",
-        # # "Net migration",
-        # "Arable land",
-        # # "Birth rate, crude",
-        # "GDP growth",
-        # "Death rate, crude",
-        # "Agricultural land",
-        # # "Rural population",
-        # "Rural population growth",
-        # # "Age dependency ratio",
-        # "Urban population",
-        # "Population growth",
-        # # "Adolescent fertility rate",
-        # # "Life expectancy at birth, total",
-    ]
-]
+FEATURES = basic_features(exclude=hihgly_correlated_features)
 
 
 def train_only_features(epochs: int):
@@ -72,7 +56,7 @@ def train_only_features(epochs: int):
     )
 
     # custom_features = FEATURES
-    custom_features = TARGETS
+    custom_features = FEATURES
 
     hyperparameters: LSTMHyperparameters = get_core_hyperparameters(
         input_size=len(custom_features),
@@ -187,12 +171,12 @@ if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
-    EPOCHS: int = 50
+    EPOCHS: int = 10
 
     # future_step_predict=1,
     train_only_features(epochs=EPOCHS)
 
     # future_step_predict=2,
-    train_including_targets(epochs=EPOCHS)
+    # train_including_targets(epochs=EPOCHS)
 
     evaluate_pipelines()
