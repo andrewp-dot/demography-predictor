@@ -8,7 +8,7 @@ import os
 
 import pandas as pd
 
-from typing import Dict
+from typing import List
 
 # Filters about rng seed warning - yet the shap does not acceps 'rng' argument.
 import warnings
@@ -176,7 +176,7 @@ class LSTMExplainer:
         plt.tight_layout()
 
         if save_path:
-            save_path = os.path.join(save_path, "shap_feature_explanation_fig.png")
+            save_path = os.path.join(save_path, "lstm_shap_feature_explanation_fig.png")
             plt.savefig(save_path)
 
         if show_plot:
@@ -210,7 +210,7 @@ class LSTMExplainer:
         )
 
         if save_path:
-            save_path = os.path.join(save_path, "shap_force_plot.png")
+            save_path = os.path.join(save_path, "lstm_shap_force_plot.png")
 
             # Save the force plot to a file (using matplotlib)
             plt.savefig(save_path, format="png", dpi=300, bbox_inches="tight")
@@ -260,7 +260,7 @@ class LSTMExplainer:
 
         if save_path:
 
-            save_path = os.path.join(save_path, "shap_summary_plot.png")
+            save_path = os.path.join(save_path, "lstm_shap_summary_plot.png")
 
             # Save the force plot to a file (using matplotlib)
             plt.savefig(save_path, format="png", dpi=300, bbox_inches="tight")
@@ -314,7 +314,7 @@ class LSTMExplainer:
 
         if save_path:
 
-            save_path = os.path.join(save_path, "shap_waterfall_plot.png")
+            save_path = os.path.join(save_path, "lstm_shap_waterfall_plot.png")
 
             # Save the force plot to a file (using matplotlib)
             fig = plt.gcf()  # Get current figure
@@ -326,24 +326,71 @@ class LSTMExplainer:
 
 class GlobalModelExplainer:
 
+    class MultiOutputWrapper:
+        def __init__(self, model):
+            self.model = model
+
+        def __call__(self, X):
+            return self.model.predict_human_readable(X)
+
+        def shap_predict(self, X):
+            # For SHAP, we need to also return the base value for each output
+            # Typically, for multi-output models, this would be the mean prediction across all instances.
+            # You can also use model's base prediction if it provides one.
+
+            predictions = self.model.predict(X)  # Model's predictions for each output
+            base_values = np.mean(predictions, axis=0)  # This is a simplified approach
+
+            return predictions, base_values
+
     def __init__(self, pipeline: GlobalModelPipeline):
         self.pipeline: GlobalModelPipeline = pipeline
+        self.FEATURE_NAMES: List[str] = (
+            self.pipeline.model.FEATURES + self.pipeline.model.HISTORY_TARGET_FEATURES
+        )
 
-    def create_inputs(self) -> pd.DataFrame:
-        raise NotImplementedError("Not implemented yet.")
+        self.model = self.pipeline.model
+
+    def create_inputs(self, state: str) -> pd.DataFrame:
+
+        # Load data
+        loader = StateDataLoader(state=state)
+        input_data = loader.load_data()
+
+        # Create input
+        input_dict, _ = self.pipeline.model.create_state_inputs_outputs(
+            states_dict={state: input_data}
+        )
+
+        # Create tensor?
+        return input_dict[state]
+
+    def get_shap_values(self, X: pd.DataFrame):
+
+        # Wrap this in here because shap cannot handle multioutput regressor
+        model_wrapper = self.MultiOutputWrapper(model=self.model)
+        explainer = shap.Explainer(model_wrapper, X)
+        shap_values = explainer(X)
+        return shap_values
 
     def get_feature_importance(
         self,
-        shap_values: torch.Tensor,
+        shap_values: shap.Explanation,
+        save_path: str | None = None,
         show_plot: bool = False,
-        save_plot: bool = False,
     ) -> dict:
-        # Aggregate SHAP values
-        # Assuming your task is sequence-based, we’ll average across time steps (axis=1) and instances (axis=0)
-        mean_shap = np.abs(shap_values[0]).mean(axis=(0, 1))
 
-        # Get feature names from model
-        feature_names = self.pipeline.model.FEATURES  # assuming it's a list of strings
+        # Convert shap explanation object to numpy array
+        shap_values_array = (
+            shap_values.values
+        )  # Shappe: (samples_num, features_num, targets_num)
+
+        # Aggregate SHAP values -> accross samples and features
+        mean_shap = np.abs(shap_values_array).mean(axis=(0, 2))
+
+        print(mean_shap)
+
+        feature_names = self.FEATURE_NAMES
 
         # Create and sort dict by vylues
         feature_importance_dict = {
@@ -352,11 +399,17 @@ class GlobalModelExplainer:
 
         # Sort the dictionary by values in descending order
         sorted_feature_importance_dict = dict(
-            sorted(feature_importance_dict.items(), key=lambda item: item[1])
+            sorted(
+                feature_importance_dict.items(), key=lambda item: item[1], reverse=True
+            )
         )
 
+        # import pprint
+
+        # pprint.pprint(sorted_feature_importance_dict)
+
         ## FEATURE IMPORTANCE PLOT
-        plt.figure(figsize=(10, 5))
+        plt.figure(figsize=(10, 10))
         plt.barh(
             list(sorted_feature_importance_dict.keys()),
             list(sorted_feature_importance_dict.values()),
@@ -367,8 +420,10 @@ class GlobalModelExplainer:
         # plt.xticks(rotation=45)
         plt.tight_layout()
 
-        if save_plot:
-            plt.savefig("shap_explanation_fig.png")
+        if save_path:
+
+            save_path = os.path.join(save_path, "gm_shap_waterfall_plot.png")
+            plt.savefig(save_path)
 
         if show_plot:
             plt.show()

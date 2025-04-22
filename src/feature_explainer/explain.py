@@ -84,7 +84,26 @@ def explain_lstm(pipeline: LocalModelPipeline, save_path: str, states: List[str]
 
 def explain_tree(pipeline: GlobalModelPipeline, save_path: str, states: List[str]):
     setup_save_dir(save_path=save_path)
-    raise NotImplementedError("")
+
+    explainer = GlobalModelExplainer(pipeline=pipeline)
+
+    for state in states:
+
+        print(f"Creating plots for state {state}...")
+
+        # Get results
+        input_data = explainer.create_inputs(state=state)
+
+        shap_values = explainer.get_shap_values(X=input_data)
+
+        # print(shap_values)
+
+        state_save_path = os.path.join(save_path, state)
+        os.makedirs(state_save_path, exist_ok=True)
+
+        explainer.get_feature_importance(
+            shap_values=shap_values, save_path=state_save_path
+        )
 
 
 def main(
@@ -102,7 +121,7 @@ def main(
 
     elif isinstance(pipeline, GlobalModelPipeline):
         # Explain XGB -> tree model explainer
-        explain_tree(pipeline=pipeline, save_path=SAVE_PATH)
+        explain_tree(pipeline=pipeline, save_path=SAVE_PATH, states=states)
 
     elif isinstance(pipeline, PredictorPipeline):
         # Explain base lstm  and explain XGB -> tree model explainer
@@ -120,8 +139,11 @@ if __name__ == "__main__":
 
     # Get pipeline
     # TODO: maybe do some arguments in here?
-    PIPELINE_NAME = "lstm_features_only"
-    pipeline = LocalModelPipeline.get_pipeline(name=PIPELINE_NAME)
+    # PIPELINE_NAME = "lstm_features_only"
+    # pipeline = LocalModelPipeline.get_pipeline(name=PIPELINE_NAME)
+
+    PIPELINE_NAME = "test_gm"
+    pipeline = GlobalModelPipeline.get_pipeline(name=PIPELINE_NAME)
 
     # Run explainer for the pipeline
     main(pipeline, states=["Czechia", "Honduras"])
