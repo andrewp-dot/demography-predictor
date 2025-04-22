@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import logging
+import os
 
 import pandas as pd
 
@@ -25,7 +26,7 @@ from src.preprocessors.data_transformer import DataTransformer
 from src.utils.log import setup_logging
 
 
-warnings.filterwarnings("ignore", category=FutureWarning, module="shap")
+warnings.filterwarnings("ignore", message=".*The NumPy global RNG was seeded.*")
 
 
 logger = logging.getLogger("method_selection")
@@ -58,9 +59,6 @@ class LSTMExplainer:
             data=states_data,
             split_rate=0.8,
         )
-
-        print(self.pipeline.model.FEATURES)
-        print(self.pipeline.model.TARGETS)
 
         # Scale data
         FEATURES = self.pipeline.model.FEATURES
@@ -133,8 +131,7 @@ class LSTMExplainer:
         explainer = shap.GradientExplainer(model, input_sequences)
         shap_values = explainer.shap_values(input_sequences)
 
-        print("SHAP VALUES: ")
-        print(shap_values.shape)
+        print(f"Shap vales shape: {shap_values.shape}")
 
         torch.backends.cudnn.enabled = True
 
@@ -143,8 +140,8 @@ class LSTMExplainer:
     def get_feature_importance(
         self,
         shap_values: torch.Tensor,
+        save_path: str | None = None,
         show_plot: bool = False,
-        save_plot: bool = False,
     ) -> dict:
         # Aggregate SHAP values
         shap_array = np.array(shap_values)
@@ -168,7 +165,7 @@ class LSTMExplainer:
         )
 
         ## FEATURE IMPORTANCE PLOT
-        plt.figure(figsize=(10, 5))
+        plt.figure(figsize=(30, 5))
         plt.barh(
             list(sorted_feature_importance_dict.keys()),
             list(sorted_feature_importance_dict.values()),
@@ -179,8 +176,9 @@ class LSTMExplainer:
         # plt.xticks(rotation=45)
         plt.tight_layout()
 
-        if save_plot:
-            plt.savefig("shap_explanation_fig.png")
+        if save_path:
+            save_path = os.path.join(save_path, "shap_feature_explanation_fig.png")
+            plt.savefig(save_path)
 
         if show_plot:
             plt.show()
@@ -191,9 +189,9 @@ class LSTMExplainer:
         self,
         shap_values: torch.Tensor,
         input_sequences: torch.Tensor,
+        save_path: str | None = None,
         sample_idx: int = 0,
         time_step: int = 0,
-        save_plot: bool = False,
         show_plot: bool = False,
     ) -> None:
         # Get the SHAP values and input for that time step
@@ -208,13 +206,15 @@ class LSTMExplainer:
             feature_names=self.pipeline.model.FEATURES,
             matplotlib=True,
             show=False,
+            figsize=(30, 5),
+            # contribution_threshold=0.1,
         )
 
-        if save_plot:
+        if save_path:
+            save_path = os.path.join(save_path, "shap_force_plot.png")
+
             # Save the force plot to a file (using matplotlib)
-            plt.savefig(
-                "shap_force_plot.png", format="png", dpi=300, bbox_inches="tight"
-            )
+            plt.savefig(save_path, format="png", dpi=300, bbox_inches="tight")
 
         if show_plot:
             plt.show()
@@ -223,10 +223,10 @@ class LSTMExplainer:
         self,
         shap_values: torch.Tensor,
         input_x: torch.Tensor,
+        save_path: str | None = None,
         sample_idx: int = 0,
         target_index: int = 0,
         show_plot: bool = False,
-        save_plot: bool = False,
     ) -> None:
 
         print("Summary plot...")
@@ -259,15 +259,17 @@ class LSTMExplainer:
 
         plt.tight_layout()
 
-        if save_plot:
-            plt.savefig(
-                "shap_summary_plot.png", format="png", dpi=300, bbox_inches="tight"
-            )
+        if save_path:
+
+            save_path = os.path.join(save_path, "shap_summary_plot.png")
+
+            # Save the force plot to a file (using matplotlib)
+            plt.savefig(save_path, format="png", dpi=300, bbox_inches="tight")
 
         if show_plot:
             plt.show()
 
-    def waterfall_plot(
+    def get_waterfall_plot(
         self,
         shap_values: torch.Tensor,
         input_x: torch.Tensor,

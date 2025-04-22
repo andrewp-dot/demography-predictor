@@ -38,17 +38,24 @@ def explain_lstm(pipeline: LocalModelPipeline, save_path: str, states: List[str]
     # Explain for every state
     for state in states:
 
+        print(f"Creating plots for state {state}...")
+
         # Get results
         sequences = explainer.create_sequences(state=state)
 
         shap_values = explainer.get_shap_values(input_sequences=sequences)
 
-        feature_importance = explainer.get_feature_importance(shap_values=shap_values)
+        state_save_path = os.path.join(save_path, state)
+        os.makedirs(state_save_path, exist_ok=True)
 
-        print(feature_importance)
+        # Get feature importance and save the plot
+        explainer.get_feature_importance(
+            shap_values=shap_values, save_path=state_save_path
+        )
 
         # Get plots
         explainer.get_force_plot(
+            save_path=state_save_path,
             shap_values=shap_values,
             input_sequences=sequences,
             sample_idx=0,
@@ -56,18 +63,22 @@ def explain_lstm(pipeline: LocalModelPipeline, save_path: str, states: List[str]
         )
 
         explainer.get_summary_plot(
+            save_path=state_save_path,
             shap_values=shap_values,
             input_x=sequences,
             sample_idx=0,
             target_index=0,
         )
 
-        explainer.waterfall_plot(
-            shap_values=shap_values,
-            input_x=sequences,
-            sample_idx=0,
-            target_index=0,
-        )
+        # explainer.get_waterfall_plot(
+        #     shap_values=shap_values,
+        #     input_x=sequences,
+        #     sample_idx=0,
+        #     target_index=0,
+        # )
+
+        print(f"Done!")
+        print()
 
 
 def explain_tree(pipeline: GlobalModelPipeline, save_path: str, states: List[str]):
@@ -81,7 +92,7 @@ def main(
 ):
 
     # Save the explenation with plots to folder
-    SAVE_PATH = os.path.join(".", "explanations", pipeline.name)
+    SAVE_PATH = os.path.join(os.path.dirname(__file__), "explanations", pipeline.name)
 
     # Get the pipeline type
     if isinstance(pipeline, LocalModelPipeline):
