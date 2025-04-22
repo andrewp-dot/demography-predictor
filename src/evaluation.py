@@ -352,32 +352,6 @@ class EvaluateModel(BaseEvaluation):
         # {"Czechia": {"predicted"..., "reference": ...}, "United States": ...}
         self.multiple_states_evaluations: Dict[str, Dict[str, pd.DataFrame]] = {}
 
-    # def __pipeline_predictions(
-    #     self, input_data: pd.DataFrame, last_year: int, target_year: int
-    # ) -> pd.DataFrame:
-
-    #     # Scale data
-    #     TRANSFORMER = self.pipeline.transformer
-    #     MODEL = self.model.
-
-    #     scaled_input_data = self.transformer.scale_data(
-    #         data=input_data, columns=self.model.FEATURES
-    #     )
-
-    #     # Predict
-    #     predictions = self.model.predict(
-    #         input_data=scaled_input_data, last_year=last_year, target_year=target_year
-    #     )
-
-    #     predicions_df = pd.DataFrame(predictions, columns=scaled_input_data.columns)
-
-    #     # Unscale data
-    #     unscaled_input_data = self.transformer.unscale_data(
-    #         data=predicions_df, columns=self.model.FEATURES
-    #     )
-
-    #     return unscaled_input_data
-
     def __get_refference_and_predicted_data(
         self, test_X: pd.DataFrame, test_y: pd.DataFrame
     ) -> None:
@@ -456,11 +430,6 @@ class EvaluateModel(BaseEvaluation):
             predictions_df = self.pipeline.predict(
                 input_data=test_X, target_year=target_year
             )
-
-        # else:
-        #     predictions_df = self.__pipeline_predictions(
-        #         input_data=X_test, last_year=last_year, target_year=target_year
-        #     )
 
         self.predicted = predictions_df[TARGETS]
 

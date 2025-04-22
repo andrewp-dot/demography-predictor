@@ -105,6 +105,15 @@ def explain_tree(pipeline: GlobalModelPipeline, save_path: str, states: List[str
             shap_values=shap_values, save_path=state_save_path
         )
 
+        explainer.get_force_plot(shap_values=shap_values, save_path=state_save_path)
+
+        explainer.get_summary_plot(shap_values=shap_values, save_path=state_save_path)
+
+        explainer.get_waterfall_plot(shap_values=shap_values, save_path=state_save_path)
+
+        print("Done!")
+        print()
+
 
 def main(
     pipeline: Union[LocalModelPipeline, GlobalModelPipeline, PredictorPipeline],

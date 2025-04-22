@@ -388,7 +388,7 @@ class GlobalModelExplainer:
         # Aggregate SHAP values -> accross samples and features
         mean_shap = np.abs(shap_values_array).mean(axis=(0, 2))
 
-        print(mean_shap)
+        # print(mean_shap)
 
         feature_names = self.FEATURE_NAMES
 
@@ -422,13 +422,111 @@ class GlobalModelExplainer:
 
         if save_path:
 
-            save_path = os.path.join(save_path, "gm_shap_waterfall_plot.png")
+            save_path = os.path.join(save_path, "gm_shap_feature_importance_plot.png")
             plt.savefig(save_path)
 
         if show_plot:
             plt.show()
 
         return sorted_feature_importance_dict
+
+    def get_force_plot(
+        self,
+        shap_values: shap.Explanation,
+        save_path: str | None = None,
+        show_plot: bool = False,
+    ) -> None:
+
+        print("GM force plot...")
+
+        print(shap_values.shape)
+
+        # Select one sample and one output
+        idx = 0  # You can change this or loop over many later
+
+        target_index = 0
+        single_sample_values = shap_values.values[
+            idx, :, target_index
+        ]  # shape (features,)
+        single_sample_data = shap_values.data[idx]  # shape (features,)
+        base_value = shap_values.base_values[idx, target_index]
+
+        # Create force plot (averaged across outputs)
+        force_plot = shap.force_plot(
+            base_value=base_value,
+            shap_values=single_sample_values,
+            features=single_sample_data,
+            feature_names=self.FEATURE_NAMES,
+            matplotlib=True,
+        )
+
+        if save_path:
+            save_path = os.path.join(save_path, "gm_shap_force_plot.png")
+            plt.savefig(save_path)
+
+        if show_plot:
+            plt.show()
+
+    def get_summary_plot(
+        self,
+        shap_values: shap.Explanation,
+        save_path: str | None = None,
+        show_plot: bool = False,
+    ) -> None:
+
+        print("GM summary plot...")
+
+        # Validate feature names
+        n_features = shap_values.data.shape[1]
+        if len(self.FEATURE_NAMES) != n_features:
+            raise ValueError(
+                f"Feature names length ({len(self.FEATURE_NAMES)}) "
+                f"does not match SHAP data features ({n_features})!"
+            )
+
+        shap.summary_plot(
+            shap_values.values[:, :, 0],  # slice for first output if multi-output
+            features=shap_values.data,
+            feature_names=self.FEATURE_NAMES,
+            show=show_plot,
+        )
+
+        if save_path:
+            plt.savefig(os.path.join(save_path, "gm_shap_summary_plot.png"))
+
+        if show_plot:
+            plt.show()
+
+    def get_waterfall_plot(
+        self,
+        shap_values: shap.Explanation,
+        save_path: str | None = None,
+        show_plot: bool = False,
+        sample_index: int = 0,
+        target_index: int = 0,
+    ) -> None:
+
+        print("GM waterfall plot...")
+
+        # Select first sample and first output for waterfall
+
+        single_explanation = shap.Explanation(
+            values=shap_values.values[
+                sample_index, :, target_index
+            ],  # sample 0, target 0
+            base_values=shap_values.base_values[sample_index, target_index],
+            data=shap_values.data[sample_index],
+            feature_names=self.FEATURE_NAMES,
+        )
+
+        plt.figure(figsize=(20, 5))
+        shap.waterfall_plot(single_explanation, show=show_plot)
+
+        if save_path:
+            plt.savefig(os.path.join(save_path, "gm_shap_waterfall_plot.png"))
+
+        if show_plot:
+            plt.show()
 
 
 def main():
