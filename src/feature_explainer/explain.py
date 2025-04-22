@@ -70,12 +70,13 @@ def explain_lstm(pipeline: LocalModelPipeline, save_path: str, states: List[str]
             target_index=0,
         )
 
-        # explainer.get_waterfall_plot(
-        #     shap_values=shap_values,
-        #     input_x=sequences,
-        #     sample_idx=0,
-        #     target_index=0,
-        # )
+        explainer.get_waterfall_plot(
+            save_path=state_save_path,
+            shap_values=shap_values,
+            input_x=sequences,
+            sample_idx=0,
+            target_index=0,
+        )
 
         print(f"Done!")
         print()
@@ -118,6 +119,7 @@ if __name__ == "__main__":
     setup_logging()
 
     # Get pipeline
+    # TODO: maybe do some arguments in here?
     PIPELINE_NAME = "lstm_features_only"
     pipeline = LocalModelPipeline.get_pipeline(name=PIPELINE_NAME)
 

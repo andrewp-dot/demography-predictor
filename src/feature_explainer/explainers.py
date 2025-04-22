@@ -46,6 +46,8 @@ class LSTMExplainer:
 
     def __init__(self, pipeline: LocalModelPipeline):
         self.pipeline: LocalModelPipeline = pipeline
+        # Get the device
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def create_sequences(self, state: str) -> torch.Tensor:
 
@@ -101,11 +103,8 @@ class LSTMExplainer:
             out: torch.Tensor: The shap values.
         """
 
-        # Get the device
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         # Put the model to the device
-        self.pipeline.model.to(device=device)
+        self.pipeline.model.to(device=self.device)
 
         # Set training batches as input_x
 
@@ -125,7 +124,7 @@ class LSTMExplainer:
         torch.backends.cudnn.enabled = False
 
         # Move input sequences to the same device as the model
-        input_sequences = input_sequences.to(device=device)
+        input_sequences = input_sequences.to(device=self.device)
 
         # Compute SHAP values
         explainer = shap.GradientExplainer(model, input_sequences)
@@ -206,8 +205,8 @@ class LSTMExplainer:
             feature_names=self.pipeline.model.FEATURES,
             matplotlib=True,
             show=False,
-            figsize=(30, 5),
-            # contribution_threshold=0.1,
+            figsize=(50, 5),
+            contribution_threshold=0.1,
         )
 
         if save_path:
@@ -273,16 +272,15 @@ class LSTMExplainer:
         self,
         shap_values: torch.Tensor,
         input_x: torch.Tensor,
+        save_path: str | None = None,
         sample_idx: int = 0,
         target_index: int = 0,
+        time_step_idx: int = 0,
         show_plot: bool = False,
-        save_plot: bool = False,
     ) -> None:
         print("Waterfall plot...")
 
-        shap_values_for_instance = shap_values[target_index][
-            :, sample_idx, :
-        ]  # Shape: (12, 13) - Take the first batch, all time steps
+        shap_values_for_instance = shap_values[target_index][:, sample_idx, :]
 
         input_np = input_x.detach().cpu().numpy()
         input_x_single = input_np[sample_idx, :, :]
@@ -290,31 +288,40 @@ class LSTMExplainer:
         # We need the input features for the instance
         input_features_for_instance = input_x_single[sample_idx, :]
 
-        print(input_x[sample_idx : sample_idx + 1].shape)
-
         output_idx = 0
 
-        # TODO: fix this to use just the predict
         base_value = self.pipeline.model.shap_predict(
-            input_x[sample_idx : sample_idx + 1]
-        )[0, output_idx].item()
+            input_x[sample_idx : sample_idx + 1].to(self.device)
+        )  # base_value shape (from forward method): (1, future_time_step_predicted, feature_num)
+
+        # Extract desired feature
+        desired_feature_value = base_value[0, 0, output_idx].item()
 
         # Create the waterfall plot
         shap.waterfall_plot(
             shap.Explanation(
-                values=shap_values_for_instance,  # SHAP values for the instance
-                base_values=base_value,
+                values=shap_values_for_instance[
+                    time_step_idx
+                ],  # SHAP values for the instance
+                base_values=desired_feature_value,
                 data=input_features_for_instance,  # The input features
                 feature_names=self.pipeline.model.FEATURES,  # Feature names
-            )
+            ),
+            max_display=10,
         )
 
         # Save the waterfall plot
-        plt.tight_layout()
-        plt.subplots_adjust(bottom=0.15, left=0.1, right=0.9, top=0.9)
-        plt.savefig(
-            "shap_waterfall_plot.png", format="png", dpi=300, bbox_inches="tight"
-        )
+
+        if save_path:
+
+            save_path = os.path.join(save_path, "shap_waterfall_plot.png")
+
+            # Save the force plot to a file (using matplotlib)
+            fig = plt.gcf()  # Get current figure
+            fig.set_size_inches(10, 5)
+            plt.tight_layout()
+            plt.subplots_adjust(bottom=0.15, left=0.1, right=0.9, top=0.9)
+            plt.savefig(save_path, format="png", dpi=300, bbox_inches="tight")
 
 
 class GlobalModelExplainer:

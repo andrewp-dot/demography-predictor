@@ -298,8 +298,9 @@ class BaseLSTM(CustomModelBase):
 
         return training_stats
 
-    def shap_predict(self, input_tensor: pd.DataFrame) -> torch.Tensor:
+    def shap_predict(self, input_tensor: torch.Tensor) -> torch.Tensor:
         # Single prediction for shap
+
         with torch.no_grad():
             pred = self(input_tensor)
 
