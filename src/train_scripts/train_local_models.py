@@ -17,7 +17,7 @@ from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
-from src.local_model.model import RNNHyperparameters, BaseLSTM
+from src.local_model.model import RNNHyperparameters, BaseRNN
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 from src.local_model.statistical_models import LocalARIMA
@@ -101,7 +101,7 @@ def train_base_lstm(
     )
 
     # Create model
-    base_lstm = BaseLSTM(hyperparameters=hyperparameters, features=features)
+    base_lstm = BaseRNN(hyperparameters=hyperparameters, features=features)
 
     # Train model
     stats = base_lstm.train_model(
@@ -227,11 +227,11 @@ def train_ensemble_model(
         is_fitted=False,
     )
 
-    trained_models: Dict[str, BaseLSTM] = {}
+    trained_models: Dict[str, BaseRNN] = {}
     for i, feature in enumerate(features):
 
         # Create model
-        base_lstm = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=[feature])
+        base_lstm = BaseRNN(hyperparameters=ADJUSTED_PARAMS, features=[feature])
 
         # Select only the i-th feature for this model
         feature_batch_inputs = batch_inputs[

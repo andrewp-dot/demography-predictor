@@ -15,7 +15,7 @@ from src.preprocessors.data_transformer import DataTransformer
 from src.base import TrainingStats
 
 from src.local_model.experimental import ExpLSTM
-from src.local_model.model import RNNHyperparameters, BaseLSTM
+from src.local_model.model import RNNHyperparameters, BaseRNN
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 
@@ -76,12 +76,12 @@ class BasePipeline:
 class LocalModelPipeline(BasePipeline):
 
     # Set the correct typehints
-    model: Union["BaseLSTM", "FineTunableLSTM", "PureEnsembleModel"]
+    model: Union["BaseRNN", "FineTunableLSTM", "PureEnsembleModel"]
     training_stats: Optional["TrainingStats"]
 
     def __init__(
         self,
-        model: Union["BaseLSTM", "FineTunableLSTM", "PureEnsembleModel"],
+        model: Union["BaseRNN", "FineTunableLSTM", "PureEnsembleModel"],
         transformer: DataTransformer,
         name: str = "local_model_pipeline",
         training_stats: Optional["TrainingStats"] = None,

@@ -1,7 +1,7 @@
 
 # DifferentHiddenLayers
 
-**Description:** Try to train BaseLSTM models with different layers.
+**Description:** Try to train BaseRNN models with different layers.
 
 ## Per target metrics - model comparision
 ```

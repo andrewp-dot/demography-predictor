@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 from typing import List, Union
 
 from src.local_model.model import CustomModelBase
-from src.local_model.model import BaseLSTM
+from src.local_model.model import BaseRNN
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.base import RNNHyperparameters
 
@@ -206,13 +206,13 @@ class Experiment:
     def __init__(
         self,
         name: str,
-        model: BaseLSTM,
+        model: BaseRNN,
         features: List[str],
         hyperparameters: RNNHyperparameters,
         experiment: BaseExperiment,
     ):
         self.name: str = name
-        self.model: BaseLSTM = model
+        self.model: BaseRNN = model
         self.hyperparameters: RNNHyperparameters = hyperparameters
         self.FEATURES: List[str] = features
         self.exp: BaseExperiment = experiment

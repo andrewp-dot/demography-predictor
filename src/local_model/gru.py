@@ -24,7 +24,7 @@ from src.preprocessors.data_transformer import DataTransformer
 logger = logging.getLogger("local_model")
 
 
-class BaseLSTM(CustomModelBase):
+class GRUNet(CustomModelBase):
 
     def __init__(
         self,
@@ -32,7 +32,7 @@ class BaseLSTM(CustomModelBase):
         features: List[str],
         targets: List[str] | None = None,
     ):
-        super(BaseLSTM, self).__init__(
+        super(GRUNet, self).__init__(
             features=features,
             targets=(targets if targets else features),
             hyperparameters=hyperparameters,

@@ -34,7 +34,7 @@ from src.train_scripts.train_local_models import (
     train_finetunable_model_from_scratch,
 )
 from src.pipeline import LocalModelPipeline
-from src.local_model.model import RNNHyperparameters, BaseLSTM
+from src.local_model.model import RNNHyperparameters, BaseRNN
 from src.evaluation import EvaluateModel
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -150,7 +150,7 @@ class DataUsedForTraining(BaseExperiment):
         # Create readme
         self.create_readme()
 
-        COMPARATION_MODELS_DICT: Dict[str, BaseLSTM] = {}
+        COMPARATION_MODELS_DICT: Dict[str, BaseRNN] = {}
 
         # Create model trained on a single state
         single_state_model_pipeline = self.__train_by_single_state(

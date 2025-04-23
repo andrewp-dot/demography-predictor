@@ -16,7 +16,7 @@ Models:
 
 Models:
     - BasLSTM
-    - BaseLSTM * NumberOfFeatures (RNNvsStatisticalMethodsSingleFeature)
+    - BaseRNN * NumberOfFeatures (RNNvsStatisticalMethodsSingleFeature)
 
 ## Experiment 3: Compare different model types
 
@@ -41,7 +41,7 @@ Models:
 **Goal:** LSTM has better accuracy then the statistical models.
 
 Models:
-    - baseLSTM (RNNvsStatisticalMethods) (or best model from previous experiments)
+    - BaseRNN (RNNvsStatisticalMethods) (or best model from previous experiments)
     - LocalARIMA
     - GM (not implemented yet)
 

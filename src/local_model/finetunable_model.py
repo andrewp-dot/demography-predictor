@@ -14,7 +14,7 @@ from src.utils.save_model import save_model, get_model, save_experiment_model
 from src.base import RNNHyperparameters, TrainingStats, CustomModelBase
 
 # from src.evaluation import EvaluateModel
-from src.local_model.model import BaseLSTM
+from src.local_model.model import BaseRNN
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -47,7 +47,7 @@ class FineTunableLSTM(CustomModelBase):
 
     def __init__(
         self,
-        base_model: BaseLSTM,
+        base_model: BaseRNN,
         hyperparameters: RNNHyperparameters,
     ):
         super(FineTunableLSTM, self).__init__(
@@ -498,16 +498,16 @@ class FineTunableLSTM(CustomModelBase):
 
 # def train_base_model(
 #     model_name: str,
-#     base_model: BaseLSTM,
+#     base_model: BaseRNN,
 #     evaluation_state_name: str,
 #     save: bool = True,
 #     is_experimental: bool = True,
-# ) -> Tuple[BaseLSTM, DataTransformer]:
+# ) -> Tuple[BaseRNN, DataTransformer]:
 #     """
 #     Trains base model using all available data. This functions is used just to create base model
 
 #     Args:
-#         base_model (BaseLSTM): Base model to train.
+#         base_model (BaseRNN): Base model to train.
 #         evaluation_state_name (str): State data used for performance evaluation.
 #         save (bool, optional): If set to True, saves the trained base model, else it just trains the model. Defaults to True.
 #         is_experimental (bool, optional): If the model is experimental and the save option is set to True, saves the model to directory, where the experimental trained models are available. Defaults to True.
@@ -516,7 +516,7 @@ class FineTunableLSTM(CustomModelBase):
 #         ValueError: If there is an existing model and it hase incompatibile input features, raises ValueError.
 
 #     Returns:
-#         out: Tuple[BaseLSTM, DataTransformer]: Trained BaseLSTM model with used DataTransformer.
+#         out: Tuple[BaseRNN, DataTransformer]: Trained BaseRNN model with used DataTransformer.
 #     """
 
 #     # Set features const
@@ -524,7 +524,7 @@ class FineTunableLSTM(CustomModelBase):
 
 #     # try:
 #     #     # TODO: save transformer for the model
-#     #     model: BaseLSTM = get_model(model_name)
+#     #     model: BaseRNN = get_model(model_name)
 #     #     logger.info(f"Base model already exist. Model name: {model_name}")
 
 #     #     # TODO: change this
@@ -541,7 +541,7 @@ class FineTunableLSTM(CustomModelBase):
 #     hyperparameters = get_core_hyperparameters(
 #         input_size=len(FEATURES), epochs=50, batch_size=32
 #     )
-#     rnn = BaseLSTM(hyperparameters, FEATURES)
+#     rnn = BaseRNN(hyperparameters, FEATURES)
 
 #     # Load data
 #     states_loader = StatesDataLoader()
@@ -652,7 +652,7 @@ class FineTunableLSTM(CustomModelBase):
 #         num_layers=3,
 #     )
 
-#     base_model = BaseLSTM(hyperparameters=hyperparameters, features=FEATURES)
+#     base_model = BaseRNN(hyperparameters=hyperparameters, features=FEATURES)
 
 #     # Create and train base model
 #     MODEL_NAME = "test_base_model_for_finetunable.pkl"

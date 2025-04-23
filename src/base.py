@@ -39,7 +39,7 @@ class RNNHyperparameters:
         bidirectional: bool = False,
     ):
         """
-        Define parameters for LSTM networks
+        Define parameters for reccurent neural networks
 
         Args:
             input_size (int): Defines the number of input features.

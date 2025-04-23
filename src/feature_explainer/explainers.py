@@ -17,7 +17,7 @@ import warnings
 from src.utils.save_model import get_model
 from src.pipeline import LocalModelPipeline, GlobalModelPipeline
 
-from src.local_model.model import BaseLSTM
+from src.local_model.model import BaseRNN
 from src.local_model.experimental import ExpLSTM
 from src.preprocessors.multiple_states_preprocessing import StateDataLoader
 from src.preprocessors.data_transformer import DataTransformer

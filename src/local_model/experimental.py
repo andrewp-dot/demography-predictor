@@ -460,7 +460,7 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
 
     if save_plots:
         fig = training_stats.create_plot()
-        fig.savefig(f"BaseLSTM_training_stats_{hyperparameters.epochs}_epochs.png")
+        fig.savefig(f"BaseRNN_training_stats_{hyperparameters.epochs}_epochs.png")
 
     if to_save_model:
         save_model(name=f"ExpLSTM_pop_total.pkl", model=rnn)

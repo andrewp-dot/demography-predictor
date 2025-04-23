@@ -7,7 +7,7 @@ from src.utils.save_model import get_model
 
 from src.evaluation import EvaluateModel
 
-from src.local_model.model import BaseLSTM
+from src.local_model.model import BaseRNN
 from src.local_model.experimental import ExpLSTM
 
 from src.pipeline import LocalModelPipeline

@@ -1,6 +1,6 @@
 # Standard library imports
 import pandas as pd
-from typing import Tuple, Dict, List, Callable, Union
+from typing import Tuple, Dict, List, Optional, Union, Type
 import pprint
 import logging
 
@@ -31,15 +31,18 @@ logger = logging.getLogger("local_model")
 # c_n = c_n.detach()
 
 
-class BaseLSTM(CustomModelBase):
+class BaseRNN(CustomModelBase):
 
     def __init__(
         self,
         hyperparameters: RNNHyperparameters,
         features: List[str],
-        targets: List[str] | None = None,
+        targets: Optional[List[str]] = None,
+        # Additional bpnn layers? -> hidden size or tuple(hidden_size, activation function)
+        additional_bpnn: Optional[List[int]] = None,
+        rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
     ):
-        super(BaseLSTM, self).__init__(
+        super(BaseRNN, self).__init__(
             features=features,
             targets=(targets if targets else features),
             hyperparameters=hyperparameters,
@@ -50,7 +53,7 @@ class BaseLSTM(CustomModelBase):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # 3 layer model:
-        self.lstm = nn.LSTM(
+        self.rnn = rnn_type(
             input_size=hyperparameters.input_size,
             # Define the number of hidden units in the LSTM layer
             hidden_size=hyperparameters.hidden_size,
@@ -61,26 +64,24 @@ class BaseLSTM(CustomModelBase):
             batch_first=True,
         )
 
-        # # Add some other layers
-        # self.linear_1 = nn.Linear(
-        #     in_features=hyperparameters.hidden_size,
-        #     out_features=256,
-        # )
-        # self.relu_1 = nn.ReLU()  # Adds non-linearity
+        # Create additional backpropagation layers
+        layers = []
+        input_dim = hyperparameters.hidden_size
+        if additional_bpnn:
+            for hidden_dim in additional_bpnn:
+                layers.append(nn.Linear(input_dim, hidden_dim))
 
-        # self.linear_2 = nn.Linear(
-        #     in_features=256,
-        #     out_features=128,
-        # )
-        # self.relu_2 = nn.ReLU()  # Adds non-linearity
+                # Add activation function for the layer
+                layers.append(nn.ReLU())
+                input_dim = hidden_dim
 
-        # Out layer: Linear layer
-        self.linear = nn.Linear(
-            in_features=hyperparameters.hidden_size,
-            out_features=(
-                hyperparameters.future_step_predict * hyperparameters.output_size
-            ),  # Future steps * number of features to predict
-        )
+        # Add output layer
+        output_dim = (
+            hyperparameters.future_step_predict * hyperparameters.output_size
+        )  # Assuming output is same as number of targets
+        layers.append(nn.Linear(input_dim, output_dim))
+
+        self.fc = nn.Sequential(*layers)
 
     def __initialize_hidden_states(
         self, batch_size: int
@@ -116,7 +117,7 @@ class BaseLSTM(CustomModelBase):
         x: torch.Tensor,
         # hidden_state: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
     ) -> torch.Tensor:
-        self.lstm.flatten_parameters()  # # Fix for contiguous memory issue
+        self.rnn.flatten_parameters()  # # Fix for contiguous memory issue
 
         # Get the size of the batch
         batch_size = x.size(0)
@@ -125,28 +126,16 @@ class BaseLSTM(CustomModelBase):
         h_t, c_t = self.__initialize_hidden_states(batch_size)
 
         # Forward propagate through LSTM
-        out, (h_n, c_n) = self.lstm(x, (h_t, c_t))  # In here 'out' is a tensor
+        out, (h_n, c_n) = self.rnn(x, (h_t, c_t))  # In here 'out' is a tensor
 
         # Use the output from the last time step -> use fully connected layers
         out = out[:, -1, :]
 
-        # out = self.linear_1(out)  # Using the last time step's output
-        # out = self.relu_1(out)
-
-        # out = self.linear_2(out)
-        # out = self.relu_2(out)
-
-        out = self.linear(out)  # Using the last time step's output
+        # Use the new layers of bpnn or just last output layer
+        out = self.fc(out)
 
         # Return both output and the updated hidden state (for the next batch)
         # return out, (h_n, c_n)
-
-        # Transform prediction to the correct format
-        # out = out.view(
-        #     -1,
-        #     self.hyperparameters.future_step_predict,
-        #     self.hyperparameters.output_size,
-        # )
 
         out = out.view(
             batch_size,
@@ -430,7 +419,7 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
     hyperparameters = get_core_hyperparameters(
         input_size=len(LSTM_FEATURES), epochs=epochs, batch_size=32
     )
-    rnn = BaseLSTM(hyperparameters, features=LSTM_FEATURES, targets=TARGETS)
+    rnn = BaseRNN(hyperparameters, features=LSTM_FEATURES, targets=TARGETS)
 
     # Load data
     states_loader = StatesDataLoader()
@@ -481,11 +470,11 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
 
     if save_plots:
         fig = training_stats.create_plot()
-        fig.savefig(f"BaseLSTM_training_stats_{hyperparameters.epochs}_epochs.png")
+        fig.savefig(f"BaseRNN_training_stats_{hyperparameters.epochs}_epochs.png")
 
     if to_save_model:
-        save_model(name=f"BaseLSTM.pkl", model=rnn)
-        save_model(name=f"BaseLSTM_transformer.pkl", model=transformer)
+        save_model(name=f"BaseRNN.pkl", model=rnn)
+        save_model(name=f"BaseRNN_transformer.pkl", model=transformer)
 
 
 if __name__ == "__main__":

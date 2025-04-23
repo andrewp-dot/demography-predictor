@@ -30,7 +30,7 @@ from src.train_scripts.train_local_models import (
 from src.compare_models.compare import ModelComparator
 
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
-from src.local_model.model import RNNHyperparameters, BaseLSTM
+from src.local_model.model import RNNHyperparameters, BaseRNN
 
 from src.local_model.ensemble_model import (
     PureEnsembleModel,
@@ -49,8 +49,8 @@ logger = logging.getLogger("benchmark")
 class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
     """
     Compares performance of 2 models:
-    - BaseLSTM (input_size=N_FEATURES)
-    - Multiple BaseLSTM (input_size=1, number of models=N_FEATURES)
+    - BaseRNN (input_size=N_FEATURES)
+    - Multiple BaseRNN (input_size=1, number of models=N_FEATURES)
 
     Models are compared by evaluation on the specific (chosen) states data.
     """
@@ -160,7 +160,7 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
 class FineTunedModels(BaseExperiment):
     """
     Experiment compares following models:
-    - BaseLSTM
+    - BaseRNN
     - FineTunableLSTM - single state
     - FineTunableLSTM - group of states
     """
@@ -238,7 +238,7 @@ class FineTunedModels(BaseExperiment):
         # Create readme
         self.create_readme()
 
-        TO_COMPARE_MODELS: Dict[str, Union[BaseLSTM, PureEnsembleModel]] = {}
+        TO_COMPARE_MODELS: Dict[str, Union[BaseRNN, PureEnsembleModel]] = {}
 
         # Get data loader
         states_loader: StatesDataLoader = StatesDataLoader()
@@ -294,7 +294,7 @@ class FineTunedModels(BaseExperiment):
 
 class CompareWithStatisticalModels(BaseExperiment):
     """
-    In this experiment the statistical models (ARIMA(1,1,1) and GM(1,1) models) are compared with BaseLSTM model.
+    In this experiment the statistical models (ARIMA(1,1,1) and GM(1,1) models) are compared with BaseRNN model.
     """
 
     FEATURES: List[str] = basic_features()
@@ -535,11 +535,19 @@ class DifferentArchitecturesComparision(BaseExperiment):
 
     EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
 
-    # TODO: to add
-    # Seq2seq - encoder decoder model
-    # LSTM + BPNN
-    # BPNN
-    # Ensemble model (?)
+    # TODO:
+    # 1. LSTM
+    # 2. GRU
+    # 3. RNN
+    # 4. XGBOOST (random forest, lightgbm)...
+    # 5. BPNN
+    # 6. ARIMA (Ensemble model)
+    # 7. (bonus) Seq2seq - encoder decoder model
+
+    # TODO:
+    # 2 types of experiments:
+    # -> target based (second model first)
+    # -> predicting feature development for the second model (first model)
 
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
@@ -654,13 +662,13 @@ if __name__ == "__main__":
 
     # 3 are nto runnable due to broken (incompatibile) PureEnsembleModel with pipeline creation.
     # exp_3 = CompareWithStatisticalModels(
-    #     description="Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction."
+    #     description="Compares BaseRNN with statistical models and BaseRNN for single feature prediction."
     # )
     # exp_3.run(state="Czechia", split_rate=0.8)
 
     # Runnable
     # exp_4 = DifferentHiddenLayers(
-    #     description="Try to train BaseLSTM models with different layers."
+    #     description="Try to train BaseRNN models with different layers."
     # )
     # exp_4.run(split_rate=0.8)
 

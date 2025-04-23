@@ -10,7 +10,7 @@ from src.utils.save_model import save_model, get_model
 
 from src.base import RNNHyperparameters
 
-from src.local_model.model import BaseLSTM
+from src.local_model.model import BaseRNN
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.statistical_models import LocalARIMA
 
@@ -28,7 +28,7 @@ logger = logging.getLogger("local_model")
 class PureEnsembleModel:
 
     def __init__(
-        self, feature_models: Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]]
+        self, feature_models: Dict[str, Union[LocalARIMA, BaseRNN, FineTunableLSTM]]
     ):
         # Get features
         self.FEATURES: List[str] = list(feature_models.keys())
@@ -36,7 +36,7 @@ class PureEnsembleModel:
         # Targets are the same
         self.TARGETS: List[str] = self.FEATURES
 
-        self.model: Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]] = (
+        self.model: Dict[str, Union[LocalARIMA, BaseRNN, FineTunableLSTM]] = (
             feature_models
         )
 
@@ -67,7 +67,7 @@ class PureEnsembleModel:
                     feature_prediction_df.values, dtype=torch.float32
                 )
 
-            if isinstance(current_model, BaseLSTM) or isinstance(
+            if isinstance(current_model, BaseRNN) or isinstance(
                 current_model, FineTunableLSTM
             ):
                 # Predict featue for X years
@@ -101,7 +101,7 @@ def train_models_for_ensemble_model(
     hyperaparameters: RNNHyperparameters,
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
-) -> Dict[str, Union[BaseLSTM, FineTunableLSTM]]:
+) -> Dict[str, Union[BaseRNN, FineTunableLSTM]]:
 
     # Load data for training
     states_loader = StatesDataLoader()
@@ -114,7 +114,7 @@ def train_models_for_ensemble_model(
     transformer = DataTransformer()
 
     # Train and save models
-    trained_models: Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]] = {}
+    trained_models: Dict[str, Union[LocalARIMA, BaseRNN, FineTunableLSTM]] = {}
     for feature in features:
 
         logger.info(f"Training for predicting feature: {feature}")
@@ -123,7 +123,7 @@ def train_models_for_ensemble_model(
         target = feature
 
         # Create RNN
-        rnn = BaseLSTM(hyperparameters=ADJUSTED_PARAMS, features=[target])
+        rnn = BaseRNN(hyperparameters=ADJUSTED_PARAMS, features=[target])
 
         (
             train_inputs_tensor,
@@ -284,23 +284,23 @@ if __name__ == "__main__":
     # print(em_evaluation.per_target_metrics)
     # print(em_evaluation.all_states_evaluation)
 
-    # Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]] = {
-    #     "feature": BaseLSTM(hyperaparameters=RNNHyperparameters(...), features=["feature"])
+    # Dict[str, Union[LocalARIMA, BaseRNN, FineTunableLSTM]] = {
+    #     "feature": BaseRNN(hyperaparameters=RNNHyperparameters(...), features=["feature"])
     # }
 
 
-#     [{'best_model': 'BaseLSTM', 'feature': 'fertility rate, total'},
-#  {'best_model': 'BaseLSTM', 'feature': 'population, total'},
+#     [{'best_model': 'BaseRNN', 'feature': 'fertility rate, total'},
+#  {'best_model': 'BaseRNN', 'feature': 'population, total'},
 #  {'best_model': 'ARIMA', 'feature': 'net migration'},
-#  {'best_model': 'BaseLSTM', 'feature': 'arable land'},
-#  {'best_model': 'BaseLSTM', 'feature': 'birth rate, crude'},
+#  {'best_model': 'BaseRNN', 'feature': 'arable land'},
+#  {'best_model': 'BaseRNN', 'feature': 'birth rate, crude'},
 #  {'best_model': 'ARIMA', 'feature': 'gdp growth'},
 #  {'best_model': 'ARIMA', 'feature': 'death rate, crude'},
-#  {'best_model': 'BaseLSTM', 'feature': 'agricultural land'},
+#  {'best_model': 'BaseRNN', 'feature': 'agricultural land'},
 #  {'best_model': 'ARIMA', 'feature': 'rural population'},
 #  {'best_model': 'ARIMA', 'feature': 'rural population growth'},
-#  {'best_model': 'BaseLSTM', 'feature': 'age dependency ratio'},
+#  {'best_model': 'BaseRNN', 'feature': 'age dependency ratio'},
 #  {'best_model': 'ARIMA', 'feature': 'urban population'},
-#  {'best_model': 'BaseLSTM', 'feature': 'population growth'},
-#  {'best_model': 'BaseLSTM', 'feature': 'adolescent fertility rate'},
-#  {'best_model': 'BaseLSTM', 'feature': 'life expectancy at birth, total'}]
+#  {'best_model': 'BaseRNN', 'feature': 'population growth'},
+#  {'best_model': 'BaseRNN', 'feature': 'adolescent fertility rate'},
+#  {'best_model': 'BaseRNN', 'feature': 'life expectancy at birth, total'}]

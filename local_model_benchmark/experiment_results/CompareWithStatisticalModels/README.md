@@ -1,7 +1,7 @@
 
 # CompareWithStatisticalModels
 
-**Description:** Compares BaseLSTM with statistical models and BaseLSTM for single feature prediction.
+**Description:** Compares BaseRNN with statistical models and BaseRNN for single feature prediction.
 
 ## Per target metrics - model comparision
 ```

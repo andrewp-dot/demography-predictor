@@ -22,7 +22,7 @@ from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.statistical_models import LocalARIMA
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.local_model.model import RNNHyperparameters, BaseLSTM
+from src.local_model.model import RNNHyperparameters, BaseRNN
 
 
 # Setup logger
@@ -36,7 +36,7 @@ class OptimalParamsExperiment(BaseExperiment):
     # TODO: evaluation -> use more then r2 score?
     def __init__(
         self,
-        model: BaseLSTM,
+        model: BaseRNN,
         name: str,
         description: str,
         features: List[str],
@@ -168,7 +168,7 @@ class OptimalParamsExperiment(BaseExperiment):
             )
 
             # Train model
-            rnn = BaseLSTM(base_params, features=self.FEATURES)
+            rnn = BaseRNN(base_params, features=self.FEATURES)
 
             rnn.set_scaler(state_scaler)
 
@@ -292,7 +292,7 @@ class OptimalParamsExperiment(BaseExperiment):
         )
 
         # Train and evaluate the adjusted parameters model
-        optimal_model = BaseLSTM(hyperparameters=OPTIMAL_PAREMETRS, features=FEATURES)
+        optimal_model = BaseRNN(hyperparameters=OPTIMAL_PAREMETRS, features=FEATURES)
 
         optimal_model.set_scaler(optimal_scaler)
 
