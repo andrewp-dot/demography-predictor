@@ -10,7 +10,7 @@ from sklearn.preprocessing import LabelEncoder
 
 # Custom imports
 from src.preprocessors.state_preprocessing import StateDataLoader
-from src.base import LSTMHyperparameters
+from src.base import RNNHyperparameters
 from src.utils.constants import get_core_hyperparameters
 
 
@@ -645,7 +645,7 @@ class DataTransformer:
     def create_train_test_data_batches(
         self,
         data: pd.DataFrame,
-        hyperparameters: LSTMHyperparameters,
+        hyperparameters: RNNHyperparameters,
         features: List[str],
         split_rate: float = 0.8,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -654,7 +654,7 @@ class DataTransformer:
 
         Args:
             data (pd.DataFrame): Pre-scaled data for training and validation.
-            hyperparameters (LSTMHyperparameters): Hyperparameters of the model.
+            hyperparameters (RNNHyperparameters): Hyperparameters of the model.
             features (List[str]): Selected features from the data.
 
         Returns:
@@ -726,7 +726,7 @@ class DataTransformer:
     def create_train_test_multiple_states_batches(
         self,
         data: Dict[str, pd.DataFrame],
-        hyperparameters: LSTMHyperparameters,
+        hyperparameters: RNNHyperparameters,
         features: List[str],
         split_rate: float = 0.8,
         targets: List[str] | None = None,

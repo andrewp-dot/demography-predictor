@@ -3,7 +3,7 @@ from pydantic import DirectoryPath, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Dict
 
-from src.base import LSTMHyperparameters
+from src.base import RNNHyperparameters
 
 
 def get_experiment_result_dir() -> DirectoryPath:
@@ -27,8 +27,8 @@ def get_core_parameters(
     epochs: int = 10,
     batch_size: int = 1,
     num_layers: int = 3,
-) -> LSTMHyperparameters:
-    BASE_HYPERPARAMETERS: LSTMHyperparameters = LSTMHyperparameters(
+) -> RNNHyperparameters:
+    BASE_HYPERPARAMETERS: RNNHyperparameters = RNNHyperparameters(
         input_size=input_size,
         hidden_size=hidden_size,
         future_step_predict=future_step_predict,

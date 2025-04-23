@@ -134,8 +134,17 @@ def main(
 
     elif isinstance(pipeline, PredictorPipeline):
         # Explain base lstm  and explain XGB -> tree model explainer
-        explain_lstm(pipeline=pipeline.local_model_pipeline, save_path=SAVE_PATH)
-        explain_tree(pipeline=pipeline.global_model_pipeline, save_path=SAVE_PATH)
+
+        explain_lstm(
+            states=states,
+            pipeline=pipeline.local_model_pipeline,
+            save_path=os.path.join(SAVE_PATH, "lstm"),
+        )
+        explain_tree(
+            states=states,
+            pipeline=pipeline.global_model_pipeline,
+            save_path=os.path.join(SAVE_PATH, "gm"),
+        )
     else:
         raise ValueError(
             f"The explanation for pipeline of type '{type(pipeline)}' is not implemented yet!"
@@ -151,8 +160,23 @@ if __name__ == "__main__":
     # PIPELINE_NAME = "lstm_features_only"
     # pipeline = LocalModelPipeline.get_pipeline(name=PIPELINE_NAME)
 
-    PIPELINE_NAME = "test_gm"
-    pipeline = GlobalModelPipeline.get_pipeline(name=PIPELINE_NAME)
+    PIPELINE_NAME = "test_predictor"
+    pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
+
+    BEST_PERFORMING_STATES: List[str] = [
+        "Guatemala",
+        "St. Vincent and the Grenadines",
+        "Nepal",
+        "Venezuela, RB",
+        "Philippines",
+    ]
+    WORST_PERFORMING_STATES: List[str] = [
+        "Egypt, Arab Rep.",
+        "Chile",
+        "Vanuatu",
+        "Senegal",
+        "Solomon Islands",
+    ]
 
     # Run explainer for the pipeline
-    main(pipeline, states=["Czechia", "Honduras"])
+    main(pipeline, states=(BEST_PERFORMING_STATES + WORST_PERFORMING_STATES))

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # Custom imports
 from src.utils.log import setup_logging
 from src.utils.save_model import save_model, get_model, save_experiment_model
-from src.base import LSTMHyperparameters, TrainingStats, CustomModelBase
+from src.base import RNNHyperparameters, TrainingStats, CustomModelBase
 
 # from src.evaluation import EvaluateModel
 from src.local_model.model import BaseLSTM
@@ -48,7 +48,7 @@ class FineTunableLSTM(CustomModelBase):
     def __init__(
         self,
         base_model: BaseLSTM,
-        hyperparameters: LSTMHyperparameters,
+        hyperparameters: RNNHyperparameters,
     ):
         super(FineTunableLSTM, self).__init__(
             features=base_model.FEATURES,
@@ -642,7 +642,7 @@ class FineTunableLSTM(CustomModelBase):
 #     FEATURES = [col.lower() for col in FEATURES]
 #     EVLAUATION_STATE_NAME = "Croatia"
 
-#     hyperparameters = LSTMHyperparameters(
+#     hyperparameters = RNNHyperparameters(
 #         input_size=len(FEATURES),
 #         hidden_size=512,
 #         sequence_length=12,
@@ -668,7 +668,7 @@ class FineTunableLSTM(CustomModelBase):
 #     save_model(base_model, MODEL_NAME)
 
 #     # Create finetunable model
-#     finetunable_hyperparameters = LSTMHyperparameters(
+#     finetunable_hyperparameters = RNNHyperparameters(
 #         input_size=len(FEATURES),
 #         hidden_size=hyperparameters.hidden_size,  # Yet the base model hidden size and finetunable layer hidden size has to be the same
 #         sequence_length=hyperparameters.sequence_length,

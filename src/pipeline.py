@@ -15,7 +15,7 @@ from src.preprocessors.data_transformer import DataTransformer
 from src.base import TrainingStats
 
 from src.local_model.experimental import ExpLSTM
-from src.local_model.model import LSTMHyperparameters, BaseLSTM
+from src.local_model.model import RNNHyperparameters, BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 

@@ -30,7 +30,7 @@ from src.train_scripts.train_local_models import (
 from src.compare_models.compare import ModelComparator
 
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
-from src.local_model.model import LSTMHyperparameters, BaseLSTM
+from src.local_model.model import RNNHyperparameters, BaseLSTM
 
 from src.local_model.ensemble_model import (
     PureEnsembleModel,
@@ -57,13 +57,13 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
 
     FEATURES: List[str] = basic_features()
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
     )
 
-    ENSEMBLE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    ENSEMBLE_MODELS_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=1,
         batch_size=16,
         hidden_size=64,
@@ -167,13 +167,13 @@ class FineTunedModels(BaseExperiment):
 
     FEATURES: List[str] = basic_features()
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
     )
 
-    FINETUNE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    FINETUNE_MODELS_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         hidden_size=124,
         batch_size=1,
@@ -299,14 +299,14 @@ class CompareWithStatisticalModels(BaseExperiment):
 
     FEATURES: List[str] = basic_features()
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
         epochs=1,
     )
 
-    FINETUNE_MODELS_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    FINETUNE_MODELS_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         hidden_size=124,
         batch_size=1,
@@ -424,7 +424,7 @@ class DifferentHiddenLayers(BaseExperiment):
 
     HIDDEN_SIZE_TO_TRY: List[int] = [32, 64, 128, 256, 512]
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES), batch_size=16
     )
 
@@ -506,27 +506,27 @@ class DifferentArchitecturesComparision(BaseExperiment):
     FEATURES: List[str] = basic_features()
 
     # Base LSTM
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
     )
 
     # Base LSTM with more then 1 future prediction
-    FUTURE_BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    FUTURE_BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         future_step_predict=3,
     )
 
     # Funnel architecture
-    WIDE_LAYERS_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    WIDE_LAYERS_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
         num_layers=1,
     )
 
-    NARROW_LAYERS_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    NARROW_LAYERS_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=128,
@@ -664,7 +664,7 @@ if __name__ == "__main__":
     # )
     # exp_4.run(split_rate=0.8)
 
-    exp_5 = DifferentArchitecturesComparision(
-        description="Compares performance of different architecture models."
-    )
-    exp_5.run(split_rate=0.8)
+    # exp_5 = DifferentArchitecturesComparision(
+    #     description="Compares performance of different architecture models."
+    # )
+    # exp_5.run(split_rate=0.8)

@@ -17,7 +17,7 @@ from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
-from src.local_model.model import LSTMHyperparameters, BaseLSTM
+from src.local_model.model import RNNHyperparameters, BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 from src.local_model.statistical_models import LocalARIMA
@@ -30,7 +30,7 @@ settings = Config()
 
 def preprocess_data(
     data: Dict[str, pd.DataFrame],
-    hyperparameters: LSTMHyperparameters,
+    hyperparameters: RNNHyperparameters,
     features: List[str],
     transformer: DataTransformer,
     split_rate: float = 0.8,
@@ -79,7 +79,7 @@ def preprocess_data(
 
 def train_base_lstm(
     name: str,
-    hyperparameters: LSTMHyperparameters,
+    hyperparameters: RNNHyperparameters,
     data: Dict[str, pd.DataFrame],
     features: List[str],
     split_rate: float = 0.8,
@@ -124,7 +124,7 @@ def train_base_lstm(
 def train_finetunable_model(
     name: str,
     base_model_pipeline: LocalModelPipeline,
-    finetunable_model_hyperparameters: LSTMHyperparameters,
+    finetunable_model_hyperparameters: RNNHyperparameters,
     finetunable_model_data: Dict[str, pd.DataFrame],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
@@ -166,8 +166,8 @@ def train_finetunable_model(
 
 def train_finetunable_model_from_scratch(
     name: str,
-    base_model_hyperparameters: LSTMHyperparameters,
-    finetunable_model_hyperparameters: LSTMHyperparameters,
+    base_model_hyperparameters: RNNHyperparameters,
+    finetunable_model_hyperparameters: RNNHyperparameters,
     base_model_data: Dict[str, pd.DataFrame],
     finetunable_model_data: Dict[str, pd.DataFrame],
     features: List[str],
@@ -198,7 +198,7 @@ def train_finetunable_model_from_scratch(
 # TODO: fix this -> make pure ensemble model compatibile for pipeline
 def train_ensemble_model(
     name: str,
-    hyperparameters: LSTMHyperparameters,
+    hyperparameters: RNNHyperparameters,
     data: Dict[str, pd.DataFrame],
     features: List[str],
     split_rate: float = 0.8,

@@ -13,7 +13,7 @@ from src.utils.log import setup_logging
 from src.utils.constants import get_core_hyperparameters
 from src.utils.save_model import save_model
 
-from src.base import LSTMHyperparameters, TrainingStats, CustomModelBase
+from src.base import RNNHyperparameters, TrainingStats, CustomModelBase
 
 # from src.evaluation import EvaluateModel
 from src.state_groups import StatesByWealth
@@ -30,7 +30,7 @@ class ExpLSTM(CustomModelBase):
 
     def __init__(
         self,
-        hyperparameters: LSTMHyperparameters,
+        hyperparameters: RNNHyperparameters,
         features: List[str],
         targets: List[str] | None = None,
     ):

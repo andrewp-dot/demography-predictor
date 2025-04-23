@@ -102,6 +102,16 @@ if __name__ == "__main__":
         "Solomon Islands",
     ]
 
-    plot_dict = create_prediction_plots(pipeline=PIPELINE, states=TO_PLOT_STATES)
+    plot_dict = create_prediction_plots(
+        pipeline=PIPELINE, states=BEST_PERFORMING_STATES
+    )
+    save_plots(
+        pipeline_name=PIPELINE.name, plot_dict=plot_dict, save_dir="./imgs/good-states"
+    )
 
-    save_plots(pipeline_name=PIPELINE.name, plot_dict=plot_dict, save_dir="./imgs")
+    plot_dict = create_prediction_plots(
+        pipeline=PIPELINE, states=WORST_PERFORMING_STATES
+    )
+    save_plots(
+        pipeline_name=PIPELINE.name, plot_dict=plot_dict, save_dir="./imgs/bad-states"
+    )

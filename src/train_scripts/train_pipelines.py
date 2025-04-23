@@ -5,7 +5,7 @@ from typing import List, Tuple, Dict
 # Custom library imports
 from src.utils.log import setup_logging
 from src.utils.constants import get_core_hyperparameters
-from src.base import LSTMHyperparameters
+from src.base import RNNHyperparameters
 from src.evaluation import EvaluateModel
 
 from src.global_model.model import XGBoostTuneParams
@@ -26,7 +26,7 @@ def train_basic_pipeline(
     name: str,
     global_model_data_dict: Dict[str, pd.DataFrame],
     local_model_data_dict: Dict[str, pd.DataFrame],
-    hyperparameters: LSTMHyperparameters,
+    hyperparameters: RNNHyperparameters,
     local_model_features: List[str],
     global_model_targets: List[str],
     additional_global_model_features: List[str] = None,

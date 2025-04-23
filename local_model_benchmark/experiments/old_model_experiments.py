@@ -22,7 +22,7 @@ from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.statistical_models import LocalARIMA
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.local_model.model import LSTMHyperparameters, BaseLSTM
+from src.local_model.model import RNNHyperparameters, BaseLSTM
 
 
 # Setup logger
@@ -76,8 +76,8 @@ class OptimalParamsExperiment(BaseExperiment):
         return tup
 
     def adjust_hidden_size(
-        self, base_parameters: LSTMHyperparameters, hidden_size: int
-    ) -> LSTMHyperparameters:
+        self, base_parameters: RNNHyperparameters, hidden_size: int
+    ) -> RNNHyperparameters:
 
         # Create a copy of original parameters
         new_params = copy.deepcopy(base_parameters)
@@ -85,8 +85,8 @@ class OptimalParamsExperiment(BaseExperiment):
         return new_params
 
     def adjust_sequence_len(
-        self, base_parameters: LSTMHyperparameters, sequence_length: int
-    ) -> LSTMHyperparameters:
+        self, base_parameters: RNNHyperparameters, sequence_length: int
+    ) -> RNNHyperparameters:
 
         # Create a copy of original parameters
         new_params = copy.deepcopy(base_parameters)
@@ -94,8 +94,8 @@ class OptimalParamsExperiment(BaseExperiment):
         return new_params
 
     def adjust_num_layers(
-        self, base_parameters: LSTMHyperparameters, num_layers: int
-    ) -> LSTMHyperparameters:
+        self, base_parameters: RNNHyperparameters, num_layers: int
+    ) -> RNNHyperparameters:
 
         # Create a copy of original parameters
         new_params = copy.deepcopy(base_parameters)
@@ -103,7 +103,7 @@ class OptimalParamsExperiment(BaseExperiment):
         return new_params
 
     def adjust_learning_rate(
-        self, base_parameters: LSTMHyperparameters, learning_rate: float
+        self, base_parameters: RNNHyperparameters, learning_rate: float
     ):
         # Create a copy of original parameters
         new_params = copy.deepcopy(base_parameters)
@@ -114,7 +114,7 @@ class OptimalParamsExperiment(BaseExperiment):
         self,
         train_df: pd.DataFrame,
         test_df: pd.DataFrame,
-        base_params: LSTMHyperparameters,
+        base_params: RNNHyperparameters,
         state_loader: StateDataLoader,
         features: List[str],
     ):
@@ -144,7 +144,7 @@ class OptimalParamsExperiment(BaseExperiment):
             )
 
             # Set hyperparameters
-            NEW_HYPERPARAMS = LSTMHyperparameters(
+            NEW_HYPERPARAMS = RNNHyperparameters(
                 input_size=base_params.input_size,
                 # Set new
                 hidden_size=hidden_size,

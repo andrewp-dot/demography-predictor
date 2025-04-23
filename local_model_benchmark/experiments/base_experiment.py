@@ -7,7 +7,7 @@ from typing import List, Union
 from src.local_model.model import CustomModelBase
 from src.local_model.model import BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
-from src.base import LSTMHyperparameters
+from src.base import RNNHyperparameters
 
 # Get settings
 settings = LocalModelBenchmarkSettings()
@@ -161,7 +161,7 @@ class BaseExperiment:
         )
 
     def readme_add_params(
-        self, custom_params: LSTMHyperparameters | None = None
+        self, custom_params: RNNHyperparameters | None = None
     ) -> None:
 
         write_params = self.model.hyperparameters
@@ -208,12 +208,12 @@ class Experiment:
         name: str,
         model: BaseLSTM,
         features: List[str],
-        hyperparameters: LSTMHyperparameters,
+        hyperparameters: RNNHyperparameters,
         experiment: BaseExperiment,
     ):
         self.name: str = name
         self.model: BaseLSTM = model
-        self.hyperparameters: LSTMHyperparameters = hyperparameters
+        self.hyperparameters: RNNHyperparameters = hyperparameters
         self.FEATURES: List[str] = features
         self.exp: BaseExperiment = experiment
 

@@ -8,7 +8,7 @@ import torch
 from src.utils.log import setup_logging
 from src.utils.save_model import save_model, get_model
 
-from src.base import LSTMHyperparameters
+from src.base import RNNHyperparameters
 
 from src.local_model.model import BaseLSTM
 from src.local_model.finetunable_model import FineTunableLSTM
@@ -98,7 +98,7 @@ class PureEnsembleModel:
 
 def train_models_for_ensemble_model(
     features: List[str],
-    hyperaparameters: LSTMHyperparameters,
+    hyperaparameters: RNNHyperparameters,
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
 ) -> Dict[str, Union[BaseLSTM, FineTunableLSTM]]:
@@ -208,7 +208,7 @@ def train_model(sequence_length: int) -> PureEnsembleModel:
         ]
     ]
 
-    HYPERPARAMETERS = LSTMHyperparameters(
+    HYPERPARAMETERS = RNNHyperparameters(
         input_size=1,
         hidden_size=256,
         sequence_length=sequence_length,
@@ -285,7 +285,7 @@ if __name__ == "__main__":
     # print(em_evaluation.all_states_evaluation)
 
     # Dict[str, Union[LocalARIMA, BaseLSTM, FineTunableLSTM]] = {
-    #     "feature": BaseLSTM(hyperaparameters=LSTMHyperparameters(...), features=["feature"])
+    #     "feature": BaseLSTM(hyperaparameters=RNNHyperparameters(...), features=["feature"])
     # }
 
 

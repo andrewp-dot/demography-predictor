@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple
 from config import Config
 from src.utils.log import setup_logging
 from src.preprocessors.state_preprocessing import StateDataLoader
-from src.base import LSTMHyperparameters
+from src.base import RNNHyperparameters
 
 
 settings = Config()
@@ -204,7 +204,7 @@ if __name__ == "__main__":
     FEATURES = list(all_states_dict["Czechia"].columns)
     FEATURES.remove("country name")
 
-    hyperparameters = LSTMHyperparameters(
+    hyperparameters = RNNHyperparameters(
         input_size=len(FEATURES),
         hidden_size=128,
         future_step_predict=2,

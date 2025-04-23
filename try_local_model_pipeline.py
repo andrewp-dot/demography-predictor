@@ -6,7 +6,7 @@ from typing import List
 from config import Config
 
 
-from src.base import LSTMHyperparameters
+from src.base import RNNHyperparameters
 from src.utils.constants import (
     get_core_hyperparameters,
     basic_features,
@@ -58,7 +58,7 @@ def train_only_features(epochs: int):
     # custom_features = FEATURES
     custom_features = FEATURES
 
-    hyperparameters: LSTMHyperparameters = get_core_hyperparameters(
+    hyperparameters: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(custom_features),
         batch_size=32,
         epochs=epochs,
@@ -92,7 +92,7 @@ def train_including_targets(epochs: int):
     custom_features = TARGETS
     # custom_features = FEATURES + TARGETS
 
-    hyperparameters: LSTMHyperparameters = get_core_hyperparameters(
+    hyperparameters: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(custom_features),
         batch_size=32,
         epochs=epochs,

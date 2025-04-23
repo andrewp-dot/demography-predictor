@@ -34,7 +34,7 @@ from src.train_scripts.train_local_models import (
     train_finetunable_model_from_scratch,
 )
 from src.pipeline import LocalModelPipeline
-from src.local_model.model import LSTMHyperparameters, BaseLSTM
+from src.local_model.model import RNNHyperparameters, BaseLSTM
 from src.evaluation import EvaluateModel
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -63,12 +63,12 @@ class DataUsedForTraining(BaseExperiment):
 
     FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES)
     )
 
-    MULTISTATE_BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = (
-        get_core_hyperparameters(input_size=len(FEATURES), batch_size=16, epochs=10)
+    MULTISTATE_BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+        input_size=len(FEATURES), batch_size=16, epochs=10
     )
 
     def __init__(self, description: str):
@@ -248,7 +248,7 @@ class StatesByGroup(BaseExperiment):
 
     FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
     )
@@ -435,7 +435,7 @@ class FeatureSelectionExperiment(BaseExperiment):
 
     FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
 
-    BASE_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    BASE_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         len(FEATURES), batch_size=32
     )
 
@@ -538,7 +538,7 @@ class StatesSubsetExperiment(BaseExperiment):
 
     FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
 
-    BASE_LSTM_HYPERPARAMETERS: LSTMHyperparameters = get_core_hyperparameters(
+    BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES)
     )
 

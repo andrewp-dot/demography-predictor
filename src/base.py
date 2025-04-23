@@ -22,8 +22,8 @@ logger = logging.getLogger("local_model")
 torch.manual_seed(42)
 
 
-# TODO: if you want to make the LSTMHyperparameters more portable, just support serializing it to dict or loading it from dict.
-class LSTMHyperparameters:
+# TODO: if you want to make the RNNHyperparameters more portable, just support serializing it to dict or loading it from dict.
+class RNNHyperparameters:
 
     def __init__(
         self,
@@ -158,7 +158,7 @@ class CustomModelBase(nn.Module):
         self,
         features: List[str],
         targets: List[str],
-        hyperparameters: LSTMHyperparameters,
+        hyperparameters: RNNHyperparameters,
         scaler: MinMaxScaler,
         *args,
         **kwargs,
@@ -166,7 +166,7 @@ class CustomModelBase(nn.Module):
         super().__init__(*args, **kwargs)
 
         # TODO: change this to separate parts for portability
-        self.hyperparameters: LSTMHyperparameters = hyperparameters
+        self.hyperparameters: RNNHyperparameters = hyperparameters
 
         self.FEATURES: List[str] = features
         self.TARGETS: List[str] = targets

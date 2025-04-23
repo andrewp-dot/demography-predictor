@@ -1,5 +1,5 @@
 # Custom library imports
-from src.base import LSTMHyperparameters
+from src.base import RNNHyperparameters
 from typing import List
 
 
@@ -15,8 +15,8 @@ def get_core_hyperparameters(
     num_layers: int = 3,
     output_size: int | None = None,
     bidirectional: bool = False,
-) -> LSTMHyperparameters:
-    BASE_HYPERPARAMETERS: LSTMHyperparameters = LSTMHyperparameters(
+) -> RNNHyperparameters:
+    BASE_HYPERPARAMETERS: RNNHyperparameters = RNNHyperparameters(
         input_size=input_size,
         hidden_size=hidden_size,
         future_step_predict=future_step_predict,

@@ -8,7 +8,7 @@ from typing import List, Dict, Union
 
 # Custom imports
 from src.utils.log import setup_logging
-from src.base import CustomModelBase, LSTMHyperparameters
+from src.base import CustomModelBase, RNNHyperparameters
 
 from src.pipeline import LocalModelPipeline
 from src.evaluation import EvaluateModel
@@ -56,7 +56,7 @@ class Seq2Seq(CustomModelBase):
         decoder: Decoder,
         device,
         features: List[str],
-        hyperparameters: LSTMHyperparameters,
+        hyperparameters: RNNHyperparameters,
         targets: List[str] | None = None,
     ):
         super(Seq2Seq, self).__init__(
