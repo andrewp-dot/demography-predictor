@@ -5,103 +5,94 @@
 
 ## Per target metrics - model comparision
 ```
-                     target           mae           mse          rmse            r2          state               model   rank
-32        agricultural land  1.459512e+00  2.224227e+00  1.491384e+00 -6.682596e+01        Czechia    future-base-lstm  164.0
-5         agricultural land  5.126958e+00  2.649787e+01  5.147608e+00 -8.070306e+02        Czechia           base-lstm  264.0
-59        agricultural land  6.444277e+00  4.265826e+01  6.531329e+00 -1.299829e+03        Czechia  simple-funnel-lstm  276.0
-29              arable land  1.883568e+00  3.772395e+00  1.942265e+00 -5.817806e+02        Czechia    future-base-lstm  183.0
-2               arable land  3.147906e+00  9.993479e+00  3.161246e+00 -1.542848e+03        Czechia           base-lstm  230.0
-56              arable land  8.285101e+00  6.998756e+01  8.365857e+00 -1.081107e+04        Czechia  simple-funnel-lstm  289.0
-4         death rate, crude  8.085382e-01  1.667473e+00  1.291307e+00 -3.233909e-01        Czechia           base-lstm  103.0
-31        death rate, crude  1.232552e+00  1.750529e+00  1.323076e+00 -3.893090e-01        Czechia    future-base-lstm  113.0
-58        death rate, crude  3.625059e+00  1.459007e+01  3.819696e+00 -1.057942e+01        Czechia  simple-funnel-lstm  216.0
-54    fertility rate, total  3.158481e-02  1.605720e-03  4.007144e-02  5.556808e-01        Czechia  simple-funnel-lstm    6.0
-0     fertility rate, total  5.620412e-02  3.949772e-03  6.284721e-02 -9.294232e-02        Czechia           base-lstm   18.0
-27    fertility rate, total  3.781116e-01  1.463551e-01  3.825638e-01 -3.949795e+01        Czechia    future-base-lstm   84.0
-57               gdp growth  2.600106e+00  1.199845e+01  3.463878e+00 -5.665610e-03        Czechia  simple-funnel-lstm  160.0
-3                gdp growth  2.510674e+00  1.678216e+01  4.096603e+00 -4.066176e-01        Czechia           base-lstm  186.0
-30               gdp growth  3.965108e+00  1.674235e+01  4.091742e+00 -4.032817e-01        Czechia    future-base-lstm  200.0
-8         population growth  4.140534e-01  7.022652e-01  8.380126e-01 -1.412822e-01        Czechia           base-lstm   76.0
-62        population growth  6.921295e-01  6.722723e-01  8.199221e-01 -9.253945e-02        Czechia  simple-funnel-lstm   81.0
-35        population growth  9.941301e-01  1.124342e+00  1.060350e+00 -8.272181e-01        Czechia    future-base-lstm  103.0
-55        population, total  1.280158e+06  1.655538e+12  1.286677e+06 -3.971222e+02        Czechia  simple-funnel-lstm  287.0
-28        population, total  5.626801e+06  3.201827e+13  5.658469e+06 -7.698724e+03        Czechia    future-base-lstm  303.0
-1         population, total  1.894216e+07  3.745325e+14  1.935284e+07 -9.006623e+04        Czechia           base-lstm  309.0
-6   rural population growth  1.078816e+00  1.169540e+00  1.081453e+00 -6.623389e-01        Czechia           base-lstm  105.0
-60  rural population growth  1.378938e+00  1.971525e+00  1.404110e+00 -1.802249e+00        Czechia  simple-funnel-lstm  127.0
-33  rural population growth  1.388677e+00  2.061044e+00  1.435634e+00 -1.929489e+00        Czechia    future-base-lstm  131.0
-34         urban population  2.358199e+00  5.950487e+00  2.439362e+00 -1.214805e+02        Czechia    future-base-lstm  188.0
-7          urban population  3.815206e+00  1.467059e+01  3.830221e+00 -3.009688e+02        Czechia           base-lstm  235.0
-61         urban population  3.827489e+00  1.525001e+01  3.905127e+00 -3.128952e+02        Czechia  simple-funnel-lstm  241.0
-68        agricultural land  2.475210e+00  7.268399e+00  2.695997e+00 -6.812805e+00       Honduras  simple-funnel-lstm  173.0
-41        agricultural land  2.649408e+00  8.269050e+00  2.875596e+00 -7.888405e+00       Honduras    future-base-lstm  190.0
-14        agricultural land  2.738519e+00  7.897851e+00  2.810312e+00 -7.489404e+00       Honduras           base-lstm  190.0
-38              arable land  4.102844e-01  2.350986e-01  4.848697e-01 -7.450572e+28       Honduras    future-base-lstm  123.0
-65              arable land  1.640257e+00  2.885565e+00  1.698695e+00 -9.144721e+29       Honduras  simple-funnel-lstm  190.0
-11              arable land  2.597749e+00  7.386376e+00  2.717789e+00 -2.340836e+30       Honduras           base-lstm  218.0
-67        death rate, crude  2.698741e+00  7.463343e+00  2.731912e+00 -4.570029e+01       Honduras  simple-funnel-lstm  195.0
-40        death rate, crude  2.710966e+00  7.488473e+00  2.736507e+00 -4.585753e+01       Honduras    future-base-lstm  199.0
-13        death rate, crude  2.880803e+00  8.418123e+00  2.901400e+00 -5.167462e+01       Honduras           base-lstm  209.0
-36    fertility rate, total  1.675589e-01  2.844617e-02  1.686599e-01  3.825285e-01       Honduras    future-base-lstm   19.0
-63    fertility rate, total  3.901783e-01  1.599589e-01  3.999486e-01 -2.472174e+00       Honduras  simple-funnel-lstm   66.0
-9     fertility rate, total  4.578843e-01  2.134263e-01  4.619809e-01 -3.632775e+00       Honduras           base-lstm   79.0
-66               gdp growth  2.543899e+00  2.162156e+01  4.649898e+00 -3.190204e-02       Honduras  simple-funnel-lstm  177.0
-39               gdp growth  2.975624e+00  2.226911e+01  4.719016e+00 -6.280691e-02       Honduras    future-base-lstm  191.0
-12               gdp growth  3.587056e+00  2.697734e+01  5.193972e+00 -2.875104e-01       Honduras           base-lstm  206.0
-17        population growth  3.044637e-01  9.787584e-02  3.128511e-01 -2.273164e+00       Honduras           base-lstm   56.0
-71        population growth  3.388945e-01  1.161600e-01  3.408225e-01 -2.884622e+00       Honduras  simple-funnel-lstm   62.0
-44        population growth  5.890232e-01  3.573264e-01  5.977678e-01 -1.094971e+01       Honduras    future-base-lstm  106.0
-64        population, total  2.339857e+05  8.965835e+10  2.994300e+05  7.700633e-01       Honduras  simple-funnel-lstm  220.0
-37        population, total  3.642119e+06  1.669601e+13  4.086076e+06 -4.181840e+01       Honduras    future-base-lstm  277.0
-10        population, total  2.888299e+07  1.215202e+15  3.485974e+07 -3.115492e+03       Honduras           base-lstm  307.0
-42  rural population growth  1.076723e-01  1.261625e-02  1.123221e-01  7.495754e-01       Honduras    future-base-lstm   12.0
-69  rural population growth  1.953192e-01  4.403137e-02  2.098365e-01  1.260052e-01       Honduras  simple-funnel-lstm   23.0
-15  rural population growth  5.088403e-01  2.692040e-01  5.188487e-01 -4.343528e+00       Honduras           base-lstm   86.0
-16         urban population  2.946872e+00  9.296418e+00  3.049003e+00 -5.838642e-01       Honduras           base-lstm  176.0
-70         urban population  3.445570e+00  1.417728e+01  3.765273e+00 -1.415434e+00       Honduras  simple-funnel-lstm  190.0
-43         urban population  7.529993e+00  6.093659e+01  7.806190e+00 -9.381987e+00       Honduras    future-base-lstm  255.0
-23        agricultural land  1.112416e+00  1.297140e+00  1.138920e+00 -5.212215e+01  United States           base-lstm  146.0
-50        agricultural land  1.845885e+00  3.461213e+00  1.860433e+00 -1.407481e+02  United States    future-base-lstm  174.0
-77        agricultural land  6.087227e+00  4.035353e+01  6.352443e+00 -1.651610e+03  United States  simple-funnel-lstm  275.0
-47              arable land  6.038773e-01  4.790788e-01  6.921552e-01 -3.415412e+01  United States    future-base-lstm  115.0
-20              arable land  3.831291e+00  1.488822e+01  3.858526e+00 -1.091477e+03  United States           base-lstm  245.0
-74              arable land  4.981643e+00  2.710037e+01  5.205801e+00 -1.987586e+03  United States  simple-funnel-lstm  272.0
-22        death rate, crude  9.807999e-01  1.021864e+00  1.010873e+00 -7.172290e-01  United States           base-lstm   99.0
-76        death rate, crude  8.516413e-01  1.385167e+00  1.176931e+00 -1.327756e+00  United States  simple-funnel-lstm  110.0
-49        death rate, crude  1.832486e+00  3.969699e+00  1.992410e+00 -5.671030e+00  United States    future-base-lstm  156.0
-45    fertility rate, total  9.522402e-02  1.364885e-02  1.168283e-01 -2.812647e-01  United States    future-base-lstm   25.0
-72    fertility rate, total  2.427957e-01  7.606273e-02  2.757947e-01 -6.140271e+00  United States  simple-funnel-lstm   62.0
-18    fertility rate, total  6.111160e-01  4.073585e-01  6.382464e-01 -3.724015e+01  United States           base-lstm  113.0
-75               gdp growth  1.259829e+00  4.566497e+00  2.136936e+00 -5.308541e-02  United States  simple-funnel-lstm  124.0
-48               gdp growth  1.606844e+00  4.488792e+00  2.118677e+00 -3.516572e-02  United States    future-base-lstm  125.0
-21               gdp growth  3.551231e+00  1.674655e+01  4.092255e+00 -2.861942e+00  United States           base-lstm  209.0
-80        population growth  2.218508e-01  9.711488e-02  3.116326e-01 -1.489639e+00  United States  simple-funnel-lstm   49.0
-53        population growth  3.948675e-01  1.918894e-01  4.380519e-01 -3.919283e+00  United States    future-base-lstm   75.0
-26        population growth  1.059676e+00  1.200280e+00  1.095573e+00 -2.977041e+01  United States           base-lstm  133.0
-73        population, total  1.508510e+08  2.417328e+16  1.554776e+08 -3.710186e+02  United States  simple-funnel-lstm  301.0
-46        population, total  4.820031e+08  2.814129e+17  5.304837e+08 -4.329851e+03  United States    future-base-lstm  314.0
-19        population, total  9.370597e+08  1.144675e+18  1.069895e+09 -1.761516e+04  United States           base-lstm  320.0
-51  rural population growth  5.238039e-01  3.196874e-01  5.654091e-01 -3.088494e+00  United States    future-base-lstm   85.0
-78  rural population growth  5.433321e-01  3.572638e-01  5.977155e-01 -3.569060e+00  United States  simple-funnel-lstm   89.0
-24  rural population growth  5.554433e-01  4.484179e-01  6.696402e-01 -4.734833e+00  United States           base-lstm  100.0
-25         urban population  2.127378e+00  4.697985e+00  2.167484e+00 -8.366274e+00  United States           base-lstm  170.0
-79         urban population  4.615026e+00  2.397799e+01  4.896733e+00 -4.680441e+01  United States  simple-funnel-lstm  248.0
-52         urban population  8.710632e+00  8.284981e+01  9.102187e+00 -1.641759e+02  United States    future-base-lstm  277.0
+                     target        mae          mse       rmse            r2          state       model   rank
+28        agricultural land   1.012052     1.204830   1.097647 -3.574029e+01        Czechia   base-lstm  105.0
+52        agricultural land   4.617544    22.544756   4.748132 -6.864838e+02        Czechia    base-gru  227.0
+4         agricultural land  17.735073   370.302489  19.243245 -1.129107e+04        Czechia  simple-rnn  270.0
+25              arable land   0.496319     0.338150   0.581507 -5.123930e+01        Czechia   base-lstm   79.0
+49              arable land   2.664760     7.592268   2.755407 -1.171896e+03        Czechia    base-gru  190.0
+1               arable land  16.237014   294.524803  17.161725 -4.549883e+04        Czechia  simple-rnn  269.0
+27        death rate, crude   1.070519     1.364578   1.168151 -8.299830e-02        Czechia   base-lstm   73.0
+51        death rate, crude   1.610600     3.255196   1.804216 -1.583489e+00        Czechia    base-gru  111.0
+3         death rate, crude   2.540282     7.641447   2.764317 -5.064640e+00        Czechia  simple-rnn  155.0
+24    fertility rate, total   0.110808     0.013842   0.117652 -2.830234e+00        Czechia   base-lstm   24.0
+48    fertility rate, total   0.234633     0.060727   0.246429 -1.580387e+01        Czechia    base-gru   40.0
+0     fertility rate, total   0.852764     0.866764   0.931002 -2.388426e+02        Czechia  simple-rnn  103.0
+2                gdp growth   2.795465    13.147909   3.626005 -1.020086e-01        Czechia  simple-rnn  148.0
+26               gdp growth   3.536353    14.265634   3.776987 -1.956921e-01        Czechia   base-lstm  157.0
+50               gdp growth   4.248990    18.804241   4.336386 -5.761013e-01        Czechia    base-gru  172.0
+31        population growth   1.137983     1.305476   1.142574 -1.121587e+00        Czechia   base-lstm   83.0
+7         population growth   0.921591     1.647209   1.283436 -1.676952e+00        Czechia  simple-rnn   85.0
+55        population growth   1.618141     3.104362   1.761920 -4.045037e+00        Czechia    base-gru  115.0
+5   rural population growth   1.705585     3.175548   1.782007 -3.513602e+00        Czechia  simple-rnn  118.0
+29  rural population growth   1.757328     3.584758   1.893346 -4.095237e+00        Czechia   base-lstm  128.0
+53  rural population growth   2.653829     7.702013   2.775250 -9.947344e+00        Czechia    base-gru  159.0
+30         urban population   1.663959     2.791731   1.670847 -5.646296e+01        Czechia   base-lstm  135.0
+54         urban population   7.434223    57.327240   7.571475 -1.178982e+03        Czechia    base-gru  241.0
+6          urban population   7.363032    58.425343   7.643647 -1.201585e+03        Czechia  simple-rnn  243.0
+36        agricultural land   4.007347    18.298695   4.277697 -1.866928e+01       Honduras   base-lstm  188.0
+60        agricultural land  10.249706   120.743563  10.988338 -1.287873e+02       Honduras    base-gru  244.0
+12        agricultural land  29.290654  1060.647300  32.567581 -1.139090e+03       Honduras  simple-rnn  274.0
+33              arable land   0.486335     0.265570   0.515335 -8.416257e+28       Honduras   base-lstm   97.0
+57              arable land   2.326848     6.509558   2.551383 -2.062961e+30       Honduras    base-gru  189.0
+9               arable land   7.976723    69.603605   8.342877 -2.205826e+31       Honduras  simple-rnn  255.0
+11        death rate, crude   0.494193     0.300537   0.548212 -8.805454e-01       Honduras  simple-rnn   43.0
+59        death rate, crude   1.759541     3.307487   1.818650 -1.969590e+01       Honduras    base-gru  135.0
+35        death rate, crude   2.810791     8.076695   2.841953 -4.953821e+01       Honduras   base-lstm  183.0
+56    fertility rate, total   0.253577     0.067419   0.259652 -4.634441e-01       Honduras    base-gru   20.0
+32    fertility rate, total   0.298978     0.090361   0.300601 -9.614409e-01       Honduras   base-lstm   29.0
+8     fertility rate, total   0.967814     1.090090   1.044074 -2.266223e+01       Honduras  simple-rnn   97.0
+34               gdp growth   2.746906    21.081846   4.591497 -6.144070e-03       Honduras   base-lstm  156.0
+58               gdp growth   3.415261    22.517549   4.745266 -7.466391e-02       Honduras    base-gru  164.0
+10               gdp growth   2.866517    23.188489   4.815443 -1.066849e-01       Honduras  simple-rnn  169.0
+39        population growth   0.778917     0.610607   0.781414 -1.941992e+01       Honduras   base-lstm   78.0
+63        population growth   0.934297     0.875173   0.935507 -2.826753e+01       Honduras    base-gru   92.0
+15        population growth   0.871691     1.023406   1.011635 -3.322474e+01       Honduras  simple-rnn   93.0
+61  rural population growth   0.313305     0.120018   0.346436 -1.382281e+00       Honduras    base-gru   34.0
+37  rural population growth   0.367119     0.152262   0.390208 -2.022304e+00       Honduras   base-lstm   44.0
+13  rural population growth   2.145853     5.618159   2.370266 -1.105169e+02       Honduras  simple-rnn  166.0
+38         urban population   4.681563    24.034744   4.902524 -3.094886e+00       Honduras   base-lstm  197.0
+62         urban population  10.538045   126.718104  11.256914 -2.058942e+01       Honduras    base-gru  231.0
+14         urban population  20.960648   595.804260  24.409102 -1.005093e+02       Honduras  simple-rnn  260.0
+44        agricultural land   4.068922    18.778761   4.333447 -7.680521e+02  United States   base-lstm  219.0
+68        agricultural land   8.446469    81.918611   9.050890 -3.353837e+03  United States    base-gru  251.0
+20        agricultural land  35.864437  1637.065511  40.460666 -6.704222e+04  United States  simple-rnn  285.0
+41              arable land   0.668245     0.571830   0.756194 -4.096004e+01  United States   base-lstm   83.0
+65              arable land   2.728875     9.495173   3.081424 -6.957422e+02  United States    base-gru  196.0
+17              arable land  18.614577   387.958325  19.696658 -2.846683e+04  United States  simple-rnn  274.0
+43        death rate, crude   0.968123     1.049593   1.024496 -7.638276e-01  United States   base-lstm   71.0
+67        death rate, crude   1.449385     2.390465   1.546113 -3.017147e+00  United States    base-gru  103.0
+19        death rate, crude   3.568911    14.495450   3.807289 -2.335942e+01  United States  simple-rnn  191.0
+40    fertility rate, total   0.320540     0.121104   0.348001 -1.036849e+01  United States   base-lstm   50.0
+64    fertility rate, total   0.667161     0.514166   0.717054 -4.726652e+01  United States    base-gru   82.0
+16    fertility rate, total   1.593253     2.935891   1.713444 -2.746022e+02  United States  simple-rnn  142.0
+18               gdp growth   1.984162     6.537359   2.556826 -5.075883e-01  United States  simple-rnn  126.0
+42               gdp growth   2.505413     7.267534   2.695836 -6.759748e-01  United States   base-lstm  134.0
+66               gdp growth   3.043368    10.551466   3.248302 -1.433286e+00  United States    base-gru  161.0
+47        population growth   0.669130     0.513564   0.716634 -1.216575e+01  United States   base-lstm   68.0
+71        population growth   1.267766     1.674128   1.293881 -4.191799e+01  United States    base-gru  121.0
+23        population growth   1.716356     4.406394   2.099141 -1.119624e+02  United States  simple-rnn  157.0
+45  rural population growth   1.243254     1.665333   1.290478 -2.029800e+01  United States   base-lstm  110.0
+69  rural population growth   2.005252     4.181917   2.044974 -5.248269e+01  United States    base-gru  155.0
+21  rural population growth   1.876730     5.163430   2.272318 -6.503529e+01  United States  simple-rnn  159.0
+46         urban population   0.220719     0.051333   0.226569  8.976576e-01  United States   base-lstm    7.0
+70         urban population  10.264543   116.756912  10.805411 -2.317758e+02  United States    base-gru  244.0
+22         urban population  13.283773   246.838634  15.711099 -4.911169e+02  United States  simple-rnn  255.0
 ```
 
 
 ## Overall metrics - model comparision
 ```
-            mae           mse          rmse            r2          state               model  rank
-6  1.422428e+05  1.839486e+11  1.429673e+05 -1.425871e+03        Czechia  simple-funnel-lstm  10.0
-3  6.252017e+05  3.557585e+12  6.287203e+05 -9.457620e+02        Czechia    future-base-lstm  15.0
-0  2.104686e+06  4.161472e+13  2.150318e+06 -1.030208e+04        Czechia           base-lstm  21.0
-7  2.599994e+04  9.962039e+09  3.327184e+04 -1.016080e+29       Honduras  simple-funnel-lstm  11.0
-4  4.046817e+05  1.855113e+12  4.540106e+05 -8.278413e+27       Honduras    future-base-lstm  16.0
-1  3.209222e+06  1.350224e+14  3.873307e+06 -2.600929e+29       Honduras           base-lstm  27.0
-8  1.676122e+07  2.685920e+15  1.727529e+07 -4.521777e+02  United States  simple-funnel-lstm  22.0
-5  5.355590e+07  3.126810e+16  5.894263e+07 -5.202138e+02  United States    future-base-lstm  26.0
-2  1.041177e+08  1.271861e+17  1.188772e+08 -2.093605e+03  United States           base-lstm  32.0
+        mae         mse       rmse            r2          state       model  rank
+3  1.348165    3.108625   1.431089 -1.897104e+01        Czechia   base-lstm   6.0
+6  3.135340   15.048851   3.249902 -3.836647e+02        Czechia    base-gru  15.0
+0  6.268851   93.716439   6.804423 -7.280086e+03        Czechia  simple-rnn  26.0
+4  2.022245    9.076348   2.325154 -1.052032e+28       Honduras   base-lstm  16.0
+7  3.723823   35.107359   4.112768 -2.578701e+29       Honduras    base-gru  25.0
+1  8.196762  219.659481   9.388649 -2.757283e+30       Honduras  simple-rnn  33.0
+5  1.333043    3.752382   1.423957 -1.065483e+02  United States   base-lstm   6.0
+8  3.734102   28.435355   3.973506 -5.534341e+02  United States    base-gru  20.0
+2  9.812775  288.175124  11.039680 -1.205945e+04  United States  simple-rnn  33.0
 ```
 
 

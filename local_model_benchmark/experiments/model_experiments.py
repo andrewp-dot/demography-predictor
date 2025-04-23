@@ -9,7 +9,11 @@ from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
 from src.utils.log import setup_logging
-from src.utils.constants import basic_features
+from src.utils.constants import (
+    basic_features,
+    hihgly_correlated_features,
+    aging_targets,
+)
 
 from local_model_benchmark.config import (
     LocalModelBenchmarkSettings,
@@ -503,19 +507,101 @@ class DifferentHiddenLayers(BaseExperiment):
 # Different Features -> target experiments
 
 
+class TargetPredictionDifferentArchitecturesComparision(BaseExperiment):
+    """
+    Question: How to evaluate this? GROUND TRUTH testing? For now YES.
+    """
+
+    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features)
+
+    TARGETS: List[str] = aging_targets()
+
+    BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+        input_size=len(FEATURES),
+        hidden_size=256,
+        batch_size=16,
+        output_size=len(TARGETS),
+    )
+
+    def __init__(self, description: str):
+        super().__init__(name=self.__class__.__name__, description=description)
+
+    def run(self, split_rate: float = 0.8) -> None:
+
+        # Create readme
+        self.create_readme()
+        DISPLAY_NTH_EPOCH = 1
+
+        # Load data
+        loader = StatesDataLoader()
+        states_data_dict = loader.load_all_states()
+
+        TO_COMPARE_PIPELINES: Dict[str, LocalModelPipeline] = {}
+
+        # TODO:
+
+        # Train classic rnn
+        TO_COMPARE_PIPELINES["simple-rnn"] = train_base_rnn(
+            name="simple-rnn",
+            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=DISPLAY_NTH_EPOCH,
+            rnn_type=nn.RNN,
+        )
+
+        # Train lstm
+        TO_COMPARE_PIPELINES["base-lstm"] = train_base_rnn(
+            name="base-lstm",
+            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=DISPLAY_NTH_EPOCH,
+            rnn_type=nn.LSTM,
+        )
+
+        # Train gru
+        TO_COMPARE_PIPELINES["base-gru"] = train_base_rnn(
+            name="base-gru",
+            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=DISPLAY_NTH_EPOCH,
+            rnn_type=nn.GRU,
+        )
+
+        # Train gru
+
+        # Train lstm
+
+        # Train xgboost
+
+        # Train randomforest
+
+        # Train lightgbm
+
+        # Train arima
+
+
+# TODO: use this on whole dataset
 class DifferentArchitecturesComparision(BaseExperiment):
 
-    FEATURES: List[str] = basic_features()
+    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features)
 
     # Base LSTM
     BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
+        hidden_size=256,
         batch_size=16,
     )
 
     # Base LSTM with more then 1 future prediction
     FUTURE_BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
+        hidden_size=256,
         batch_size=16,
         future_step_predict=3,
     )
@@ -523,8 +609,8 @@ class DifferentArchitecturesComparision(BaseExperiment):
     # Funnel architecture
     WIDE_LAYERS_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
-        batch_size=16,
         hidden_size=256,
+        batch_size=16,
         num_layers=1,
     )
 
@@ -561,6 +647,18 @@ class DifferentArchitecturesComparision(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
+    def __train_arima_models_for_states(
+        self, states: List[str]
+    ) -> Dict[str, LocalModelPipeline]:
+
+        state_arimas: Dict[str, LocalModelPipeline] = {}
+        for state in states:
+            state_arimas[state] = train_arima_ensemble_model(
+                name=f"ensemble-arima-{state}", state=str
+            )
+
+        return state_arimas
+
     def run(self, split_rate: float = 0.8):
 
         # Setup readme
@@ -574,7 +672,18 @@ class DifferentArchitecturesComparision(BaseExperiment):
 
         DISPLAY_NTH_EPOCH = 1
 
-        # Create base lstm
+        # Create simple rnn
+        TO_COMPARE_PIPELINES["simple-rnn"] = train_base_rnn(
+            name="simple-rnn",
+            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            data=states_data_dict,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=DISPLAY_NTH_EPOCH,
+            rnn_type=nn.RNN,
+        )
+
+        # Train lstm
         TO_COMPARE_PIPELINES["base-lstm"] = train_base_rnn(
             name="base-lstm",
             hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
@@ -582,31 +691,43 @@ class DifferentArchitecturesComparision(BaseExperiment):
             features=self.FEATURES,
             split_rate=split_rate,
             display_nth_epoch=DISPLAY_NTH_EPOCH,
+            rnn_type=nn.LSTM,
         )
 
-        # Create same LSTM but with prediction to future
-        TO_COMPARE_PIPELINES["future-base-lstm"] = train_base_rnn(
-            name="future-base-lstm",
-            hyperparameters=self.FUTURE_BASE_RNN_HYPERPARAMETERS,
+        # Train gru
+        TO_COMPARE_PIPELINES["base-gru"] = train_base_rnn(
+            name="base-gru",
+            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
             data=states_data_dict,
             features=self.FEATURES,
             split_rate=split_rate,
             display_nth_epoch=DISPLAY_NTH_EPOCH,
+            rnn_type=nn.GRU,
         )
 
-        # Create simple base LSTM - 1 layer with 256 hidden size + 1 layer with 128 hidden size
-        TO_COMPARE_PIPELINES["simple-funnel-lstm"] = (
-            train_finetunable_model_from_scratch(
-                name="simple-funnel-lstm",
-                base_model_hyperparameters=self.WIDE_LAYERS_RNN_HYPERPARAMETERS,
-                finetunable_model_hyperparameters=self.NARROW_LAYERS_RNN_HYPERPARAMETERS,
-                base_model_data=states_data_dict,
-                finetunable_model_data=states_data_dict,
-                features=self.FEATURES,
-                split_rate=split_rate,
-                display_nth_epoch=DISPLAY_NTH_EPOCH,
-            )
-        )
+        # # Create same LSTM but with prediction to future
+        # TO_COMPARE_PIPELINES["future-base-lstm"] = train_base_rnn(
+        #     name="future-base-lstm",
+        #     hyperparameters=self.FUTURE_BASE_RNN_HYPERPARAMETERS,
+        #     data=states_data_dict,
+        #     features=self.FEATURES,
+        #     split_rate=split_rate,
+        #     display_nth_epoch=DISPLAY_NTH_EPOCH,
+        # )
+
+        # # Create simple base LSTM - 1 layer with 256 hidden size + 1 layer with 128 hidden size
+        # TO_COMPARE_PIPELINES["simple-funnel-lstm"] = (
+        #     train_finetunable_model_from_scratch(
+        #         name="simple-funnel-lstm",
+        #         base_model_hyperparameters=self.WIDE_LAYERS_RNN_HYPERPARAMETERS,
+        #         finetunable_model_hyperparameters=self.NARROW_LAYERS_RNN_HYPERPARAMETERS,
+        #         base_model_data=states_data_dict,
+        #         finetunable_model_data=states_data_dict,
+        #         features=self.FEATURES,
+        #         split_rate=split_rate,
+        #         display_nth_epoch=DISPLAY_NTH_EPOCH,
+        #     )
+        # )
 
         comparator = ModelComparator()
 
@@ -681,7 +802,7 @@ if __name__ == "__main__":
     # )
     # exp_4.run(split_rate=0.8)
 
-    # exp_5 = DifferentArchitecturesComparision(
-    #     description="Compares performance of different architecture models."
-    # )
-    # exp_5.run(split_rate=0.8)
+    exp_5 = DifferentArchitecturesComparision(
+        description="Compares performance of different architecture models."
+    )
+    exp_5.run(split_rate=0.8)

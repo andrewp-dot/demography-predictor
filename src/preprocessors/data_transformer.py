@@ -1,7 +1,7 @@
 # Standard library imports
 import pandas as pd
 import numpy as np
-from typing import List, Tuple, Dict, Callable, Union
+from typing import List, Tuple, Dict, Callable, Optional
 from sklearn.preprocessing import MinMaxScaler
 
 
@@ -647,6 +647,7 @@ class DataTransformer:
         data: pd.DataFrame,
         hyperparameters: RNNHyperparameters,
         features: List[str],
+        targets: Optional[List[str]] = None,
         split_rate: float = 0.8,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
@@ -664,12 +665,15 @@ class DataTransformer:
         df = data.copy()
         FEATURES = features
 
+        TARGETS = targets
+
         # Create sequences and batches from the full training data
         input_sequences, sequences_outputs = self.create_train_test_sequences(
             data=df,
             sequence_len=hyperparameters.sequence_length,
             future_steps=hyperparameters.future_step_predict,
             features=FEATURES,
+            targets=TARGETS,
         )
 
         # Convert to numpy
@@ -837,6 +841,11 @@ def main():
 
     EXCLUDE_COLUMNS = ["country name", "year"]
     COLUMNS = [col for col in data.columns if col not in EXCLUDE_COLUMNS]
+    TARGETS = [
+        "population ages 15-64",
+        "population ages 0-14",
+        "population ages 65 and above",
+    ]
 
     # Split data
     train_df, test_df = loader.split_data(data=data)
@@ -850,6 +859,7 @@ def main():
         training_data=train_df,
         validation_data=test_df,
         features=COLUMNS,
+        targets=TARGETS,
     )
 
     print("Scaled train data:")
@@ -858,7 +868,8 @@ def main():
 
     # Unscale data
     unsacled_training_data = transformer.unscale_data(
-        data=scaled_trainig_data, targets=COLUMNS
+        data=scaled_trainig_data,
+        targets=TARGETS,
     )
 
     print("Unscaled train data:")
@@ -874,16 +885,18 @@ def main():
     print(test_df.head())
     print()
 
-    scaled_test_data = transformer.scale_data(data=test_df, features=COLUMNS)
+    scaled_test_data = transformer.scale_data(
+        data=test_df, features=COLUMNS, targets=TARGETS
+    )
     print("Scaled test data:")
-    print(scaled_test_data.head())
+    print(scaled_test_data.head()[TARGETS])
     print()
 
     unscaled_test_data = transformer.unscale_data(
-        data=scaled_test_data, targets=COLUMNS
+        data=scaled_test_data, targets=TARGETS
     )
     print("Unscaled test data:")
-    print(unscaled_test_data.head())
+    print(unscaled_test_data.head()[TARGETS])
     print()
 
     # Test hyperparameters
@@ -895,7 +908,10 @@ def main():
 
     batch_train_inputs, batch_train_targets, batch_val_inputs, batch_val_targets = (
         transformer.create_train_test_data_batches(
-            data=train_df, hyperparameters=test_hyperparams, features=COLUMNS
+            data=train_df,
+            hyperparameters=test_hyperparams,
+            features=COLUMNS,
+            targets=TARGETS,
         )
     )
 

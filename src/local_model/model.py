@@ -46,11 +46,8 @@ class BaseRNN(CustomModelBase):
             features=features,
             targets=(targets if targets else features),
             hyperparameters=hyperparameters,
-            scaler=None,
+            device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         )
-
-        # Set device
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # 3 layer model:
         self.rnn = rnn_type(
@@ -82,21 +79,6 @@ class BaseRNN(CustomModelBase):
         layers.append(nn.Linear(input_dim, output_dim))
 
         self.fc = nn.Sequential(*layers)
-
-    def set_device(self, device: torch.device) -> None:
-        """
-        Set the BaseRNN device property.
-
-        Args:
-            device (torch.device): Device for the BaseRNN object.
-        """
-        self.device = device
-
-    def redetect_device(self) -> None:
-        """
-        Set the device to cuda if available. Useful if you are loading pre-trained model.
-        """
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def __initialize_hidden_states(
         self, batch_size: int
@@ -141,7 +123,10 @@ class BaseRNN(CustomModelBase):
         h_t, c_t = self.__initialize_hidden_states(batch_size)
 
         # Forward propagate through LSTM
-        out, (h_n, c_n) = self.rnn(x, (h_t, c_t))  # In here 'out' is a tensor
+        if isinstance(self.rnn, nn.LSTM):
+            out, (h_n, c_n) = self.rnn(x, (h_t, c_t))  # In here 'out' is a tensor
+        else:
+            out, h_n = self.rnn(x, h_t)
 
         # Use the output from the last time step -> use fully connected layers
         out = out[:, -1, :]

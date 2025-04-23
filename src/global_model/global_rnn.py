@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Tuple, Dict, List, Callable, Union
+from typing import Tuple, Dict, List, Optional, Union, Type
 import pprint
 import logging
 
@@ -12,6 +12,12 @@ from sklearn.preprocessing import MinMaxScaler
 from src.utils.log import setup_logging
 from src.utils.constants import get_core_hyperparameters
 from src.utils.save_model import save_model
+
+from src.utils.constants import (
+    basic_features,
+    hihgly_correlated_features,
+    aging_targets,
+)
 
 from src.base import RNNHyperparameters, TrainingStats, CustomModelBase
 
@@ -26,26 +32,26 @@ from src.preprocessors.data_transformer import DataTransformer
 logger = logging.getLogger("local_model")
 
 
-class ExpLSTM(CustomModelBase):
+class GlobalRNN(CustomModelBase):
 
     def __init__(
         self,
         hyperparameters: RNNHyperparameters,
         features: List[str],
-        targets: List[str] | None = None,
+        targets: List[str],
+        # Additional bpnn layers? -> hidden size or tuple(hidden_size, activation function)
+        additional_bpnn: Optional[List[int]] = None,
+        rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
     ):
-        super(ExpLSTM, self).__init__(
+        super(GlobalRNN, self).__init__(
             features=features,
-            targets=(targets if targets else features),
+            targets=targets,
             hyperparameters=hyperparameters,
-            scaler=None,
+            device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         )
 
-        # Set device
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         # 3 layer model:
-        self.lstm = nn.LSTM(
+        self.rnn = rnn_type(
             input_size=hyperparameters.input_size,
             # Define the number of hidden units in the LSTM layer
             hidden_size=hyperparameters.hidden_size,
@@ -56,20 +62,24 @@ class ExpLSTM(CustomModelBase):
             batch_first=True,
         )
 
-        # Dropout layer (e.g., 0.3 dropout rate)
-        self.dropout = nn.Dropout(p=0.3)
+        # Create additional backpropagation layers
+        layers = []
+        input_dim = hyperparameters.hidden_size
+        if additional_bpnn:
+            for hidden_dim in additional_bpnn:
+                layers.append(nn.Linear(input_dim, hidden_dim))
 
-        # Additional linear layers
-        self.fc1 = nn.Linear(
-            hyperparameters.hidden_size, hyperparameters.hidden_size // 2
-        )
-        self.relu = nn.ReLU()
+                # Add activation function for the layer
+                layers.append(nn.ReLU())
+                input_dim = hidden_dim
 
-        # Out layer: Linear layer
-        self.linear = nn.Linear(
-            in_features=hyperparameters.hidden_size // 2,
-            out_features=hyperparameters.output_size,
-        )
+        # Add output layer
+        output_dim = (
+            hyperparameters.future_step_predict * hyperparameters.output_size
+        )  # Assuming output is same as number of targets
+        layers.append(nn.Linear(input_dim, output_dim))
+
+        self.fc = nn.Sequential(*layers)
 
     def __initialize_hidden_states(
         self, batch_size: int
@@ -105,7 +115,7 @@ class ExpLSTM(CustomModelBase):
         x: torch.Tensor,
         # hidden_state: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
     ) -> torch.Tensor:
-        self.lstm.flatten_parameters()  # # Fix for contiguous memory issue
+        self.rnn.flatten_parameters()  # # Fix for contiguous memory issue
 
         # Get the size of the batch
         batch_size = x.size(0)
@@ -114,17 +124,22 @@ class ExpLSTM(CustomModelBase):
         h_t, c_t = self.__initialize_hidden_states(batch_size)
 
         # Forward propagate through LSTM
-        out, (h_n, c_n) = self.lstm(x, (h_t, c_t))  # In here 'out' is a tensor
+        if isinstance(self.rnn, nn.LSTM):
+            out, (h_n, c_n) = self.rnn(x, (h_t, c_t))  # In here 'out' is a tensor
+        else:
+            out, h_n = self.rnn(x, h_t)
 
         # Use the output from the last time step -> use fully connected layers
         out = out[:, -1, :]
 
-        out = self.dropout(out)
+        # Pass this trough sequential part
+        out = self.fc(out)
 
-        out = self.fc1(out)
-        out = self.relu(out)
-
-        out = self.linear(out)  # Using the last time step's output
+        out = out.view(
+            batch_size,
+            self.hyperparameters.future_step_predict,
+            self.hyperparameters.output_size,
+        )
 
         return out
 
@@ -278,19 +293,6 @@ class ExpLSTM(CustomModelBase):
 
         return pred
 
-        # Predict the future values
-        # new_input_data: pd.DataFrame = intial_data
-        # for year in range(last_year + 1, target_year + 1):
-
-        #     # you need to append it to a sequence
-        #     next_year_targets = self.predict(input_data=intial_data)
-
-        #     # Create a dataframe from it
-        #     next_year_targts_df = pd.DataFrame(next_year_targets, columns=self.TARGETS)
-
-        #     # Add the predictions to the known values
-        #     new_input_data = pd.concat()
-
     # TODO:
     # Rewrite this for prediction -> input (scaled data - tensor?) -> output (scaled data -> tensor?)
     # Make prediction method in pipeline
@@ -299,7 +301,7 @@ class ExpLSTM(CustomModelBase):
         input_data: pd.DataFrame,
     ) -> torch.Tensor:
         """
-         Predicts values using past data. 2 cycles: 1st to gain context for all past data. 2nd is used to generate predictions.
+        Predicts values using past data.
 
         Args:
             input_data (torch.Tensor): Preprocessed (scaled) input data.
@@ -347,65 +349,20 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
     # Setup logging
     setup_logging()
 
-    FEATURES = [
-        col.lower()
-        for col in [
-            "year",
-            "Fertility rate, total",
-            # "Population, total",
-            "Net migration",
-            "Arable land",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            "Rural population growth",
-            "Urban population",
-            "Population growth",
-            # Features with high correlation
-            # "Birth rate, crude",
-            # "Rural population",
-            # "Age dependency ratio",
-            # "Adolescent fertility rate",
-            # "Life expectancy at birth, total",
-        ]
-    ]
+    FEATURES = basic_features(exclude=hihgly_correlated_features())
 
-    # FEATURES: List[str] = [
-    #     "year",
-    #     "fertility rate, total",
-    #     "arable land",
-    #     "gdp growth",
-    #     "death rate, crude",
-    #     "agricultural land",
-    #     "rural population growth",
-    #     "urban population",
-    #     "population growth",
-    # ]
-
-    TARGETS: List[str] = [
-        # "population, total",
-        # Aging targets
-        "population ages 15-64",
-        "population ages 0-14",
-        "population ages 65 and above",
-        # Gender targets
-        # "population, female",
-        # "population, male",
-    ]
+    TARGETS: List[str] = aging_targets()
 
     WHOLE_MODEL_FEATURES: List[str] = FEATURES + TARGETS
 
-    TARGETS = None
-
-    # Setup model
+    # Setup model - on input it gets the past sequences of features and also past sequences of the target variable
     hyperparameters = get_core_hyperparameters(
         input_size=len(WHOLE_MODEL_FEATURES),
         epochs=epochs,
         batch_size=32,
-        # output_size=len(TARGETS),  # TODO: make this more robust
-        output_size=len(WHOLE_MODEL_FEATURES),  # TODO: make this more robust
+        output_size=len(TARGETS),
     )
-    rnn = ExpLSTM(hyperparameters, features=WHOLE_MODEL_FEATURES, targets=TARGETS)
+    rnn = GlobalRNN(hyperparameters, features=WHOLE_MODEL_FEATURES, targets=TARGETS)
 
     # Load data
     states_loader = StatesDataLoader()

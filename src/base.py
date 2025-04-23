@@ -159,7 +159,7 @@ class CustomModelBase(nn.Module):
         features: List[str],
         targets: List[str],
         hyperparameters: RNNHyperparameters,
-        scaler: MinMaxScaler,
+        device: torch.device,
         *args,
         **kwargs,
     ):
@@ -171,11 +171,22 @@ class CustomModelBase(nn.Module):
         self.FEATURES: List[str] = features
         self.TARGETS: List[str] = targets
 
-        self.SCALER: MinMaxScaler = scaler
+        self.device = device
 
-    def set_scaler(self, scaler: MinMaxScaler) -> None:
-        if self.SCALER is None:
-            self.SCALER = scaler
+    def set_device(self, device: torch.device) -> None:
+        """
+        Set the BaseRNN device property.
+
+        Args:
+            device (torch.device): Device for the BaseRNN object.
+        """
+        self.device = device
+
+    def redetect_device(self) -> None:
+        """
+        Set the device to cuda if available. Useful if you are loading pre-trained model.
+        """
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:

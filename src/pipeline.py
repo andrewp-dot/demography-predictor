@@ -14,7 +14,7 @@ from src.preprocessors.data_transformer import DataTransformer
 
 from src.base import TrainingStats
 
-from src.local_model.experimental import ExpLSTM
+
 from src.local_model.model import RNNHyperparameters, BaseRNN
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
@@ -91,90 +91,90 @@ class LocalModelPipeline(BasePipeline):
         )
         self.training_stats = training_stats
 
-    def __experimental_model_predict(
-        self, state_data: pd.DataFrame, last_year: int, target_year: int
-    ):
+        # def __experimental_model_predict(
+        #     self, state_data: pd.DataFrame, last_year: int, target_year: int
+        # ):
 
-        model: ExpLSTM = self.model
+        #     model: ExpLSTM = self.model
 
-        FEATURES: List[str] = self.model.FEATURES
-        TARGETS: List[str] = self.model.TARGETS
-        SEQUENCE_LEN: int = self.model.hyperparameters.sequence_length
+        #     FEATURES: List[str] = self.model.FEATURES
+        #     TARGETS: List[str] = self.model.TARGETS
+        #     SEQUENCE_LEN: int = self.model.hyperparameters.sequence_length
 
-        # Note: the all data should contain only input features
-        if set(state_data.columns) != set(FEATURES):
-            raise ValueError(
-                f"The input data columns ({set(state_data.columns)})  are not compatibile with the model features: ({set(FEATURES)})"
-            )
+        #     # Note: the all data should contain only input features
+        #     if set(state_data.columns) != set(FEATURES):
+        #         raise ValueError(
+        #             f"The input data columns ({set(state_data.columns)})  are not compatibile with the model features: ({set(FEATURES)})"
+        #         )
 
-        to_predict_years_num = target_year - last_year
+        #     to_predict_years_num = target_year - last_year
 
-        to_predict_years_num = (
-            target_year - last_year
-        )  # To include also the target year
+        #     to_predict_years_num = (
+        #         target_year - last_year
+        #     )  # To include also the target year
 
-        # Get the future values of non-target features
-        NON_TARGET_FEATURES = [f for f in FEATURES if not f in TARGETS]
-        all_non_target_values_df = state_data[NON_TARGET_FEATURES]
+        #     # Get the future values of non-target features
+        #     NON_TARGET_FEATURES = [f for f in FEATURES if not f in TARGETS]
+        #     all_non_target_values_df = state_data[NON_TARGET_FEATURES]
 
-        # Create N sequences needed for prediction using non target feature true values
+        #     # Create N sequences needed for prediction using non target feature true values
 
-        # Here is the error
-        all_known_target_values_df = state_data.iloc[
-            -(to_predict_years_num + SEQUENCE_LEN) : -to_predict_years_num
-        ][TARGETS]
+        #     # Here is the error
+        #     all_known_target_values_df = state_data.iloc[
+        #         -(to_predict_years_num + SEQUENCE_LEN) : -to_predict_years_num
+        #     ][TARGETS]
 
-        # Save the order
+        # # Save the order
 
-        def rolling_window(
-            non_target_df: pd.DataFrame, target_df: pd.DataFrame, offset: int
-        ) -> pd.DataFrame:
+        # def rolling_window(
+        #     non_target_df: pd.DataFrame, target_df: pd.DataFrame, offset: int
+        # ) -> pd.DataFrame:
 
-            # Offset is here due to years
+        #     # Offset is here due to years
 
-            # Get the last sequence of non target dataframe
-            non_target_df = non_target_df.iloc[
-                -(offset + SEQUENCE_LEN) : -offset
-            ].reset_index(drop=True)
+        #     # Get the last sequence of non target dataframe
+        #     non_target_df = non_target_df.iloc[
+        #         -(offset + SEQUENCE_LEN) : -offset
+        #     ].reset_index(drop=True)
 
-            target_df = target_df.tail(SEQUENCE_LEN).reset_index(drop=True)
+        #     target_df = target_df.tail(SEQUENCE_LEN).reset_index(drop=True)
 
-            input_data: pd.DataFrame = pd.concat([non_target_df, target_df], axis=1)[
-                FEATURES
-            ]
+        #     input_data: pd.DataFrame = pd.concat([non_target_df, target_df], axis=1)[
+        #         FEATURES
+        #     ]
 
-            return input_data
+        #     return input_data
 
-        input_data: pd.DataFrame = rolling_window(
-            non_target_df=all_non_target_values_df,
-            target_df=all_known_target_values_df,
-            offset=to_predict_years_num,
-        )
+        # input_data: pd.DataFrame = rolling_window(
+        #     non_target_df=all_non_target_values_df,
+        #     target_df=all_known_target_values_df,
+        #     offset=to_predict_years_num,
+        # )
 
-        for offset in range(to_predict_years_num, 0, -1):
+        # for offset in range(to_predict_years_num, 0, -1):
 
-            next_year_targets = model.predict(input_data=input_data)
+        #     next_year_targets = model.predict(input_data=input_data)
 
-            # Create a dataframe from it
-            next_year_targets_df = pd.DataFrame(next_year_targets, columns=TARGETS)
+        #     # Create a dataframe from it
+        #     next_year_targets_df = pd.DataFrame(next_year_targets, columns=TARGETS)
 
-            # Add predictions to the existing target data
-            all_known_target_values_df = pd.concat(
-                [all_known_target_values_df, next_year_targets_df],
-                axis=0,
-            )
+        #     # Add predictions to the existing target data
+        #     all_known_target_values_df = pd.concat(
+        #         [all_known_target_values_df, next_year_targets_df],
+        #         axis=0,
+        #     )
 
-            # Update input data
-            input_data = rolling_window(
-                non_target_df=all_non_target_values_df,
-                target_df=all_known_target_values_df,
-                offset=offset,
-            )
+        #     # Update input data
+        #     input_data = rolling_window(
+        #         non_target_df=all_non_target_values_df,
+        #         target_df=all_known_target_values_df,
+        #         offset=offset,
+        #     )
 
-        # Return the last N predictions
-        predictions_df = all_known_target_values_df.tail(to_predict_years_num)[TARGETS]
+        # # Return the last N predictions
+        # predictions_df = all_known_target_values_df.tail(to_predict_years_num)[TARGETS]
 
-        return predictions_df
+        # return predictions_df
 
     def predict(
         self, input_data: pd.DataFrame, last_year: int, target_year: int
@@ -206,19 +206,19 @@ class LocalModelPipeline(BasePipeline):
         # Predict
         # Predict values to the future
 
-        if isinstance(self.model, ExpLSTM):
-            future_feature_values_scaled = self.__experimental_model_predict(
-                state_data=scaled_data_df[FEATURES],
-                last_year=last_year,
-                target_year=target_year,
-            )
+        # if isinstance(self.model, ExpLSTM):
+        #     future_feature_values_scaled = self.__experimental_model_predict(
+        #         state_data=scaled_data_df[FEATURES],
+        #         last_year=last_year,
+        #         target_year=target_year,
+        #     )
+        # else:
 
-        else:
-            future_feature_values_scaled = self.model.predict(
-                input_data=scaled_data_df[FEATURES],
-                last_year=last_year,
-                target_year=target_year,
-            )
+        future_feature_values_scaled = self.model.predict(
+            input_data=scaled_data_df[FEATURES],
+            last_year=last_year,
+            target_year=target_year,
+        )
 
         future_feature_values_scaled_df = pd.DataFrame(
             future_feature_values_scaled, columns=FEATURES

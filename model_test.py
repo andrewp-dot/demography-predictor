@@ -8,7 +8,7 @@ from src.utils.save_model import get_model
 from src.evaluation import EvaluateModel
 
 from src.local_model.model import BaseRNN
-from src.local_model.experimental import ExpLSTM
+
 
 from src.pipeline import LocalModelPipeline
 
@@ -31,8 +31,8 @@ def main():
     )
 
     # Get model
-    transformer = get_model("ExpLSTM__pop_total_transformer.pkl")
-    model: ExpLSTM = get_model("ExpLSTM_pop_total.pkl")
+    transformer = get_model("put your model transformer here")
+    model: BaseRNN = get_model("put your model here")
 
     # Split data
     X_states_dict, y_states_dict = loader.split_data(

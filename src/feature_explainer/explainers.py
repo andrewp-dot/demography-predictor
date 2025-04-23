@@ -18,7 +18,7 @@ from src.utils.save_model import get_model
 from src.pipeline import LocalModelPipeline, GlobalModelPipeline
 
 from src.local_model.model import BaseRNN
-from src.local_model.experimental import ExpLSTM
+
 from src.preprocessors.multiple_states_preprocessing import StateDataLoader
 from src.preprocessors.data_transformer import DataTransformer
 
@@ -537,8 +537,8 @@ def main():
     pipeline = LocalModelPipeline(
         # model=get_model("core_pipeline/local_model.pkl"),
         # transformer=get_model("core_pipeline/local_transformer.pkl"),
-        model=get_model("ExpLSTM_pop_total.pkl"),
-        transformer=get_model("ExpLSTM__pop_total_transformer.pkl"),
+        model=get_model("put your model name here"),
+        transformer=get_model("put transformer name of model of yours here"),
     )
 
     explainer = LSTMExplainer(pipeline=pipeline)

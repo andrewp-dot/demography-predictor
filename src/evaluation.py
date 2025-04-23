@@ -10,7 +10,6 @@ import logging
 import torch
 import numpy as np
 
-from src.local_model.experimental import ExpLSTM
 
 from sklearn.metrics import (
     mean_absolute_error,
