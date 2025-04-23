@@ -43,6 +43,7 @@ logger = logging.getLogger(name="finetuneable_local_model")
 # 2. Add adapter layer for change the size shape of finetunable layer
 
 
+# TODO: edit this to correct way
 class FineTunableLSTM(CustomModelBase):
 
     def __init__(
@@ -62,21 +63,21 @@ class FineTunableLSTM(CustomModelBase):
 
         # Load pretrained LSTM layers
         self.base_model = base_model
-        self.base_lstm = base_model.lstm
+        self.base_lstm = base_model.rnn
 
         # Freeze pretrained LSTM layers
-        for param in self.base_model.lstm.parameters():
+        for param in self.base_model.rnn.parameters():
             param.requires_grad = False
 
         # Add new LSTM layers for fine-tuning
         fine_tune_hidden_size = hyperparameters.hidden_size
 
-        logger.debug(f"Base lstm hidden size: {base_model.lstm.hidden_size}")
+        logger.debug(f"Base lstm hidden size: {base_model.rnn.hidden_size}")
         logger.debug(f"New lstm hidden size: {fine_tune_hidden_size}")
 
         # Hidden layer for transforming the hidden size of the base model to hidden size of the new lstm model
         self.hidden_transform = nn.Linear(
-            base_model.lstm.hidden_size, fine_tune_hidden_size
+            base_model.rnn.hidden_size, fine_tune_hidden_size
         )
 
         self.new_lstm = nn.LSTM(

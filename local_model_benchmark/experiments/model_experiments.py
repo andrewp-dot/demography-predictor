@@ -3,6 +3,8 @@ import logging
 import pandas as pd
 from typing import List, Dict, Union
 
+from torch import nn
+
 from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
@@ -20,7 +22,7 @@ from src.state_groups import StatesByGeolocation, StatesByWealth
 
 from src.pipeline import LocalModelPipeline
 from src.train_scripts.train_local_models import (
-    train_base_lstm,
+    train_base_rnn,
     train_finetunable_model,
     train_finetunable_model_from_scratch,
     train_ensemble_model,
@@ -72,7 +74,7 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def __train_base_lstm_model(
+    def __train_base_rnn_model(
         self,
         name: str,
         states_loader: StatesDataLoader,
@@ -83,8 +85,8 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
         # Preprocess data
         states_data_dict = states_loader.load_all_states()
 
-        # The train_base_lstm function splits the data automatically
-        lstm_pipeline = train_base_lstm(
+        # The train_base_rnn function splits the data automatically
+        lstm_pipeline = train_base_rnn(
             name=name,
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
             features=self.FEATURES,
@@ -123,7 +125,7 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
         states_loader: StatesDataLoader = StatesDataLoader()
 
         # Train base lstm
-        TO_COMPARE_MODELS["base-lstm"] = self.__train_base_lstm_model(
+        TO_COMPARE_MODELS["base-lstm"] = self.__train_base_rnn_model(
             name="base-lstm",
             states_loader=states_loader,
             split_rate=split_rate,
@@ -184,7 +186,7 @@ class FineTunedModels(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def __train_base_lstm_model(
+    def __train_base_rnn_model(
         self,
         name: str,
         states_loader: StatesDataLoader,
@@ -200,7 +202,7 @@ class FineTunedModels(BaseExperiment):
             split_rate=split_rate,
         )
 
-        lstm_pipeline = train_base_lstm(
+        lstm_pipeline = train_base_rnn(
             name=name,
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
             features=self.FEATURES,
@@ -244,7 +246,7 @@ class FineTunedModels(BaseExperiment):
         states_loader: StatesDataLoader = StatesDataLoader()
 
         # Train base lstm
-        TO_COMPARE_MODELS["base-lstm"] = self.__train_base_lstm_model(
+        TO_COMPARE_MODELS["base-lstm"] = self.__train_base_rnn_model(
             name="base-lstm",
             states_loader=states_loader,
             split_rate=split_rate,
@@ -317,7 +319,7 @@ class CompareWithStatisticalModels(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def __train_base_lstm_model(
+    def __train_base_rnn_model(
         self,
         name: str,
         states_loader: StatesDataLoader,
@@ -328,7 +330,7 @@ class CompareWithStatisticalModels(BaseExperiment):
         # Preprocess data
         states_data_dict = states_loader.load_all_states()
 
-        base_model_pipeline = train_base_lstm(
+        base_model_pipeline = train_base_rnn(
             name=name,
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
             data=states_data_dict,
@@ -380,7 +382,7 @@ class CompareWithStatisticalModels(BaseExperiment):
         states_loader: StatesDataLoader = StatesDataLoader()
 
         # Train base lstm
-        TO_COMPARE_MODELS["base-lstm"] = self.__train_base_lstm_model(
+        TO_COMPARE_MODELS["base-lstm"] = self.__train_base_rnn_model(
             name="base-lstm",
             states_loader=states_loader,
             split_rate=split_rate,
@@ -446,7 +448,7 @@ class DifferentHiddenLayers(BaseExperiment):
         for hidden_size in self.HIDDEN_SIZE_TO_TRY:
 
             MODEL_NAME = f"lstm-{hidden_size}"
-            TO_COMPARE_MODELS[MODEL_NAME] = train_base_lstm(
+            TO_COMPARE_MODELS[MODEL_NAME] = train_base_rnn(
                 name=MODEL_NAME,
                 features=self.FEATURES,
                 hyperparameters=get_core_hyperparameters(
@@ -506,27 +508,27 @@ class DifferentArchitecturesComparision(BaseExperiment):
     FEATURES: List[str] = basic_features()
 
     # Base LSTM
-    BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+    BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
     )
 
     # Base LSTM with more then 1 future prediction
-    FUTURE_BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+    FUTURE_BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         future_step_predict=3,
     )
 
     # Funnel architecture
-    WIDE_LAYERS_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+    WIDE_LAYERS_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
         num_layers=1,
     )
 
-    NARROW_LAYERS_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+    NARROW_LAYERS_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=128,
@@ -549,6 +551,13 @@ class DifferentArchitecturesComparision(BaseExperiment):
     # -> target based (second model first)
     # -> predicting feature development for the second model (first model)
 
+    # 1. experiment models: (Excluded trees and classic BPNN)
+    # 1. LSTM
+    # 2. GRU
+    # 3. RNN
+    # 6. ARIMA (Ensemble model)
+    # 7. (bonus) Seq2seq - encoder decoder model
+
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
@@ -566,9 +575,9 @@ class DifferentArchitecturesComparision(BaseExperiment):
         DISPLAY_NTH_EPOCH = 1
 
         # Create base lstm
-        TO_COMPARE_PIPELINES["base-lstm"] = train_base_lstm(
+        TO_COMPARE_PIPELINES["base-lstm"] = train_base_rnn(
             name="base-lstm",
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
+            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
             data=states_data_dict,
             features=self.FEATURES,
             split_rate=split_rate,
@@ -576,9 +585,9 @@ class DifferentArchitecturesComparision(BaseExperiment):
         )
 
         # Create same LSTM but with prediction to future
-        TO_COMPARE_PIPELINES["future-base-lstm"] = train_base_lstm(
+        TO_COMPARE_PIPELINES["future-base-lstm"] = train_base_rnn(
             name="future-base-lstm",
-            hyperparameters=self.FUTURE_BASE_LSTM_HYPERPARAMETERS,
+            hyperparameters=self.FUTURE_BASE_RNN_HYPERPARAMETERS,
             data=states_data_dict,
             features=self.FEATURES,
             split_rate=split_rate,
@@ -589,8 +598,8 @@ class DifferentArchitecturesComparision(BaseExperiment):
         TO_COMPARE_PIPELINES["simple-funnel-lstm"] = (
             train_finetunable_model_from_scratch(
                 name="simple-funnel-lstm",
-                base_model_hyperparameters=self.WIDE_LAYERS_LSTM_HYPERPARAMETERS,
-                finetunable_model_hyperparameters=self.NARROW_LAYERS_LSTM_HYPERPARAMETERS,
+                base_model_hyperparameters=self.WIDE_LAYERS_RNN_HYPERPARAMETERS,
+                finetunable_model_hyperparameters=self.NARROW_LAYERS_RNN_HYPERPARAMETERS,
                 base_model_data=states_data_dict,
                 finetunable_model_data=states_data_dict,
                 features=self.FEATURES,

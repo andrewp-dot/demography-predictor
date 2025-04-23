@@ -15,7 +15,7 @@ from src.state_groups import StatesByWealth
 
 from src.pipeline import PredictorPipeline
 
-from src.train_scripts.train_local_models import train_base_lstm
+from src.train_scripts.train_local_models import train_base_rnn
 from src.train_scripts.train_global_models import train_global_model
 
 from src.preprocessors.data_transformer import DataTransformer
@@ -35,7 +35,7 @@ def train_basic_pipeline(
 ) -> PredictorPipeline:
 
     # Train local model pipeline
-    local_model_pipeline = train_base_lstm(
+    local_model_pipeline = train_base_rnn(
         name="base-lstm",
         hyperparameters=hyperparameters,
         data=local_model_data_dict,

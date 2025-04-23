@@ -29,7 +29,7 @@ from src.state_groups import StatesGroups, StatesByGeolocation, StatesByWealth
 
 from local_model_benchmark.experiments.base_experiment import BaseExperiment
 from src.train_scripts.train_local_models import (
-    train_base_lstm,
+    train_base_rnn,
     train_finetunable_model,
     train_finetunable_model_from_scratch,
 )
@@ -86,7 +86,7 @@ class DataUsedForTraining(BaseExperiment):
         states_loader = StatesDataLoader()
         state_data = states_loader.load_states(states=[state])
 
-        base_model_pipeline = train_base_lstm(
+        base_model_pipeline = train_base_rnn(
             name=name,
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
             data=state_data,
@@ -109,7 +109,7 @@ class DataUsedForTraining(BaseExperiment):
         states_loader = StatesDataLoader()
         states_data_dict = states_loader.load_states(states=states)
 
-        base_model_pipeline = train_base_lstm(
+        base_model_pipeline = train_base_rnn(
             name=name,
             hyperparameters=self.MULTISTATE_BASE_LSTM_HYPERPARAMETERS,
             data=states_data_dict,
@@ -131,7 +131,7 @@ class DataUsedForTraining(BaseExperiment):
         states_loader = StatesDataLoader()
         states_data_dict = states_loader.load_all_states()
 
-        base_model_pipeline = train_base_lstm(
+        base_model_pipeline = train_base_rnn(
             name=name,
             hyperparameters=self.MULTISTATE_BASE_LSTM_HYPERPARAMETERS,
             data=states_data_dict,
@@ -295,7 +295,7 @@ class StatesByGroup(BaseExperiment):
             del states_data_dict[state]
             all_states.remove(state)
 
-        base_model_pipeline = train_base_lstm(
+        base_model_pipeline = train_base_rnn(
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
             data=states_data_dict,
             features=self.FEATURES,
@@ -351,7 +351,7 @@ class StatesByGroup(BaseExperiment):
         states_loader = StatesDataLoader()
         states_data_dict = states_loader.load_all_states()
 
-        base_model_pipeline = train_base_lstm(
+        base_model_pipeline = train_base_rnn(
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
             data=states_data_dict,
             features=self.FEATURES,
@@ -486,7 +486,7 @@ class FeatureSelectionExperiment(BaseExperiment):
                 )
                 data = StatesDataLoader().load_all_states()
 
-                pipeline = train_base_lstm(
+                pipeline = train_base_rnn(
                     name="base-lstm",
                     hyperparameters=hyperparams,
                     data=data,
@@ -577,7 +577,7 @@ class StatesSubsetExperiment(BaseExperiment):
         for hidden_size in self.HIDDEN_SIZE_TO_TRY:
 
             MODEL_NAME = f"lstm-{hidden_size}"
-            TO_COMPARE_MODELS[MODEL_NAME] = train_base_lstm(
+            TO_COMPARE_MODELS[MODEL_NAME] = train_base_rnn(
                 name=MODEL_NAME,
                 features=self.FEATURES,
                 hyperparameters=get_core_hyperparameters(

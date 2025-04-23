@@ -83,6 +83,21 @@ class BaseRNN(CustomModelBase):
 
         self.fc = nn.Sequential(*layers)
 
+    def set_device(self, device: torch.device) -> None:
+        """
+        Set the BaseRNN device property.
+
+        Args:
+            device (torch.device): Device for the BaseRNN object.
+        """
+        self.device = device
+
+    def redetect_device(self) -> None:
+        """
+        Set the device to cuda if available. Useful if you are loading pre-trained model.
+        """
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     def __initialize_hidden_states(
         self, batch_size: int
     ) -> Tuple[torch.Tensor, torch.Tensor]:

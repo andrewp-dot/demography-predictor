@@ -2,7 +2,9 @@
 import os
 import pandas as pd
 import torch
-from typing import List, Tuple, Union, Dict, Optional
+from torch import nn
+
+from typing import List, Tuple, Union, Dict, Optional, Type
 
 import copy
 
@@ -77,13 +79,15 @@ def preprocess_data(
     )
 
 
-def train_base_lstm(
+def train_base_rnn(
     name: str,
     hyperparameters: RNNHyperparameters,
     data: Dict[str, pd.DataFrame],
     features: List[str],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
+    rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
+    additional_bpnn: Optional[List[int]] = None,
 ) -> LocalModelPipeline:
 
     # Preprocess data
@@ -101,10 +105,15 @@ def train_base_lstm(
     )
 
     # Create model
-    base_lstm = BaseRNN(hyperparameters=hyperparameters, features=features)
+    rnn = BaseRNN(
+        hyperparameters=hyperparameters,
+        features=features,
+        rnn_type=rnn_type,
+        additional_bpnn=additional_bpnn,
+    )
 
     # Train model
-    stats = base_lstm.train_model(
+    stats = rnn.train_model(
         batch_inputs=batch_inputs,
         batch_targets=batch_targets,
         batch_validation_inputs=batch_validation_inputs,
@@ -115,7 +124,7 @@ def train_base_lstm(
     # Create pipeline
     return LocalModelPipeline(
         name=name,
-        model=base_lstm,
+        model=rnn,
         transformer=transformer,
         training_stats=TrainingStats.from_dict(stats),
     )
@@ -128,6 +137,8 @@ def train_finetunable_model(
     finetunable_model_data: Dict[str, pd.DataFrame],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
+    # rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
+    # additional_bpnn: Optional[List[int]] = None,
 ) -> LocalModelPipeline:
 
     # Preprocess data
@@ -146,6 +157,8 @@ def train_finetunable_model(
     finetuneable_lstm = FineTunableLSTM(
         base_model=base_model_pipeline.model,
         hyperparameters=finetunable_model_hyperparameters,
+        # rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
+        # additional_bpnn: Optional[List[int]] = None,
     )
 
     stats = finetuneable_lstm.train_model(
@@ -164,6 +177,7 @@ def train_finetunable_model(
     )
 
 
+# TODO: fix this
 def train_finetunable_model_from_scratch(
     name: str,
     base_model_hyperparameters: RNNHyperparameters,
@@ -176,7 +190,7 @@ def train_finetunable_model_from_scratch(
 ) -> LocalModelPipeline:
 
     # Train base lstm
-    base_model_pipeline = train_base_lstm(
+    base_model_pipeline = train_base_rnn(
         name=name,
         hyperparameters=base_model_hyperparameters,
         data=base_model_data,

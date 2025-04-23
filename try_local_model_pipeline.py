@@ -15,7 +15,7 @@ from src.utils.constants import (
 from src.state_groups import StatesByWealth
 from src.utils.log import setup_logging
 from src.pipeline import LocalModelPipeline
-from src.train_scripts.train_local_models import train_base_lstm
+from src.train_scripts.train_local_models import train_base_rnn
 
 
 from src.preprocessors.data_transformer import DataTransformer
@@ -66,7 +66,7 @@ def train_only_features(epochs: int):
         future_step_predict=1,
     )
 
-    pipeline = train_base_lstm(
+    pipeline = train_base_rnn(
         name="lstm_features_only",
         hyperparameters=hyperparameters,
         data=states_data_dict,
@@ -100,7 +100,7 @@ def train_including_targets(epochs: int):
         future_step_predict=2,
     )
 
-    pipeline = train_base_lstm(
+    pipeline = train_base_rnn(
         name="lstm_features_targets",
         hyperparameters=hyperparameters,
         data=states_data_dict,
