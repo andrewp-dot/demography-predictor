@@ -2,8 +2,9 @@
 
 
 # Standard library imports
+import pandas as pd
 import logging
-from typing import List, Dict
+from typing import List, Dict, Union
 from torch import nn
 
 # Import tested tree models
@@ -31,6 +32,8 @@ from src.global_model.model import XGBoostTuneParams
 from model_experiments.base_experiment import BaseExperiment
 from src.base import RNNHyperparameters
 
+from src.compare_models.compare import ModelComparator
+
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 logger = logging.getLogger("benchmark")
@@ -50,6 +53,7 @@ class SecondModelSelection(BaseExperiment):
         hidden_size=256,
         batch_size=16,
         output_size=len(TARGETS),
+        epochs=30,
     )
 
     XGBOOST_TUNE_PARAMETERS: XGBoostTuneParams = XGBoostTuneParams(
@@ -59,6 +63,8 @@ class SecondModelSelection(BaseExperiment):
         subsample=[0.8, 1.0],
         colsample_bytree=[0.8, 1.0],
     )
+
+    EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
 
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
@@ -138,9 +144,52 @@ class SecondModelSelection(BaseExperiment):
             tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
         )
 
-        # Train lightgbm - maybe?
+        # Train lightgbm - maybe? -> error in here
+        # logger.info("Training lightgbm...")
+        # TO_COMPARE_PIPELINES["rf"] = train_global_model_tree(
+        #     name="rf",
+        #     tree_model=LGBMRegressor(
+        #         n_estimators=100, learning_rate=0.1, num_leaves=31, random_state=42
+        #     ),
+        #     states_data=states_data_dict,
+        #     features=self.FEATURES,
+        #     targets=self.TARGETS,
+        #     sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
+        #     tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
+        # )
 
         # Train arima
+
+        # Maybe add classic linear regression?
+
+        comparator = ModelComparator()
+
+        EVALUATION_STATES = self.EVALUATION_STATES
+
+        per_target_metrics_df = comparator.compare_models_by_states(
+            pipelines=TO_COMPARE_PIPELINES, states=EVALUATION_STATES, by="per-targets"
+        )
+        overall_metrics_df = comparator.compare_models_by_states(
+            pipelines=TO_COMPARE_PIPELINES,
+            states=EVALUATION_STATES,
+            by="overall-metrics",
+        )
+
+        # Print results to the readme
+        # Add per metric rankings
+        # Print all dataframe
+        pd.set_option("display.max_rows", None)
+        self.readme_add_section(
+            title="## Per target metrics - model comparision",
+            text=f"```\n{per_target_metrics_df.sort_values(by=['state', 'target'])}\n```\n\n",
+        )
+
+        pd.reset_option("display.max_rows")
+
+        self.readme_add_section(
+            title="## Overall metrics - model comparision",
+            text=f"```\n{overall_metrics_df.sort_values(by=['state'])}\n```\n\n",
+        )
 
 
 if __name__ == "__main__":

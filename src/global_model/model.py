@@ -79,7 +79,7 @@ class GlobalModel:
 
     def __init__(
         self,
-        model: Union[XGBRegressor, GridSearchCV],
+        model: Union[XGBRegressor, RandomForestRegressor, LGBMRegressor, GridSearchCV],
         features: List[str],
         targets: List[str],
         sequence_len: int,

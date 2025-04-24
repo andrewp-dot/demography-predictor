@@ -17,6 +17,7 @@ from src.evaluation import EvaluateModel
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 
+from src.global_model.model import GlobalModel
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
@@ -147,7 +148,7 @@ class ModelComparator:
         ],
         states: List[str] | None = None,
         by: Literal[
-            "overall-metrics", "per-features", "overall-one-metric"
+            "overall-metrics", "per-targets", "overall-one-metric"
         ] = "overall-metrics",
     ) -> pd.DataFrame:
         """
@@ -221,6 +222,9 @@ class ModelComparator:
                 model_sequence_len = get_core_hyperparameters(
                     input_size=1
                 ).sequence_length
+
+            elif isinstance(pipeline.model, GlobalModel):
+                model_sequence_len = pipeline.model.sequence_len
             else:
                 model_sequence_len = pipeline.model.hyperparameters.sequence_length
 
@@ -248,7 +252,7 @@ class ModelComparator:
                     )
                 )
 
-            elif "per-features" == by:
+            elif "per-targets" == by:
 
                 states_evaluation_for_model: pd.DataFrame | None = None
                 for state in train_data_dict.keys():
@@ -258,7 +262,7 @@ class ModelComparator:
                         test_X=train_data_dict[state], test_y=test_data_dict[state]
                     )
                     per_target_metrics = model_evaluation.get_target_specific_metrics(
-                        model.FEATURES
+                        model.TARGETS
                     )
                     per_target_metrics["state"] = state
 
@@ -278,6 +282,7 @@ class ModelComparator:
 
                 # Save all states
                 model_evaluations[model_name] = states_evaluation_for_model
+                print(type(states_evaluation_for_model))
 
         # Compare evaluations
         # Convert evaluations (Dict[str, pd.DataFrame]) into a single DataFrame
@@ -285,6 +290,8 @@ class ModelComparator:
         for model, df in model_evaluations.items():
             df["model"] = model  # Add model name to DataFrame
             df_list.append(df)
+
+        print(df_list)
 
         # Rank models
         df_ranked = self.rank_models(df_list)
@@ -303,8 +310,8 @@ class ModelComparator:
         first_model_name = list(self.model_evaluations.keys())[0]
 
         # Get the refference data for the state
-        FEATURES = self.model_evaluations[first_model_name].pipeline.model.FEATURES
-        N_FEATURES = len(FEATURES)
+        TARGETS = self.model_evaluations[first_model_name].pipeline.model.TARGETS
+        N_TARGETS = len(TARGETS)
 
         # Get evalution for the first model for the state to get refference data info
         first_model_evaluation: EvaluateModel = self.model_evaluations[first_model_name]
@@ -313,20 +320,20 @@ class ModelComparator:
             first_model_evaluation.multiple_states_evaluations[state]
         )
 
-        # HERE IS THE PROBLEM -> IN THE YEARS COMPUTING OR SOMETHINdclearG
+        # HERE IS THE PROBLEM -> IN THE YEARS COMPUTING OR SOMETHING
         YEARS = first_model_state_evaluation["years"]
         reference_data = first_model_state_evaluation["reference"]
 
         # Create a figure with N rows and 1 column
-        fig, axes = plt.subplots(N_FEATURES, 1, figsize=(8, 2 * N_FEATURES))
+        fig, axes = plt.subplots(N_TARGETS, 1, figsize=(8, 2 * N_TARGETS))
 
         # Plotting in each subplot
-        for index, feature in zip(range(N_FEATURES), FEATURES):
+        for index, target in zip(range(N_TARGETS), TARGETS):
 
             # Plot reference values
             axes[index].plot(
                 YEARS,
-                reference_data[feature],
+                reference_data[target],
                 label=f"Reference values",
                 color="r",
             )
@@ -338,12 +345,12 @@ class ModelComparator:
                 axes[index].plot(
                     # evaluation.multiple_states_evaluations[state]["years"],
                     YEARS,
-                    evaluation.multiple_states_evaluations[state]["predicted"][feature],
+                    evaluation.multiple_states_evaluations[state]["predicted"][target],
                     label=f"Predicted - {model_name}",
                 )
 
             # Set the axis
-            axes[index].set_title(f"{feature}")
+            axes[index].set_title(f"{target}")
             axes[index].set_xlabel("Years")
             axes[index].set_ylabel("Value")
             axes[index].grid()
