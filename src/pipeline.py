@@ -2,6 +2,7 @@
 import os
 import pandas as pd
 import numpy as np
+import torch
 
 from typing import Union, Optional, List, Any
 
@@ -20,6 +21,7 @@ from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 
 from src.global_model.model import GlobalModel
+from src.global_model.global_rnn import GlobalModelRNN
 
 
 settings = Config()
@@ -244,8 +246,43 @@ class GlobalModelPipeline(BasePipeline):
         name: str = "global_model_pipeline",
     ):
         self.name: str = name
-        self.model: GlobalModel = model
+        self.model: Union[GlobalModel, GlobalModelRNN] = model
         self.transformer: DataTransformer = transformer
+
+    def __tree_based_model_predict(
+        self, input_data_batch: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        Based on provided input data generates predictions for the tree based model.
+
+        Args:
+            input_data_batch (pd.DataFrame): Scaled input data.
+
+        Returns:
+            out: pd.DataFrame: Predicted data based on input data
+        """
+        return self.model.predict_human_readable(data=input_data_batch)
+
+    def __rnn_based_model_predict(self, input_data_batch: pd.DataFrame) -> torch.Tensor:
+        """
+        Based on provided input data generates predictions for the RNN based model.
+
+        Args:
+            input_data_batch (pd.DataFrame): Scaled input data.
+
+        Returns:
+            out: pd.DataFrame: Predicted data based on input data
+        """
+        # Shape: (samples, timesteps, target_num)
+        scaled_predictions = self.model.predict(input_data=input_data_batch)
+
+        # Need to reshape to (samples, target_num)
+        scaled_predictions = scaled_predictions.reshape(
+            scaled_predictions.shape[0],
+            scaled_predictions.shape[1] * scaled_predictions.shape[2],
+        )
+
+        return scaled_predictions
 
     def predict(self, input_data: pd.DataFrame, last_year: int, target_year: int):
         iterations_num = target_year - last_year
@@ -254,16 +291,22 @@ class GlobalModelPipeline(BasePipeline):
         TARGETS = self.model.TARGETS
 
         # Scale features
-        scaled_data_df = self.transformer.scale_data(data=input_data, features=FEATURES)
+
+        TO_SCALE_TARGETS = TARGETS
+        # If there is tree based model -> do not scale the targets
+        if isinstance(self.model, GlobalModel):
+            TO_SCALE_TARGETS = None
+
+        scaled_data_df = self.transformer.scale_data(
+            data=input_data, features=FEATURES, targets=TO_SCALE_TARGETS
+        )
 
         # Convert to numpy
         features_np = scaled_data_df[FEATURES].values  # shape (time, num_features)
         targets_np = scaled_data_df[TARGETS].values  # shape (time, num_targets)
 
-        # Initialize prediction input - here is a problem, because i delete current history of the target features
+        # Get the known targets -> should be nan value in the input data
         targets_for_pred = targets_np[:-iterations_num]
-
-        # targets_for_pred = targets_np
 
         # Prepare array to collect predictions
         all_predictions = [targets_for_pred.copy()]  # list of arrays
@@ -282,9 +325,26 @@ class GlobalModelPipeline(BasePipeline):
             )
 
             # Predict next target
-            next_target_preds = self.model.predict_human_readable(input_batch_df)
+            if isinstance(self.model, GlobalModel):
+                next_target_preds = self.__tree_based_model_predict(
+                    input_data_batch=input_batch_df
+                )
+
+                # Convert to tensor
+                next_target_preds = next_target_preds.values  # (samples, target_num)
+
+            elif isinstance(self.model, GlobalModelRNN):
+                next_target_preds = self.__rnn_based_model_predict(
+                    input_data_batch=input_batch_df
+                )
+
+            else:
+                raise ValueError(
+                    f"Global model pipeline predict does not support predict of model type: {type(self.model).__name__}"
+                )
 
             # Stack predicted next steps
+
             targets_for_pred = np.vstack(
                 [targets_for_pred, next_target_preds[-1:]]
             )  # only last predicton
@@ -294,6 +354,16 @@ class GlobalModelPipeline(BasePipeline):
         final_predictions = np.vstack(all_predictions)
 
         predictions_df = pd.DataFrame(final_predictions, columns=TARGETS)
+
+        # Unscale it here
+        # Unscale
+        if TO_SCALE_TARGETS:
+            unscaled_predictions = self.transformer.unscale_data(
+                data=pd.DataFrame(predictions_df, columns=TO_SCALE_TARGETS),
+                targets=TO_SCALE_TARGETS,
+            )
+
+            predictions_df = unscaled_predictions
 
         # Return only last predictions
         return predictions_df.tail(iterations_num).reset_index(drop=True)

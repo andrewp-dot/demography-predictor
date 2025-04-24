@@ -18,7 +18,6 @@ from sklearn.metrics import (
 
 from sklearn.model_selection import TimeSeriesSplit
 
-
 ## Import models
 import xgboost as xgb
 from xgboost import XGBRegressor
@@ -333,10 +332,8 @@ class GlobalModel:
         Predicts and unscales the scaled data.
 
         Returns:
-            out: pd.DataFrame: The pandas dataframe with human readable predictions.
+            out: pd.DataFrame: The pandas dataframe with human readable predictions to next year.
         """
-
-        # Create loop in here
 
         # Adjust input to the correct format if needed
         if not all(feature in data.columns for feature in self.HISTORY_TARGET_FEATURES):

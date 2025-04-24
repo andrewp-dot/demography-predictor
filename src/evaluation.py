@@ -389,8 +389,8 @@ class EvaluateModel(BaseEvaluation):
 
             input_data = test_X
 
-            if isinstance(self.pipeline.model, ExpLSTM):
-                input_data = pd.concat([test_X, test_y], axis=0)
+            # if isinstance(self.pipeline.model, ExpLSTM):
+            #     input_data = pd.concat([test_X, test_y], axis=0)
 
             predictions_df = self.pipeline.predict(
                 input_data=input_data, last_year=last_year, target_year=target_year

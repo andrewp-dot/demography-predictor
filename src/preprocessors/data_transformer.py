@@ -371,6 +371,12 @@ class DataTransformer:
             transformed_target_data_df = self.transform_data(
                 data=to_scale_target_data, columns=TARGETS
             )
+
+            # print("Expected order:", list(self.TARGET_SCALER.feature_names_in_))
+            # print("Actual order:  ", list(transformed_target_data_df.columns))
+
+            # print(TARGETS == self.TARGET_SCALER.feature_names_in_)
+
             scaled_target_data = self.TARGET_SCALER.transform(
                 transformed_target_data_df
             )

@@ -50,6 +50,7 @@ def train_global_model(
             training_data=X_train,
             validation_data=X_test,
             features=features,
+            # targets=targets, # Here are targets useless for tree based model due to transformation of history columns
         )
     else:
         scaled_training_data = transfomer.scale_data(data=X_train, features=features)

@@ -21,6 +21,7 @@ from src.utils.constants import (
 
 from src.base import RNNHyperparameters, TrainingStats, CustomModelBase
 
+
 # from src.evaluation import EvaluateModel
 from src.state_groups import StatesByWealth
 
@@ -32,7 +33,7 @@ from src.preprocessors.data_transformer import DataTransformer
 logger = logging.getLogger("local_model")
 
 
-class GlobalRNN(CustomModelBase):
+class GlobalModelRNN(CustomModelBase):
 
     def __init__(
         self,
@@ -43,7 +44,8 @@ class GlobalRNN(CustomModelBase):
         additional_bpnn: Optional[List[int]] = None,
         rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
     ):
-        super(GlobalRNN, self).__init__(
+
+        super(GlobalModelRNN, self).__init__(
             features=features,
             targets=targets,
             hyperparameters=hyperparameters,
@@ -61,6 +63,8 @@ class GlobalRNN(CustomModelBase):
             # not in the format (sequence_length, batch_size, input_features)
             batch_first=True,
         )
+
+        self.HISTORY_TARGET_FEATURES = targets
 
         # Create additional backpropagation layers
         layers = []
@@ -294,14 +298,13 @@ class GlobalRNN(CustomModelBase):
         return pred
 
     # TODO:
-    # Rewrite this for prediction -> input (scaled data - tensor?) -> output (scaled data -> tensor?)
-    # Make prediction method in pipeline
+    # This predict
     def predict(
         self,
         input_data: pd.DataFrame,
     ) -> torch.Tensor:
         """
-        Predicts values using past data.
+        Predicts target values (t+l, where 't' is current time and 'l' is number to predict timesteps) using past data.
 
         Args:
             input_data (torch.Tensor): Preprocessed (scaled) input data.
@@ -362,7 +365,9 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
         batch_size=32,
         output_size=len(TARGETS),
     )
-    rnn = GlobalRNN(hyperparameters, features=WHOLE_MODEL_FEATURES, targets=TARGETS)
+    rnn = GlobalModelRNN(
+        hyperparameters, features=WHOLE_MODEL_FEATURES, targets=TARGETS
+    )
 
     # Load data
     states_loader = StatesDataLoader()
@@ -417,17 +422,8 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
 
     if save_plots:
         fig = training_stats.create_plot()
-        fig.savefig(f"BaseRNN_training_stats_{hyperparameters.epochs}_epochs.png")
-
-    if to_save_model:
-        save_model(name=f"ExpLSTM_pop_total.pkl", model=rnn)
-        save_model(name=f"ExpLSTM__pop_total_transformer.pkl", model=transformer)
+        fig.savefig(f"global_rnn_{hyperparameters.epochs}_epochs.png")
 
 
 if __name__ == "__main__":
-    # LSTM explanation - https://medium.com/analytics-vidhya/lstms-explained-a-complete-technically-accurate-conceptual-guide-with-keras-2a650327e8f2
-
-    # Notes:
-    # statefull vs stateless LSTM - can I pass data with different batch sizes?
-
     main(save_plots=True, to_save_model=True, epochs=10)
