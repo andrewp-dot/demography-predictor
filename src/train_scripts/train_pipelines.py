@@ -16,7 +16,7 @@ from src.state_groups import StatesByWealth
 from src.pipeline import PredictorPipeline
 
 from src.train_scripts.train_local_models import train_base_rnn
-from src.train_scripts.train_global_models import train_global_model
+from src.train_scripts.train_global_models import train_global_model_tree
 
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -53,7 +53,7 @@ def train_basic_pipeline(
         colsample_bytree=[0.5, 0.7, 0.9, 1.0],
     )
 
-    global_model_pipeline = train_global_model(
+    global_model_pipeline = train_global_model_tree(
         name="xgb-gm",
         states_data=global_model_data_dict,
         features=list(set([*local_model_features, *additional_global_model_features])),

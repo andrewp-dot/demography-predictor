@@ -20,7 +20,10 @@ from src.base import TrainingStats
 from src.state_groups import StatesByWealth
 
 from src.pipeline import GlobalModelPipeline
-from src.train_scripts.train_global_models import train_global_model, train_global_rnn
+from src.train_scripts.train_global_models import (
+    train_global_model_tree,
+    train_global_rnn,
+)
 from src.global_model.model import XGBoostTuneParams
 from src.global_model.global_rnn import GlobalModelRNN
 
@@ -66,7 +69,7 @@ def train_pipeline(name: str, sequence_len: int):
         colsample_bytree=[0.8, 1.0],
     )
 
-    pipeline: GlobalModelPipeline = train_global_model(
+    pipeline: GlobalModelPipeline = train_global_model_tree(
         name=name,
         states_data=all_states_data,
         features=FEATURES,

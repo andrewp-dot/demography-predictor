@@ -2,11 +2,11 @@
 import pandas as pd
 import numpy as np
 import logging
-from typing import Union, List, Dict, Tuple
+from typing import Union, List, Dict, Tuple, Optional
 from pydantic import BaseModel
 import shap
 
-from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import (
@@ -19,8 +19,9 @@ from sklearn.metrics import (
 from sklearn.model_selection import TimeSeriesSplit
 
 ## Import models
-import xgboost as xgb
+from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
+from sklearn.ensemble import RandomForestRegressor
 
 
 # Custom imports
@@ -82,10 +83,12 @@ class GlobalModel:
         features: List[str],
         targets: List[str],
         sequence_len: int,
-        params: XGBoostTuneParams | None = None,
+        params: Optional[XGBoostTuneParams] = None,
     ):
         # Define model
-        self.model: Union[XGBRegressor, MultiOutputRegressor] = model
+        self.model: Union[
+            XGBRegressor, RandomForestRegressor, LGBMRegressor, MultiOutputRegressor
+        ] = model
         self.params: XGBoostTuneParams = params
 
         # Define features and targets
@@ -274,7 +277,7 @@ class GlobalModel:
             self.model = MultiOutputRegressor(self.model)
 
         # Tune hyperparams if neaded
-        if tune_hyperparams:
+        if tune_hyperparams and isinstance(self.model, XGBRegressor):
 
             tscv = TimeSeriesSplit(n_splits=3)
 
@@ -295,9 +298,6 @@ class GlobalModel:
 
         # Fit the model
         logger.info("Fitting model...")
-
-        print(X_train.head())
-        print(y_train.head())
 
         self.model.fit(X_train, y_train)
         logger.info("Model succesfuly fitted!")

@@ -1,7 +1,7 @@
 import click
 
 from src.utils.log import setup_logging
-from local_model_benchmark.benchmark import (
+from model_experiments.benchmark import (
     print_available_experiments,
     run_all_experiments,
     run_experiments,

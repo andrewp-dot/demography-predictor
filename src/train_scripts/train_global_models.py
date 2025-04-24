@@ -1,8 +1,13 @@
 # Standard library imports
 import pandas as pd
-from typing import List, Dict, Tuple, Optional
-from xgboost import XGBRegressor
+from typing import List, Dict, Tuple, Optional, Union, Type
+
 import torch
+from torch import nn
+
+from lightgbm import LGBMRegressor
+from xgboost import XGBRegressor
+from sklearn.ensemble import RandomForestRegressor
 
 # Custom imports
 from src.utils.log import setup_logging
@@ -15,19 +20,20 @@ from src.global_model.model import GlobalModel, XGBoostTuneParams
 from src.global_model.global_rnn import GlobalModelRNN
 
 
-def train_global_model(
+def train_global_model_tree(
     name: str,
     states_data: Dict[str, pd.DataFrame],
     features: List[str],
     targets: List[str],
     sequence_len: int,
     tune_parameters: XGBoostTuneParams,
+    tree_model: Union[XGBRegressor, RandomForestRegressor, LGBMRegressor],
     transformer: Optional[DataTransformer] = None,
     split_size: float = 0.8,
 ) -> GlobalModelPipeline:
 
     global_model = GlobalModel(
-        model=XGBRegressor(objective="reg:squarederror", random_state=42),
+        model=tree_model,
         features=features,
         targets=targets,
         sequence_len=sequence_len,
@@ -133,12 +139,13 @@ def preprocess_data_for_rnn(
 
 def train_global_rnn(
     name: str,
-    states_data: Dict[str, pd.DataFrame],
+    data: Dict[str, pd.DataFrame],
     hyperparameters: RNNHyperparameters,
     features: List[str],
     targets: List[str],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
+    rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
 ) -> GlobalModelPipeline:
 
     rnn = GlobalModelRNN(hyperparameters, features=features, targets=targets)
@@ -150,7 +157,7 @@ def train_global_rnn(
 
     batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
         preprocess_data_for_rnn(
-            states_data=states_data,
+            states_data=data,
             hyperparameters=hyperparameters,
             features=features,
             targets=targets,
@@ -182,7 +189,7 @@ def main():
     FEATURES: List[str] = [col.lower() for col in [""]]
     TARGETS: List[str] = [""]
 
-    global_model_pipeline = train_global_model(
+    global_model_pipeline = train_global_model_tree(
         states_data=state_df_merged, features=FEATURES, targets=TARGETS
     )
 
