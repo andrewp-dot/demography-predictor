@@ -151,6 +151,7 @@ class BaseEvaluation:
 
         return separate_target_metric_values_df
 
+    # TODO: get rarget specific metrics overall
     def get_target_specific_metrics(self, targets: List[str]) -> pd.DataFrame:
         """
         Creates and saves evaluation dataframe for every predicted targets.

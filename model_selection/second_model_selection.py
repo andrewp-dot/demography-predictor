@@ -64,7 +64,10 @@ class SecondModelSelection(BaseExperiment):
         colsample_bytree=[0.8, 1.0],
     )
 
-    EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
+    # EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
+
+    # If empty select all states
+    EVALUATION_STATES: List[str] = []
 
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
@@ -144,6 +147,7 @@ class SecondModelSelection(BaseExperiment):
             tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
         )
 
+        # TODO:
         # Train lightgbm - maybe? -> error in here
         # logger.info("Training lightgbm...")
         # TO_COMPARE_PIPELINES["rf"] = train_global_model_tree(
@@ -159,12 +163,15 @@ class SecondModelSelection(BaseExperiment):
         # )
 
         # Train arima
-
-        # Maybe add classic linear regression?
+        # TO_COMPARE_PIPELINES["ARIMA"] = None
 
         comparator = ModelComparator()
 
-        EVALUATION_STATES = self.EVALUATION_STATES
+        # If empty select all states
+        if self.EVALUATION_STATES:
+            EVALUATION_STATES = self.EVALUATION_STATES
+        else:
+            EVALUATION_STATES = list(states_data_dict.keys())
 
         per_target_metrics_df = comparator.compare_models_by_states(
             pipelines=TO_COMPARE_PIPELINES, states=EVALUATION_STATES, by="per-targets"
@@ -172,7 +179,7 @@ class SecondModelSelection(BaseExperiment):
         overall_metrics_df = comparator.compare_models_by_states(
             pipelines=TO_COMPARE_PIPELINES,
             states=EVALUATION_STATES,
-            by="overall-metrics",
+            by="overall-one-metric",
         )
 
         # Print results to the readme
@@ -188,7 +195,7 @@ class SecondModelSelection(BaseExperiment):
 
         self.readme_add_section(
             title="## Overall metrics - model comparision",
-            text=f"```\n{overall_metrics_df.sort_values(by=['state'])}\n```\n\n",
+            text=f"```\n{overall_metrics_df}\n```\n\n",
         )
 
 

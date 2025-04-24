@@ -7,39 +7,13 @@ from src.base import RNNHyperparameters
 
 
 def get_experiment_result_dir() -> DirectoryPath:
-    experiment_result_dir = os.path.join(
-        ".", "local_model_benchmark", "experiment_results"
-    )
+    experiment_result_dir = os.path.join(".", "model_experiments", "experiment_results")
 
     # Create it if it does not exist
     if not os.path.isdir(experiment_result_dir):
         os.makedirs(experiment_result_dir)
 
     return experiment_result_dir
-
-
-def get_core_parameters(
-    input_size: int,
-    hidden_size: int = 256,
-    future_step_predict: int = 1,
-    sequence_length: int = 10,
-    learning_rate: float = 0.0001,
-    epochs: int = 10,
-    batch_size: int = 1,
-    num_layers: int = 3,
-) -> RNNHyperparameters:
-    BASE_HYPERPARAMETERS: RNNHyperparameters = RNNHyperparameters(
-        input_size=input_size,
-        hidden_size=hidden_size,
-        future_step_predict=future_step_predict,
-        sequence_length=sequence_length,
-        learning_rate=learning_rate,
-        epochs=epochs,
-        batch_size=batch_size,
-        num_layers=num_layers,
-    )
-
-    return BASE_HYPERPARAMETERS
 
 
 class LocalModelBenchmarkSettings(BaseSettings):

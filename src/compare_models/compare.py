@@ -148,7 +148,7 @@ class ModelComparator:
         ],
         states: List[str] | None = None,
         by: Literal[
-            "overall-metrics", "per-targets", "overall-one-metric"
+            "overall-metrics", "overall-one-metric", "per-targets"
         ] = "overall-metrics",
     ) -> pd.DataFrame:
         """
@@ -245,6 +245,8 @@ class ModelComparator:
                 model_evaluations[model_name] = model_evaluation.eval_for_every_state(
                     X_test_states=train_data_dict, y_test_states=test_data_dict
                 )
+
+            # TODO: do this by for per target
             elif "overall-one-metric" == by:
                 model_evaluations[model_name] = (
                     model_evaluation.eval_for_every_state_overall(
@@ -282,7 +284,6 @@ class ModelComparator:
 
                 # Save all states
                 model_evaluations[model_name] = states_evaluation_for_model
-                print(type(states_evaluation_for_model))
 
         # Compare evaluations
         # Convert evaluations (Dict[str, pd.DataFrame]) into a single DataFrame
@@ -290,8 +291,6 @@ class ModelComparator:
         for model, df in model_evaluations.items():
             df["model"] = model  # Add model name to DataFrame
             df_list.append(df)
-
-        print(df_list)
 
         # Rank models
         df_ranked = self.rank_models(df_list)
