@@ -1,5 +1,5 @@
 import os
-from local_model_benchmark.config import LocalModelBenchmarkSettings
+from model_experiments.config import LocalModelBenchmarkSettings
 from abc import abstractmethod
 from matplotlib.figure import Figure
 from typing import List, Union

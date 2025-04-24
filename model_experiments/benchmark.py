@@ -13,11 +13,11 @@ import pprint
 from config import Config
 from src.utils.log import setup_logging
 
-from local_model_benchmark.experiments.data_experiments import (
+from model_experiments.experiments.data_experiments import (
     DataUsedForTraining,
     StatesByGroup,
 )
-from local_model_benchmark.experiments.model_experiments import (
+from model_experiments.experiments.model_experiments import (
     FeaturePredictionSeparatelyVSAtOnce,
     FineTunedModels,
     CompareWithStatisticalModels,
@@ -30,7 +30,7 @@ from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import RNNHyperparameters, BaseRNN, EvaluateModel
 
-from local_model_benchmark.experiments.base_experiment import Experiment
+from model_experiments.base_experiment import Experiment
 
 
 settings = Config()
@@ -57,6 +57,8 @@ model_experiments: List[Experiment] = [
 
 # Setup experiments -> convert experiment list to dict
 
+
+# TODO: rework this to run it by CLI
 AVAILABLE_EXPERIMENTS_BY_GROUP: Dict[str, Dict[str, Experiment]] = {
     "model_experiments": {exp.exp.name: exp for exp in data_experiments},
     "data_experiments": {exp.exp.name: exp for exp in model_experiments},

@@ -15,7 +15,7 @@ from src.utils.constants import (
     aging_targets,
 )
 
-from local_model_benchmark.config import (
+from model_experiments.config import (
     LocalModelBenchmarkSettings,
 )
 
@@ -35,7 +35,7 @@ from src.train_scripts.train_local_models import (
 
 from src.compare_models.compare import ModelComparator
 
-from local_model_benchmark.experiments.base_experiment import BaseExperiment
+from model_experiments.base_experiment import BaseExperiment
 from src.local_model.model import RNNHyperparameters, BaseRNN
 
 from src.local_model.ensemble_model import (

@@ -20,7 +20,7 @@ from src.base import TrainingStats
 from src.state_groups import StatesByWealth
 
 from src.pipeline import GlobalModelPipeline
-from src.train_scripts.train_global_models import train_global_model
+from src.train_scripts.train_global_models import train_global_model, train_global_rnn
 from src.global_model.model import XGBoostTuneParams
 from src.global_model.global_rnn import GlobalModelRNN
 
@@ -114,11 +114,10 @@ def train_rnn_pipeline(
         output_size=len(TARGETS),
         sequence_length=sequence_len,
     )
-    rnn = GlobalModelRNN(hyperparameters, features=FEATURES, targets=TARGETS)
 
     # Load data
     states_loader = StatesDataLoader()
-    states_data_dict = states_loader.load_all_states()
+    # states_data_dict = states_loader.load_all_states()
 
     states_data_dict = states_loader.load_states(
         states=[
@@ -129,60 +128,20 @@ def train_rnn_pipeline(
         ]
     )
 
-    # states_data_dict = states_loader.load_states(states=StatesByWealth().high_income)
-
-    # Get training data and validation data
-    train_data_dict, test_data_dict = states_loader.split_data(
-        states_dict=states_data_dict, sequence_len=hyperparameters.sequence_length
-    )
-    train_states_df = states_loader.merge_states(train_data_dict)
-    test_states_df = states_loader.merge_states(test_data_dict)
-
-    # Transform data
-    transformer = DataTransformer()
-
-    # This is useless maybe -> just for fitting the scaler on training data after transformation in datatransforme
-    scaled_training_data, scaled_test_data = transformer.scale_and_fit(
-        training_data=train_states_df,
-        validation_data=test_states_df,
+    pipeline = train_global_rnn(
+        name=name,
+        states_data=states_data_dict,
+        hyperparameters=hyperparameters,
         features=FEATURES,
         targets=TARGETS,
     )
 
-    # Create a dictionary from it
-    scaled_states_dict = states_loader.parse_states(scaled_training_data)
+    # TODO: save training / validation loss
+    # training_stats = TrainingStats.from_dict(stats_dict=pipeline)
 
-    batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
-        transformer.create_train_test_multiple_states_batches(
-            data=scaled_states_dict,
-            hyperparameters=hyperparameters,
-            features=FEATURES + TARGETS,
-            targets=TARGETS,
-        )
-    )
-
-    print("-" * 100)
-    logger.info(f"Batch inputs shape: {batch_inputs.shape}")
-    logger.info(f"Batch targets shape: {batch_targets.shape}")
-
-    # Train model
-    stats = rnn.train_model(
-        batch_inputs=batch_inputs,
-        batch_targets=batch_targets,
-        batch_validation_inputs=batch_validation_inputs,
-        batch_validation_targets=batch_validation_targets,
-        display_nth_epoch=1,
-    )
-
-    training_stats = TrainingStats.from_dict(stats_dict=stats)
-
-    if save_plots:
-        fig = training_stats.create_plot()
-        fig.savefig(f"global_rnn_{hyperparameters.epochs}_epochs.png")
-
-    pipeline = GlobalModelPipeline(name=name, model=rnn, transformer=transformer)
-    # save_model(name=f"global_rnn.pkl", model=rnn)
-    # save_model(name=f"global_rnn_transformer.pkl", model=transformer)
+    # if save_plots:
+    #     fig = training_stats.create_plot()
+    #     fig.savefig(f"global_rnn_{hyperparameters.epochs}_epochs.png")
 
     pipeline.save_pipeline()
 

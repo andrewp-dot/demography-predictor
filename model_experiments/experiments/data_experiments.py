@@ -11,7 +11,7 @@ import pprint
 
 # Custom imports
 from src.utils.log import setup_logging
-from local_model_benchmark.config import (
+from model_experiments.config import (
     LocalModelBenchmarkSettings,
 )
 
@@ -27,7 +27,7 @@ from src.compare_models.compare import ModelComparator
 
 from src.state_groups import StatesGroups, StatesByGeolocation, StatesByWealth
 
-from local_model_benchmark.experiments.base_experiment import BaseExperiment
+from model_experiments.base_experiment import BaseExperiment
 from src.train_scripts.train_local_models import (
     train_base_rnn,
     train_finetunable_model,
