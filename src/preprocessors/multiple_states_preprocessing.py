@@ -148,16 +148,18 @@ class StatesDataLoader:
 
             # Check if training data have enough records
             if len(state_train_df) < sequence_len + future_steps:
-                excluded_states.append(state_name)
+                excluded_states.append(f'"{state_name}"')
                 continue
 
             # Save the state train and test data
             state_split_train_dict[state_name] = state_train_df
             state_split_test_dict[state_name] = state_test_df
 
-        logger.warning(
-            f"States excluded from training due to not having enough records to create training and target sequence. States excluded from the training:\n{', '.join(excluded_states)}"
-        )
+        # Display warning of state exclusion from training if any
+        if excluded_states:
+            logger.warning(
+                f"States excluded from training due to not having enough records to create training and target sequence. States excluded from the training: {', '.join(excluded_states)}"
+            )
 
         return state_split_train_dict, state_split_test_dict
 

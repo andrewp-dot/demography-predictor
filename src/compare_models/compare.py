@@ -18,11 +18,13 @@ from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 
 from src.global_model.model import GlobalModel
+from src.global_model.statistical_wrapper import GlobalStatisticalWrapper
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
 
 from src.pipeline import LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
+
 
 logger = logging.getLogger("model_compare")
 
@@ -218,7 +220,9 @@ class ModelComparator:
                     model_sequence_len = (
                         pipeline.local_model_pipeline.model.hyperparameters.sequence_length
                     )
-            elif isinstance(pipeline.model, PureEnsembleModel):
+            elif isinstance(pipeline.model, PureEnsembleModel) or isinstance(
+                pipeline.model, GlobalStatisticalWrapper
+            ):
                 model_sequence_len = get_core_hyperparameters(
                     input_size=1
                 ).sequence_length

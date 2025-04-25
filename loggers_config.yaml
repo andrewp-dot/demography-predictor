@@ -103,3 +103,8 @@ loggers:
     level: INFO
     handlers: [console]
     propagate: no
+
+  training:
+    level: INFO
+    handlers: [console]
+    propagate: no

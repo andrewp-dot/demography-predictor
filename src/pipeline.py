@@ -22,6 +22,7 @@ from src.local_model.ensemble_model import PureEnsembleModel
 
 from src.global_model.model import GlobalModel
 from src.global_model.global_rnn import GlobalModelRNN
+from src.global_model.statistical_wrapper import GlobalStatisticalWrapper
 
 
 settings = Config()
@@ -244,10 +245,14 @@ class GlobalModelPipeline(BasePipeline):
         model: GlobalModel,
         transformer: DataTransformer,
         name: str = "global_model_pipeline",
+        is_statistical_model: bool = False,
     ):
         self.name: str = name
         self.model: Union[GlobalModel, GlobalModelRNN] = model
         self.transformer: DataTransformer = transformer
+
+        # This flag is used to detect whether need to or does not need to scale data in predict method
+        self.IS_STATISTICAL_MODEL: bool = is_statistical_model
 
     def __tree_based_model_predict(
         self, input_data_batch: pd.DataFrame
@@ -284,22 +289,57 @@ class GlobalModelPipeline(BasePipeline):
 
         return scaled_predictions
 
-    def predict(self, input_data: pd.DataFrame, last_year: int, target_year: int):
+    def __statistical_model_predict(
+        self, state: str, input_data: pd.DataFrame, last_year: int, target_year: int
+    ) -> pd.DataFrame:
+
+        return self.model.predict(
+            state=state,
+            input_data=input_data,
+            last_year=last_year,
+            target_year=target_year,
+        )
+
+    def predict(
+        self,
+        input_data: pd.DataFrame,
+        last_year: int,
+        target_year: int,
+        state: Optional[str] = None,
+    ) -> pd.DataFrame:
         iterations_num = target_year - last_year
 
         FEATURES = self.model.FEATURES
         TARGETS = self.model.TARGETS
 
         # Scale features
-
         TO_SCALE_TARGETS = TARGETS
         # If there is tree based model -> do not scale the targets
         if isinstance(self.model, GlobalModel):
             TO_SCALE_TARGETS = None
 
-        scaled_data_df = self.transformer.scale_data(
-            data=input_data, features=FEATURES, targets=TO_SCALE_TARGETS
-        )
+        # Do not scale targets for statistial model
+        if isinstance(self.model, GlobalStatisticalWrapper):
+            scaled_data_df = input_data
+        else:
+            scaled_data_df = self.transformer.scale_data(
+                data=input_data, features=FEATURES, targets=TO_SCALE_TARGETS
+            )
+
+        # If the model is statisical, model
+        if isinstance(self.model, GlobalStatisticalWrapper):
+
+            if state is None:
+                raise ValueError(
+                    "For the GlobalModelPipeline with model of type 'GlobalStatisticalWrapper' need state to be provided as argument!"
+                )
+
+            return self.__statistical_model_predict(
+                state=state,
+                input_data=scaled_data_df,
+                last_year=last_year,
+                target_year=target_year,
+            )
 
         # Convert to numpy
         features_np = scaled_data_df[FEATURES].values  # shape (time, num_features)

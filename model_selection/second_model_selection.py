@@ -25,10 +25,11 @@ from src.pipeline import GlobalModelPipeline
 from src.train_scripts.train_global_models import (
     train_global_model_tree,
     train_global_rnn,
+    train_global_arima_ensemble,
 )
 
 # TODO: change this -> add exogeneopus variables to the ARIMA model -> convert to global model
-from src.train_scripts.train_local_models import train_arima_ensemble_model
+# from src.train_scripts.train_local_models import train_arima_ensemble_model
 from src.global_model.model import XGBoostTuneParams
 
 from model_experiments.base_experiment import BaseExperiment
@@ -46,7 +47,7 @@ class SecondModelSelection(BaseExperiment):
     Question: How to evaluate this? GROUND TRUTH testing? For now YES.
     """
 
-    FEATURES: List[str] = basic_features(exclude=highly_correlated_features)
+    FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
 
     TARGETS: List[str] = aging_targets()
 
@@ -55,7 +56,8 @@ class SecondModelSelection(BaseExperiment):
         hidden_size=256,
         batch_size=16,
         output_size=len(TARGETS),
-        epochs=30,
+        # epochs=30,
+        epochs=1,
     )
 
     XGBOOST_TUNE_PARAMETERS: XGBoostTuneParams = XGBoostTuneParams(
@@ -66,10 +68,10 @@ class SecondModelSelection(BaseExperiment):
         colsample_bytree=[0.8, 1.0],
     )
 
-    # EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
+    EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
 
     # If empty select all states
-    EVALUATION_STATES: List[str] = []
+    # EVALUATION_STATES: List[str] = []
 
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
@@ -84,7 +86,19 @@ class SecondModelSelection(BaseExperiment):
         loader = StatesDataLoader()
         states_data_dict = loader.load_all_states()
 
+        arima_data_dict = loader.load_states(states=self.EVALUATION_STATES)
+
         TO_COMPARE_PIPELINES: Dict[str, GlobalModelPipeline] = {}
+
+        # Train ARIMA models for states
+        model_name = f"ensemble-arimas"
+        TO_COMPARE_PIPELINES[model_name] = train_global_arima_ensemble(
+            name=model_name,
+            data=arima_data_dict,
+            features=self.FEATURES,
+            targets=self.TARGETS,
+            split_rate=split_rate,
+        )
 
         # Train classic rnn
         logger.info("Training simple rnn...")
@@ -99,55 +113,55 @@ class SecondModelSelection(BaseExperiment):
             rnn_type=nn.RNN,
         )
 
-        # Train lstm
-        logger.info("Training base lstm...")
-        TO_COMPARE_PIPELINES["base-lstm"] = train_global_rnn(
-            name="base-lstm",
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
-            data=states_data_dict,
-            features=self.FEATURES,
-            targets=self.TARGETS,
-            split_rate=split_rate,
-            display_nth_epoch=DISPLAY_NTH_EPOCH,
-            rnn_type=nn.LSTM,
-        )
+        # # Train lstm
+        # logger.info("Training base lstm...")
+        # TO_COMPARE_PIPELINES["base-lstm"] = train_global_rnn(
+        #     name="base-lstm",
+        #     hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+        #     data=states_data_dict,
+        #     features=self.FEATURES,
+        #     targets=self.TARGETS,
+        #     split_rate=split_rate,
+        #     display_nth_epoch=DISPLAY_NTH_EPOCH,
+        #     rnn_type=nn.LSTM,
+        # )
 
-        # Train gru
-        logger.info("Training base gru...")
-        TO_COMPARE_PIPELINES["base-gru"] = train_global_rnn(
-            name="base-gru",
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
-            data=states_data_dict,
-            features=self.FEATURES,
-            targets=self.TARGETS,
-            split_rate=split_rate,
-            display_nth_epoch=DISPLAY_NTH_EPOCH,
-            rnn_type=nn.GRU,
-        )
+        # # Train gru
+        # logger.info("Training base gru...")
+        # TO_COMPARE_PIPELINES["base-gru"] = train_global_rnn(
+        #     name="base-gru",
+        #     hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+        #     data=states_data_dict,
+        #     features=self.FEATURES,
+        #     targets=self.TARGETS,
+        #     split_rate=split_rate,
+        #     display_nth_epoch=DISPLAY_NTH_EPOCH,
+        #     rnn_type=nn.GRU,
+        # )
 
-        # Train xgboost
-        logger.info("Training xgboost...")
-        TO_COMPARE_PIPELINES["xgboost"] = train_global_model_tree(
-            name="xgboost",
-            tree_model=XGBRegressor(objective="reg:squarederror", random_state=42),
-            states_data=states_data_dict,
-            features=self.FEATURES,
-            targets=self.TARGETS,
-            sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
-            tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
-        )
+        # # Train xgboost
+        # logger.info("Training xgboost...")
+        # TO_COMPARE_PIPELINES["xgboost"] = train_global_model_tree(
+        #     name="xgboost",
+        #     tree_model=XGBRegressor(objective="reg:squarederror", random_state=42),
+        #     states_data=states_data_dict,
+        #     features=self.FEATURES,
+        #     targets=self.TARGETS,
+        #     sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
+        #     tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
+        # )
 
-        # Train randomforest
-        logger.info("Training random forest...")
-        TO_COMPARE_PIPELINES["rf"] = train_global_model_tree(
-            name="rf",
-            tree_model=RandomForestRegressor(n_estimators=100, random_state=42),
-            states_data=states_data_dict,
-            features=self.FEATURES,
-            targets=self.TARGETS,
-            sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
-            tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
-        )
+        # # Train randomforest
+        # logger.info("Training random forest...")
+        # TO_COMPARE_PIPELINES["rf"] = train_global_model_tree(
+        #     name="rf",
+        #     tree_model=RandomForestRegressor(n_estimators=100, random_state=42),
+        #     states_data=states_data_dict,
+        #     features=self.FEATURES,
+        #     targets=self.TARGETS,
+        #     sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
+        #     tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
+        # )
 
         # TODO:
         # Train lightgbm - maybe? -> error in here
@@ -166,16 +180,20 @@ class SecondModelSelection(BaseExperiment):
 
         # Train arima
         # ARIMA needs to be trained for every state and every target independently
+        # For evaluation -> maybe try to optimize model comparision?
 
         # For every states train ARIMA to predict targets
-        for state in states_data_dict.keys():
-            model_name = f"ensemble-arima-{state}"
-            TO_COMPARE_PIPELINES[model_name] = train_arima_ensemble_model(
-                name=model_name,
-                targets=self.TARGETS,
-                state=state,
-                split_rate=split_rate,
-            )
+        # for state in states_data_dict.keys():
+        #     logger.info(f"Training ARIMA for {state}")
+        #
+        #     model_name = f"ensemble-arima-{state}"
+        #     TO_COMPARE_PIPELINES[model_name] = train_global_arima_ensemble(
+        #         name=model_name,
+        #         features=self.FEATURES,
+        #         targets=self.TARGETS,
+        #         state=state,
+        #         split_rate=split_rate,
+        #     )
 
         # TODO: figure out how to display the results -
         # 0. Display only best and worst states for each model (except ARIMA)?

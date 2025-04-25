@@ -9,10 +9,8 @@ from typing import List, Tuple, Union, Dict, Optional, Type
 import copy
 
 from config import Config
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 
 # Custom imports
-from src.utils.save_model import get_experiment_model
 from src.base import TrainingStats
 
 from src.preprocessors.data_transformer import DataTransformer

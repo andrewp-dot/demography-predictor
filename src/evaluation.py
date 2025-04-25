@@ -1,7 +1,7 @@
 # Standard library imports
 import pandas as pd
 from abc import abstractmethod
-from typing import Dict, List, Callable, Tuple, Union
+from typing import Dict, List, Callable, Tuple, Union, Optional
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
@@ -380,14 +380,8 @@ class EvaluateModel(BaseEvaluation):
         logger.debug(f"[Eval]: predicting values from {last_year} to {target_year}...")
 
         # Get predictions
-
         if isinstance(self.pipeline, LocalModelPipeline):
-
             input_data = test_X
-
-            # if isinstance(self.pipeline.model, ExpLSTM):
-            #     input_data = pd.concat([test_X, test_y], axis=0)
-
             predictions_df = self.pipeline.predict(
                 input_data=input_data, last_year=last_year, target_year=target_year
             )
@@ -408,6 +402,7 @@ class EvaluateModel(BaseEvaluation):
             padding = pd.DataFrame(
                 np.nan, columns=previous_targets_df.columns, index=range(pad_len)
             )
+
             previous_targets_padded = pd.concat(
                 [previous_targets_df, padding], ignore_index=True
             )
@@ -418,7 +413,10 @@ class EvaluateModel(BaseEvaluation):
             )
 
             predictions_df = self.pipeline.predict(
-                input_data=final_input, last_year=last_year, target_year=target_year
+                input_data=final_input,
+                last_year=last_year,
+                target_year=target_year,
+                state=str(test_X["country name"].iloc[0]),
             )
 
         elif isinstance(self.pipeline, PredictorPipeline):

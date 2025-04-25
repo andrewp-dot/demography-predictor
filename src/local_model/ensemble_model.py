@@ -1,7 +1,7 @@
 # Standard library imports
 import pandas as pd
 import logging
-from typing import Dict, Union, List
+from typing import Dict, Union, List, Optional
 import torch
 
 # Custom library imports
@@ -28,16 +28,22 @@ logger = logging.getLogger("local_model")
 class PureEnsembleModel:
 
     def __init__(
-        self, feature_models: Dict[str, Union[CustomARIMA, BaseRNN, FineTunableLSTM]]
+        self,
+        target_models: Dict[str, Union[CustomARIMA, BaseRNN, FineTunableLSTM]],
+        features: Optional[List[str]] = None,
     ):
+
         # Get features
-        self.FEATURES: List[str] = list(feature_models.keys())
+        if not features:
+            features = []
+
+        self.FEATURES: List[str] = features
 
         # Targets are the same
-        self.TARGETS: List[str] = self.FEATURES
+        self.TARGETS: List[str] = list(target_models.keys())
 
         self.model: Dict[str, Union[CustomARIMA, BaseRNN, FineTunableLSTM]] = (
-            feature_models
+            target_models
         )
 
     # TODO: put the tensor on the same device as the model is.
@@ -52,27 +58,27 @@ class PureEnsembleModel:
         timestep_predictions: torch.Tensor | None = None
 
         # Predict each feature for every year
-        for feature in self.FEATURES:
+        for target in self.TARGETS:
 
-            current_model = self.model[feature]
+            current_model = self.model[target]
             # By type
             if isinstance(current_model, CustomARIMA):
 
-                feature_prediction_df = current_model.predict(
-                    data=input_data[feature], steps=len(years_to_predict)
+                target_prediction_df = current_model.predict(
+                    data=input_data, steps=len(years_to_predict)
                 )
 
                 # TODO: make the tensor from this
-                feature_prediction = torch.tensor(
-                    feature_prediction_df.values, dtype=torch.float32
+                target_prediction = torch.tensor(
+                    target_prediction_df.values, dtype=torch.float32
                 )
 
             if isinstance(current_model, BaseRNN) or isinstance(
                 current_model, FineTunableLSTM
             ):
                 # Predict featue for X years
-                feature_prediction = current_model.predict(
-                    input_data=input_data[feature].to_frame(),
+                target_prediction = current_model.predict(
+                    input_data=input_data[target].to_frame(),
                     last_year=last_year,
                     target_year=target_year,
                 )
@@ -80,18 +86,18 @@ class PureEnsembleModel:
             # Rows - years
             # Columns -> features
             if timestep_predictions is None:
-                # timestep_predictions = feature_prediction_df
-                timestep_predictions = feature_prediction
+                # timestep_predictions = target_prediction_df
+                timestep_predictions = target_prediction
             else:
                 # Concat by columns
                 timestep_predictions = torch.cat(
-                    [timestep_predictions, feature_prediction], dim=1
+                    [timestep_predictions, target_prediction], dim=1
                 )
 
         # At the end, after the loop
         prediction_df = pd.DataFrame(
             data=timestep_predictions.numpy(),  # or .cpu().numpy() if tensor is on GPU
-            columns=self.FEATURES,
+            columns=self.TARGETS,
         )
         return prediction_df
 

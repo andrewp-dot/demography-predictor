@@ -4,6 +4,7 @@ from typing import List, Dict, Tuple, Optional, Union, Type
 
 import torch
 from torch import nn
+import logging
 
 from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
@@ -23,6 +24,9 @@ from src.global_model.global_rnn import GlobalModelRNN
 # Import this just for ARIMA
 from src.statistical_models.arima import CustomARIMA
 from src.local_model.ensemble_model import PureEnsembleModel
+from src.global_model.statistical_wrapper import GlobalStatisticalWrapper
+
+logger = logging.getLogger("training")
 
 
 def train_global_model_tree(
@@ -189,9 +193,9 @@ def train_global_rnn(
 
 def train_global_arima_ensemble(
     name: str,
+    data: Dict[str, pd.DataFrame],
     features: List[str],
     targets: List[str],
-    state: str,
     split_rate: float = 0.8,
 ) -> GlobalModelPipeline:
     """
@@ -199,6 +203,7 @@ def train_global_arima_ensemble(
 
     Args:
         name (str): Name of the pipeline.
+        data: (Dict[str, pd.DataFrame]): The training data for the model to train statistical models.
         features (List[str]): Exogeneous features which can influence predictions (need to know their future values).
         targets (List[str]): Targets to predict.
         state (str): State which is used for predictions.
@@ -208,33 +213,58 @@ def train_global_arima_ensemble(
         out: GlobalModelPipeline: Pipeline with arima ensemble model. Note: transformer in this pipeline is not fitted -> pipeline is created in order to be compatible with comparators etc.
     """
 
-    # Load state data
-    loader = StateDataLoader(state=state)
-    data = loader.load_data()
+    # Need this loader just to split the state data
+    loader = StateDataLoader(state=list(data.keys())[0])
+    state_data = loader.load_data()
 
-    # Split data
-    train_df, _ = loader.split_data(data=data, split_rate=split_rate)
+    global_states_models: Dict[str, PureEnsembleModel] = {}
+    for state, state_data in data.items():
 
-    # Train and save models
-    trained_models: Dict[str, CustomARIMA] = {}
-    for target in targets:
+        # Create copy to prevent overwrite of the original list
+        arima_model_features = list(features)
 
-        # Create ARIMA
-        arima = CustomARIMA(
-            p=1, d=1, q=1, features=features, target=target, index="year"
+        if "year" in features:
+            arima_model_features.remove("year")
+
+        # Split data
+        train_df, _ = loader.split_data(data=state_data, split_rate=split_rate)
+
+        # Train and save models
+        trained_models: Dict[str, CustomARIMA] = {}
+        for target in targets:
+
+            # Create ARIMA
+            arima = CustomARIMA(
+                p=1,
+                d=1,
+                q=1,
+                features=arima_model_features,
+                target=target,
+                index="year",
+            )
+
+            # Train model
+            arima.train_model(data=train_df)
+
+            # Save trained model
+            trained_models[target] = arima
+
+        # Save the pure ensemble for state
+
+        logger.info(f"ARIMA model for state: '{state}' has been created!")
+        global_states_models[state] = PureEnsembleModel(
+            target_models=trained_models, features=arima_model_features
         )
 
-        # Train model
-        arima.train_model(data=train_df)
-
-        # Save trained model
-        trained_models[target] = arima
+    model = GlobalStatisticalWrapper(
+        model=global_states_models, features=arima_model_features, targets=targets
+    )
 
     # Create pipeline -> put here datatransformer just to in order to create pipeline (for comparators etc)
-    return GlobalModel(
+    return GlobalModelPipeline(
         name=name,
         transformer=DataTransformer(),
-        model=PureEnsembleModel(feature_models=trained_models),
+        model=model,
     )
 
 

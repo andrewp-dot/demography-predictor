@@ -77,30 +77,43 @@ class CustomARIMA:
         logger.info(f"ARIMA model fitted!")
 
     def predict(self, data: pd.DataFrame, steps: int) -> pd.DataFrame:
-
-        # Try if the model is trained
+        # Ensure model is trained
         if self.model is None:
             raise ValueError(
                 "The ARIMA model is not trained. Did you call train_model() first?"
             )
 
-        # Extract the prediction data
+        data_copy = data.copy()
+
+        # Find known target values (non-NaN)
+        known_target = data_copy[self.target].dropna()
+        start = len(known_target)
+        end = start + steps - 1
+
+        # To predict target values are set to None -> these rows also contains the known exogeneous variables
+        future_rows = data_copy[self.target].isna()
+
+        # Extract corresponding future exogenous variables
         try:
             if self.features:
-                exog_values = data[self.features]
+                exog_values = data_copy.loc[future_rows, self.features]
+                if len(exog_values) != steps:
+                    raise ValueError(
+                        f"Expected {steps} rows of exogenous features, got {len(exog_values)}"
+                    )
             else:
                 exog_values = None
         except KeyError as e:
             raise KeyError(f"The {e} column is not in the dataframe!")
 
-        # Predict
-        predictions = self.model.predict(
-            start=len(data), end=len(data) + steps - 1, exog=exog_values
-        )
+        # Predict future values
 
-        # Convert prediction series to dataframe
-        predition_df: pd.DataFrame = predictions.to_frame()
+        predictions = self.model.predict(start=start, end=end, exog=exog_values)
+
+        # Create a DataFrame and align index to the future time steps
+        prediction_df = predictions.to_frame(name=self.target)
+        prediction_df.index = data_copy.loc[future_rows].index
 
         # Rename the predicted mean to target name
-        predition_df.rename(columns={"predicted_mean": self.target}, inplace=True)
-        return predition_df
+        prediction_df.rename(columns={"predicted_mean": self.target}, inplace=True)
+        return prediction_df.iloc[-steps:]
