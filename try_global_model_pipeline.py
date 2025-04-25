@@ -11,7 +11,7 @@ from src.utils.log import setup_logging
 from src.utils.constants import (
     get_core_hyperparameters,
     basic_features,
-    hihgly_correlated_features,
+    highly_correlated_features,
     aging_targets,
 )
 
@@ -43,7 +43,7 @@ def train_pipeline(name: str, sequence_len: int):
     targets: List[str] = aging_targets()
 
     # Features
-    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
+    FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
 
     loader = StatesDataLoader()
     # all_states_data = loader.load_all_states()
@@ -103,7 +103,7 @@ def train_rnn_pipeline(
     # Setup logging
     setup_logging()
 
-    FEATURES = basic_features(exclude=hihgly_correlated_features())
+    FEATURES = basic_features(exclude=highly_correlated_features())
 
     TARGETS: List[str] = aging_targets()
 

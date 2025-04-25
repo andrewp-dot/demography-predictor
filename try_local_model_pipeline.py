@@ -10,7 +10,7 @@ from src.base import RNNHyperparameters
 from src.utils.constants import (
     get_core_hyperparameters,
     basic_features,
-    hihgly_correlated_features,
+    highly_correlated_features,
 )
 from src.state_groups import StatesByWealth
 from src.utils.log import setup_logging
@@ -40,7 +40,7 @@ TARGETS: List[str] = [
 #     "population, male",
 # ]
 
-FEATURES = basic_features(exclude=hihgly_correlated_features)
+FEATURES = basic_features(exclude=highly_correlated_features)
 
 
 def train_only_features(epochs: int):

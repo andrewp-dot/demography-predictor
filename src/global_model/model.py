@@ -1,13 +1,11 @@
 # Standard library imports
 import pandas as pd
-import numpy as np
 import logging
 from typing import Union, List, Dict, Tuple, Optional
 from pydantic import BaseModel
-import shap
 
 
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import GridSearchCV
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import (
     root_mean_squared_error,
@@ -15,6 +13,7 @@ from sklearn.metrics import (
     mean_absolute_error,
     r2_score,
 )
+
 
 from sklearn.model_selection import TimeSeriesSplit
 
@@ -27,6 +26,12 @@ from sklearn.ensemble import RandomForestRegressor
 # Custom imports
 from config import Config
 from src.utils.log import setup_logging
+
+from src.utils.constants import (
+    basic_features,
+    highly_correlated_features,
+    aging_targets,
+)
 
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -360,46 +365,8 @@ def try_single_target_global_model():
     # Merge data to single dataframe
     whole_dataset_df = states_loader.merge_states(state_dfs=state_dfs)
 
-    # Targets - yet cannot be just only one of the feature
-    # targets: List[str] = [
-    #     "population, total",
-    #     "population, male",
-    # ]
-    targets: List[str] = [
-        "population ages 15-64",
-        "population ages 0-14",
-        "population ages 65 and above",
-    ]
-
-    # targets: List[str] = [
-    #     "population, female",
-    #     "population, male",
-    # ]
-
-    # Features
-    # Features
-    FEATURES = [
-        col.lower()
-        for col in [
-            # "year",
-            "Fertility rate, total",
-            "Population, total",
-            "Net migration",
-            "Arable land",
-            # "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            # "Rural population",
-            "Rural population growth",
-            # "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            # "Adolescent fertility rate",
-            # "Life expectancy at birth, total",
-            # Population total target
-        ]
-    ]
+    targets: List[str] = aging_targets()
+    FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
 
     # Tune params
     # Note: too many parameters results in a warning
@@ -411,10 +378,6 @@ def try_single_target_global_model():
         colsample_bytree=[0.5, 0.7, 0.9, 1.0],
     )
 
-    # Simulation of scaler used to scale the data from the local model
-    # scaler = MinMaxScaler()
-    # fitted_scaler = scaler.fit(whole_dataset_df.drop(columns=["country name"]))
-
     # Create global model
     gm = GlobalModel(
         model=XGBRegressor(objective="reg:squarederror", random_state=42),
@@ -424,8 +387,6 @@ def try_single_target_global_model():
         sequence_len=5,
     )
 
-    logger.critical(gm.TARGETS)
-
     logger.info("Training the model....")
 
     # Create train and test data
@@ -434,13 +395,6 @@ def try_single_target_global_model():
         states_loader=states_loader,
         split_size=0.8,
     )
-
-    # logger.critical(X_train[gm.TARGETS].dtypes)
-
-    # X_train.to_csv("x_train.csv")
-    # X_test.to_csv("x_test.csv")
-
-    # Scale inputs ?
 
     # Train model
     gm.train(

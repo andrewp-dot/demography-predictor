@@ -11,7 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 from src.utils.log import setup_logging
 from src.utils.constants import (
     basic_features,
-    hihgly_correlated_features,
+    highly_correlated_features,
     aging_targets,
 )
 
@@ -510,7 +510,7 @@ class DifferentHiddenLayers(BaseExperiment):
 # TODO: use this on whole dataset
 class DifferentArchitecturesComparision(BaseExperiment):
 
-    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features)
+    FEATURES: List[str] = basic_features(exclude=highly_correlated_features)
 
     # Base LSTM
     BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(

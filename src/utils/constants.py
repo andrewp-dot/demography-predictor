@@ -33,7 +33,7 @@ def get_core_hyperparameters(
 
 
 # Feature constants
-def hihgly_correlated_features() -> List[str]:
+def highly_correlated_features() -> List[str]:
     return [
         "life expectancy at birth, total",
         "age dependency ratio",

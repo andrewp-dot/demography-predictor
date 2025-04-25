@@ -17,7 +17,7 @@ from src.utils.log import setup_logging
 from src.utils.constants import get_core_hyperparameters
 from src.utils.constants import (
     basic_features,
-    hihgly_correlated_features,
+    highly_correlated_features,
     aging_targets,
 )
 
@@ -46,7 +46,7 @@ class SecondModelSelection(BaseExperiment):
     Question: How to evaluate this? GROUND TRUTH testing? For now YES.
     """
 
-    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features)
+    FEATURES: List[str] = basic_features(exclude=highly_correlated_features)
 
     TARGETS: List[str] = aging_targets()
 

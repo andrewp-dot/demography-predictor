@@ -18,7 +18,7 @@ from model_experiments.config import (
 from src.utils.constants import (
     get_core_hyperparameters,
     basic_features,
-    hihgly_correlated_features,
+    highly_correlated_features,
 )
 
 # from src.utils.save_model import save_experiment_model, get_experiment_model
@@ -61,7 +61,7 @@ class DataUsedForTraining(BaseExperiment):
     Models are compared by evaluation on the specific (chosen) state data used for training for the first model.
     """
 
-    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
+    FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
 
     BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES)
@@ -246,7 +246,7 @@ class StatesByGroup(BaseExperiment):
     Experiment for the states by wealth.
     """
 
-    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
+    FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
 
     BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
@@ -433,7 +433,7 @@ class StatesByGroup(BaseExperiment):
 # TODO: Make this work for all pipelines -> use better evaluation method
 class FeatureSelectionExperiment(BaseExperiment):
 
-    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
+    FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
 
     BASE_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         len(FEATURES), batch_size=32
@@ -536,7 +536,7 @@ class FeatureSelectionExperiment(BaseExperiment):
 
 class StatesSubsetExperiment(BaseExperiment):
 
-    FEATURES: List[str] = basic_features(exclude=hihgly_correlated_features())
+    FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
 
     BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES)

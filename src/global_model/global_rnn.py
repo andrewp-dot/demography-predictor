@@ -12,7 +12,7 @@ from src.utils.constants import get_core_hyperparameters
 
 from src.utils.constants import (
     basic_features,
-    hihgly_correlated_features,
+    highly_correlated_features,
     aging_targets,
 )
 
@@ -348,7 +348,7 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
     # Setup logging
     setup_logging()
 
-    FEATURES = basic_features(exclude=hihgly_correlated_features())
+    FEATURES = basic_features(exclude=highly_correlated_features())
 
     TARGETS: List[str] = aging_targets()
 
