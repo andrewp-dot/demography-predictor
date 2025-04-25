@@ -27,6 +27,8 @@ from src.train_scripts.train_global_models import (
     train_global_rnn,
 )
 
+# TODO: change this -> add exogeneopus variables to the ARIMA model -> convert to global model
+from src.train_scripts.train_local_models import train_arima_ensemble_model
 from src.global_model.model import XGBoostTuneParams
 
 from model_experiments.base_experiment import BaseExperiment
@@ -163,7 +165,24 @@ class SecondModelSelection(BaseExperiment):
         # )
 
         # Train arima
-        # TO_COMPARE_PIPELINES["ARIMA"] = None
+        # ARIMA needs to be trained for every state and every target independently
+
+        # For every states train ARIMA to predict targets
+        for state in states_data_dict.keys():
+            model_name = f"ensemble-arima-{state}"
+            TO_COMPARE_PIPELINES[model_name] = train_arima_ensemble_model(
+                name=model_name,
+                targets=self.TARGETS,
+                state=state,
+                split_rate=split_rate,
+            )
+
+        # TODO: figure out how to display the results -
+        # 0. Display only best and worst states for each model (except ARIMA)?
+        # 1. per target per state?
+        # 2. per target per overall?
+        # 3. per state overall?
+        # 4. just overall (weighted average for targets including all states)?
 
         comparator = ModelComparator()
 

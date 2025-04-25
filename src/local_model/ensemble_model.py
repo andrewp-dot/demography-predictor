@@ -12,7 +12,7 @@ from src.base import RNNHyperparameters
 
 from src.local_model.model import BaseRNN
 from src.local_model.finetunable_model import FineTunableLSTM
-from src.local_model.statistical_models import LocalARIMA
+from src.statistical_models.arima import CustomARIMA
 
 from src.preprocessors.data_transformer import DataTransformer
 
@@ -28,7 +28,7 @@ logger = logging.getLogger("local_model")
 class PureEnsembleModel:
 
     def __init__(
-        self, feature_models: Dict[str, Union[LocalARIMA, BaseRNN, FineTunableLSTM]]
+        self, feature_models: Dict[str, Union[CustomARIMA, BaseRNN, FineTunableLSTM]]
     ):
         # Get features
         self.FEATURES: List[str] = list(feature_models.keys())
@@ -36,7 +36,7 @@ class PureEnsembleModel:
         # Targets are the same
         self.TARGETS: List[str] = self.FEATURES
 
-        self.model: Dict[str, Union[LocalARIMA, BaseRNN, FineTunableLSTM]] = (
+        self.model: Dict[str, Union[CustomARIMA, BaseRNN, FineTunableLSTM]] = (
             feature_models
         )
 
@@ -56,7 +56,7 @@ class PureEnsembleModel:
 
             current_model = self.model[feature]
             # By type
-            if isinstance(current_model, LocalARIMA):
+            if isinstance(current_model, CustomARIMA):
 
                 feature_prediction_df = current_model.predict(
                     data=input_data[feature], steps=len(years_to_predict)
@@ -114,7 +114,7 @@ def train_models_for_ensemble_model(
     transformer = DataTransformer()
 
     # Train and save models
-    trained_models: Dict[str, Union[LocalARIMA, BaseRNN, FineTunableLSTM]] = {}
+    trained_models: Dict[str, Union[CustomARIMA, BaseRNN, FineTunableLSTM]] = {}
     for feature in features:
 
         logger.info(f"Training for predicting feature: {feature}")
@@ -152,7 +152,7 @@ def train_models_for_ensemble_model(
 
 def train_arima_models_for_ensemble_model(
     features: List[str], state: str, split_rate: float = 0.8
-) -> Dict[str, LocalARIMA]:
+) -> Dict[str, CustomARIMA]:
 
     # Load state data
     state_loader = StateDataLoader(state=state)
@@ -162,11 +162,11 @@ def train_arima_models_for_ensemble_model(
     train_df, _ = state_loader.split_data(data=state_data, split_rate=split_rate)
 
     # Train and save models
-    trained_models: Dict[str, LocalARIMA] = {}
+    trained_models: Dict[str, CustomARIMA] = {}
     for feature in features:
 
         # Create ARIMA
-        arima = LocalARIMA(p=1, d=1, q=1, features=[], target=feature, index="year")
+        arima = CustomARIMA(p=1, d=1, q=1, features=[], target=feature, index="year")
 
         # Train model
         arima.train_model(data=train_df)
@@ -284,7 +284,7 @@ if __name__ == "__main__":
     # print(em_evaluation.per_target_metrics)
     # print(em_evaluation.all_states_evaluation)
 
-    # Dict[str, Union[LocalARIMA, BaseRNN, FineTunableLSTM]] = {
+    # Dict[str, Union[CustomARIMA, BaseRNN, FineTunableLSTM]] = {
     #     "feature": BaseRNN(hyperaparameters=RNNHyperparameters(...), features=["feature"])
     # }
 

@@ -22,7 +22,7 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.local_model.model import RNNHyperparameters, BaseRNN
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
-from src.local_model.statistical_models import LocalARIMA
+from src.statistical_models.arima import CustomARIMA
 
 from src.pipeline import LocalModelPipeline
 
@@ -278,7 +278,7 @@ def train_ensemble_model(
 
 
 def train_arima_ensemble_model(
-    name: str, features: List[str], state: str, split_rate: float = 0.8
+    name: str, targets: List[str], state: str, split_rate: float = 0.8
 ) -> LocalModelPipeline:
 
     # Load state data
@@ -289,17 +289,17 @@ def train_arima_ensemble_model(
     train_df, _ = state_loader.split_data(data=state_data, split_rate=split_rate)
 
     # Train and save models
-    trained_models: Dict[str, LocalARIMA] = {}
-    for feature in features:
+    trained_models: Dict[str, CustomARIMA] = {}
+    for target in targets:
 
         # Create ARIMA
-        arima = LocalARIMA(p=1, d=1, q=1, features=[], target=feature, index="year")
+        arima = CustomARIMA(p=1, d=1, q=1, features=[], target=target, index="year")
 
         # Train model
         arima.train_model(data=train_df)
 
         # Save trained model
-        trained_models[feature] = arima
+        trained_models[target] = arima
 
     # Create pipeline
     return LocalModelPipeline(

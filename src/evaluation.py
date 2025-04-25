@@ -21,7 +21,7 @@ from sklearn.metrics import (
 # Custom imports
 from src.utils.log import setup_logging
 from src.base import CustomModelBase
-from src.local_model.statistical_models import LocalARIMA
+from src.statistical_models.arima import CustomARIMA
 
 from src.pipeline import LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
 
@@ -590,12 +590,12 @@ class EvaluateModel(BaseEvaluation):
 
 class EvaluateARIMA(BaseEvaluation):
 
-    def __init__(self, arima: LocalARIMA):
+    def __init__(self, arima: CustomARIMA):
 
         super().__init__()
 
         # Get evaluation data
-        self.model: LocalARIMA = arima
+        self.model: CustomARIMA = arima
 
     def eval(
         self,

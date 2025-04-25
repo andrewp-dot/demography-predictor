@@ -42,6 +42,6 @@ Models:
 
 Models:
     - BaseRNN (RNNvsStatisticalMethods) (or best model from previous experiments)
-    - LocalARIMA
+    - CustomARIMA
     - GM (not implemented yet)
 
