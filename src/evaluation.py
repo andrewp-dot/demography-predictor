@@ -2,12 +2,10 @@
 import pandas as pd
 from abc import abstractmethod
 from typing import Dict, List, Callable, Tuple, Union
-from torch import nn
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 import logging
-import torch
 import numpy as np
 
 
@@ -20,12 +18,9 @@ from sklearn.metrics import (
 
 # Custom imports
 from src.utils.log import setup_logging
-from src.base import CustomModelBase
 from src.statistical_models.arima import CustomARIMA
 
 from src.pipeline import LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
-
-from src.preprocessors.data_transformer import DataTransformer
 
 
 logger = logging.getLogger("evaluation")

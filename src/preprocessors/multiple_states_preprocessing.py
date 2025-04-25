@@ -138,6 +138,7 @@ class StatesDataLoader:
         state_split_test_dict: Dict[str, pd.DataFrame] = {}
 
         # Split each state
+        excluded_states: List[str] = []
         for state_name in states_dict.keys():
 
             # Get train data and test data
@@ -147,14 +148,16 @@ class StatesDataLoader:
 
             # Check if training data have enough records
             if len(state_train_df) < sequence_len + future_steps:
-                logger.warning(
-                    f"The training data of the state '{state_name}' does not have enough records to create training and target sequence. Therefore this state will be excluded from the training."
-                )
+                excluded_states.append(state_name)
                 continue
 
             # Save the state train and test data
             state_split_train_dict[state_name] = state_train_df
             state_split_test_dict[state_name] = state_test_df
+
+        logger.warning(
+            f"States excluded from training due to not having enough records to create training and target sequence. States excluded from the training:\n{', '.join(excluded_states)}"
+        )
 
         return state_split_train_dict, state_split_test_dict
 

@@ -12,12 +12,17 @@ from sklearn.ensemble import RandomForestRegressor
 # Custom imports
 from src.utils.log import setup_logging
 from src.preprocessors.data_transformer import DataTransformer
+from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 from src.base import RNNHyperparameters
 from src.pipeline import GlobalModelPipeline
 from src.global_model.model import GlobalModel, XGBoostTuneParams
 from src.global_model.global_rnn import GlobalModelRNN
+
+# Import this just for ARIMA
+from src.statistical_models.arima import CustomARIMA
+from src.local_model.ensemble_model import PureEnsembleModel
 
 
 def train_global_model_tree(
@@ -148,7 +153,9 @@ def train_global_rnn(
     rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
 ) -> GlobalModelPipeline:
 
-    rnn = GlobalModelRNN(hyperparameters, features=features, targets=targets)
+    rnn = GlobalModelRNN(
+        hyperparameters, features=features, targets=targets, rnn_type=rnn_type
+    )
 
     # Create train and test for XGB (Global Model)
 
@@ -178,6 +185,57 @@ def train_global_rnn(
     # Create Pipeline
     pipeline = GlobalModelPipeline(name=name, model=rnn, transformer=transformer)
     return pipeline
+
+
+def train_global_arima_ensemble(
+    name: str,
+    features: List[str],
+    targets: List[str],
+    state: str,
+    split_rate: float = 0.8,
+) -> GlobalModelPipeline:
+    """
+    Trains CustomARima model
+
+    Args:
+        name (str): Name of the pipeline.
+        features (List[str]): Exogeneous features which can influence predictions (need to know their future values).
+        targets (List[str]): Targets to predict.
+        state (str): State which is used for predictions.
+        split_rate (float, optional): The size of the training data. Defaults to 0.8.
+
+    Returns:
+        out: GlobalModelPipeline: Pipeline with arima ensemble model. Note: transformer in this pipeline is not fitted -> pipeline is created in order to be compatible with comparators etc.
+    """
+
+    # Load state data
+    loader = StateDataLoader(state=state)
+    data = loader.load_data()
+
+    # Split data
+    train_df, _ = loader.split_data(data=data, split_rate=split_rate)
+
+    # Train and save models
+    trained_models: Dict[str, CustomARIMA] = {}
+    for target in targets:
+
+        # Create ARIMA
+        arima = CustomARIMA(
+            p=1, d=1, q=1, features=features, target=target, index="year"
+        )
+
+        # Train model
+        arima.train_model(data=train_df)
+
+        # Save trained model
+        trained_models[target] = arima
+
+    # Create pipeline -> put here datatransformer just to in order to create pipeline (for comparators etc)
+    return GlobalModel(
+        name=name,
+        transformer=DataTransformer(),
+        model=PureEnsembleModel(feature_models=trained_models),
+    )
 
 
 def main():
