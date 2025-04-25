@@ -36,10 +36,19 @@ class BasePipeline:
         self.model: Any = model
         self.transformer: DataTransformer = transformer
 
-    def save_pipeline(self):
-        # Create a new pipeline directory if does not exist
+    def save_pipeline(self, custom_dir: Optional[str] = None):
+        """
+        Saves the model pipeline to default or custom_dir.
 
-        trained_models_dir = os.path.abspath(settings.trained_models_dir)
+        Args:
+            custom_dir (Optional[str], optional): If not specified, default directory is used. Defaults to None.
+        """
+        # Create a new pipeline directory if does not exist
+        if custom_dir:
+            trained_models_dir = custom_dir
+        else:
+            trained_models_dir = os.path.abspath(settings.trained_models_dir)
+
         pipeline_dir = os.path.join(trained_models_dir, self.name)
 
         # Create pipeline dir if there is any
@@ -54,10 +63,29 @@ class BasePipeline:
         save_to_pipeline_dir(model=self.transformer, name="transformer.pkl")
 
     @classmethod
-    def get_pipeline(cls, name: str):
+    def get_pipeline(
+        cls, name: str, custom_dir: Optional[str] = None
+    ) -> "BasePipeline":
         # Gets the pipeline by name
 
-        trained_models_dir = os.path.abspath(settings.trained_models_dir)
+        if custom_dir:
+            trained_models_dir = custom_dir
+        else:
+            trained_models_dir = os.path.abspath(settings.trained_models_dir)
+        """
+        Get the model pipeline.
+
+        Args:
+            name (str): The pipeline name to get.
+            custom_dir (Optional[str], optional): If not specified, default directory is used. Defaults to None.
+
+        Raises:
+            NotADirectoryError: Error if there is not found pipeline.
+
+        Returns:
+            out: BasePipeline: The desired pipeline of the specific pipeline type.
+        """
+        # Gets the pipeline by name
         pipeline_dir = os.path.join(trained_models_dir, name)
 
         # Check if directory exist
@@ -93,91 +121,6 @@ class LocalModelPipeline(BasePipeline):
             model=model, transformer=transformer, name=name
         )
         self.training_stats = training_stats
-
-        # def __experimental_model_predict(
-        #     self, state_data: pd.DataFrame, last_year: int, target_year: int
-        # ):
-
-        #     model: ExpLSTM = self.model
-
-        #     FEATURES: List[str] = self.model.FEATURES
-        #     TARGETS: List[str] = self.model.TARGETS
-        #     SEQUENCE_LEN: int = self.model.hyperparameters.sequence_length
-
-        #     # Note: the all data should contain only input features
-        #     if set(state_data.columns) != set(FEATURES):
-        #         raise ValueError(
-        #             f"The input data columns ({set(state_data.columns)})  are not compatibile with the model features: ({set(FEATURES)})"
-        #         )
-
-        #     to_predict_years_num = target_year - last_year
-
-        #     to_predict_years_num = (
-        #         target_year - last_year
-        #     )  # To include also the target year
-
-        #     # Get the future values of non-target features
-        #     NON_TARGET_FEATURES = [f for f in FEATURES if not f in TARGETS]
-        #     all_non_target_values_df = state_data[NON_TARGET_FEATURES]
-
-        #     # Create N sequences needed for prediction using non target feature true values
-
-        #     # Here is the error
-        #     all_known_target_values_df = state_data.iloc[
-        #         -(to_predict_years_num + SEQUENCE_LEN) : -to_predict_years_num
-        #     ][TARGETS]
-
-        # # Save the order
-
-        # def rolling_window(
-        #     non_target_df: pd.DataFrame, target_df: pd.DataFrame, offset: int
-        # ) -> pd.DataFrame:
-
-        #     # Offset is here due to years
-
-        #     # Get the last sequence of non target dataframe
-        #     non_target_df = non_target_df.iloc[
-        #         -(offset + SEQUENCE_LEN) : -offset
-        #     ].reset_index(drop=True)
-
-        #     target_df = target_df.tail(SEQUENCE_LEN).reset_index(drop=True)
-
-        #     input_data: pd.DataFrame = pd.concat([non_target_df, target_df], axis=1)[
-        #         FEATURES
-        #     ]
-
-        #     return input_data
-
-        # input_data: pd.DataFrame = rolling_window(
-        #     non_target_df=all_non_target_values_df,
-        #     target_df=all_known_target_values_df,
-        #     offset=to_predict_years_num,
-        # )
-
-        # for offset in range(to_predict_years_num, 0, -1):
-
-        #     next_year_targets = model.predict(input_data=input_data)
-
-        #     # Create a dataframe from it
-        #     next_year_targets_df = pd.DataFrame(next_year_targets, columns=TARGETS)
-
-        #     # Add predictions to the existing target data
-        #     all_known_target_values_df = pd.concat(
-        #         [all_known_target_values_df, next_year_targets_df],
-        #         axis=0,
-        #     )
-
-        #     # Update input data
-        #     input_data = rolling_window(
-        #         non_target_df=all_non_target_values_df,
-        #         target_df=all_known_target_values_df,
-        #         offset=offset,
-        #     )
-
-        # # Return the last N predictions
-        # predictions_df = all_known_target_values_df.tail(to_predict_years_num)[TARGETS]
-
-        # return predictions_df
 
     def predict(
         self, input_data: pd.DataFrame, last_year: int, target_year: int
@@ -511,10 +454,13 @@ class PredictorPipeline:
 
         return years_final_predictions_df
 
-    def save_pipeline(self):
+    def save_pipeline(self, custom_dir: Optional[str] = None):
         # Create a new pipeline directory if does not exist
+        if custom_dir:
+            trained_models_dir = custom_dir
+        else:
+            trained_models_dir = os.path.abspath(settings.trained_models_dir)
 
-        trained_models_dir = os.path.abspath(settings.trained_models_dir)
         pipeline_dir = os.path.join(trained_models_dir, self.name)
 
         # Create pipeline dir if there is any
@@ -541,10 +487,13 @@ class PredictorPipeline:
         )
 
     @classmethod
-    def get_pipeline(cls, name: str):
+    def get_pipeline(cls, name: str, custom_dir: Optional[str] = None):
         # Gets the pipeline by name
 
-        trained_models_dir = os.path.abspath(settings.trained_models_dir)
+        if custom_dir:
+            trained_models_dir = custom_dir
+        else:
+            trained_models_dir = os.path.abspath(settings.trained_models_dir)
         pipeline_dir = os.path.join(trained_models_dir, name)
 
         # Check if directory exist

@@ -1,7 +1,5 @@
-# TODO write global model selection experiment
-
-
 # Standard library imports
+import os
 import pandas as pd
 import logging
 from typing import List, Dict, Union
@@ -56,8 +54,7 @@ class SecondModelSelection(BaseExperiment):
         hidden_size=256,
         batch_size=16,
         output_size=len(TARGETS),
-        # epochs=30,
-        epochs=1,
+        epochs=30,
     )
 
     XGBOOST_TUNE_PARAMETERS: XGBoostTuneParams = XGBoostTuneParams(
@@ -73,10 +70,135 @@ class SecondModelSelection(BaseExperiment):
     # If empty select all states
     # EVALUATION_STATES: List[str] = []
 
+    SAVE_MODEL_DIR: str = os.path.abspath(
+        os.path.join(".", "model_selection", "trained_models")
+    )
+
+    MODEL_NAMES: List[str] = [
+        "ensemble-arimas",
+        "simple-rnn",
+        "base-lstm",
+        "base-gru",
+        "xgboost",
+        "rf",
+    ]
+
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def run(self, split_rate: float = 0.8) -> None:
+    def __get_models(self, model_names: List[str]) -> Dict[str, GlobalModelPipeline]:
+
+        # Try to get model
+        pipelines: Dict[str, GlobalModelPipeline] = {}
+        for name in model_names:
+            pipelines[name] = GlobalModelPipeline.get_pipeline(
+                name=name, custom_dir=self.SAVE_MODEL_DIR
+            )
+
+        return pipelines
+
+    def __train_models(
+        self,
+        data: Dict[str, pd.DataFrame],
+        split_rate: float = 0.8,
+        display_nth_epoch: int = 1,
+        force_retrain: bool = False,
+    ) -> Dict[str, GlobalModelPipeline]:
+
+        # Try to get the models
+        # Train ARIMA models for states
+        TO_COMPARE_PIPELINES: Dict[str, GlobalModelPipeline] = {}
+
+        if not force_retrain:
+            try:
+                return self.__get_models(model_names=self.MODEL_NAMES)
+            except Exception as e:
+                logger.info(f"Models not found. Reatraining all models ({e}).")
+
+        TO_COMPARE_PIPELINES["ensemble-arimas"] = train_global_arima_ensemble(
+            name="ensemble-arimas",
+            data=data,
+            features=self.FEATURES,
+            targets=self.TARGETS,
+            split_rate=split_rate,
+        )
+        TO_COMPARE_PIPELINES["ensemble-arimas"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
+
+        # Train classic rnn
+        logger.info("Training simple rnn...")
+        TO_COMPARE_PIPELINES["simple-rnn"] = train_global_rnn(
+            name="simple-rnn",
+            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            data=data,
+            features=self.FEATURES,
+            targets=self.TARGETS,
+            split_rate=split_rate,
+            display_nth_epoch=display_nth_epoch,
+            rnn_type=nn.RNN,
+        )
+        TO_COMPARE_PIPELINES["simple-rnn"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+
+        # Train lstm
+        logger.info("Training base lstm...")
+        TO_COMPARE_PIPELINES["base-lstm"] = train_global_rnn(
+            name="base-lstm",
+            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            data=data,
+            features=self.FEATURES,
+            targets=self.TARGETS,
+            split_rate=split_rate,
+            display_nth_epoch=display_nth_epoch,
+            rnn_type=nn.LSTM,
+        )
+        TO_COMPARE_PIPELINES["base-lstm"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+
+        # Train gru
+        logger.info("Training base gru...")
+        TO_COMPARE_PIPELINES["base-gru"] = train_global_rnn(
+            name="base-gru",
+            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            data=data,
+            features=self.FEATURES,
+            targets=self.TARGETS,
+            split_rate=split_rate,
+            display_nth_epoch=display_nth_epoch,
+            rnn_type=nn.GRU,
+        )
+        TO_COMPARE_PIPELINES["base-gru"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+
+        # Train xgboost
+        logger.info("Training xgboost...")
+        TO_COMPARE_PIPELINES["xgboost"] = train_global_model_tree(
+            name="xgboost",
+            tree_model=XGBRegressor(objective="reg:squarederror", random_state=42),
+            states_data=data,
+            features=self.FEATURES,
+            targets=self.TARGETS,
+            sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
+            tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
+        )
+        TO_COMPARE_PIPELINES["xgboost"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+
+        # Train randomforest
+        logger.info("Training random forest...")
+        TO_COMPARE_PIPELINES["rf"] = train_global_model_tree(
+            name="rf",
+            tree_model=RandomForestRegressor(n_estimators=100, random_state=42),
+            states_data=data,
+            features=self.FEATURES,
+            targets=self.TARGETS,
+            sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
+            tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
+        )
+        TO_COMPARE_PIPELINES["rf"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+
+        # Save models
+
+        return TO_COMPARE_PIPELINES
+
+    def run(self, split_rate: float = 0.8, force_retrain: bool = False) -> None:
 
         # Create readme
         self.create_readme()
@@ -86,82 +208,13 @@ class SecondModelSelection(BaseExperiment):
         loader = StatesDataLoader()
         states_data_dict = loader.load_all_states()
 
-        arima_data_dict = loader.load_states(states=self.EVALUATION_STATES)
-
-        TO_COMPARE_PIPELINES: Dict[str, GlobalModelPipeline] = {}
-
-        # Train ARIMA models for states
-        model_name = f"ensemble-arimas"
-        TO_COMPARE_PIPELINES[model_name] = train_global_arima_ensemble(
-            name=model_name,
-            data=arima_data_dict,
-            features=self.FEATURES,
-            targets=self.TARGETS,
-            split_rate=split_rate,
-        )
-
-        # Train classic rnn
-        logger.info("Training simple rnn...")
-        TO_COMPARE_PIPELINES["simple-rnn"] = train_global_rnn(
-            name="simple-rnn",
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+        # Get or train models
+        TO_COMPARE_PIPELINES: Dict[str, GlobalModelPipeline] = self.__train_models(
             data=states_data_dict,
-            features=self.FEATURES,
-            targets=self.TARGETS,
+            force_retrain=force_retrain,
             split_rate=split_rate,
             display_nth_epoch=DISPLAY_NTH_EPOCH,
-            rnn_type=nn.RNN,
         )
-
-        # # Train lstm
-        # logger.info("Training base lstm...")
-        # TO_COMPARE_PIPELINES["base-lstm"] = train_global_rnn(
-        #     name="base-lstm",
-        #     hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
-        #     data=states_data_dict,
-        #     features=self.FEATURES,
-        #     targets=self.TARGETS,
-        #     split_rate=split_rate,
-        #     display_nth_epoch=DISPLAY_NTH_EPOCH,
-        #     rnn_type=nn.LSTM,
-        # )
-
-        # # Train gru
-        # logger.info("Training base gru...")
-        # TO_COMPARE_PIPELINES["base-gru"] = train_global_rnn(
-        #     name="base-gru",
-        #     hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
-        #     data=states_data_dict,
-        #     features=self.FEATURES,
-        #     targets=self.TARGETS,
-        #     split_rate=split_rate,
-        #     display_nth_epoch=DISPLAY_NTH_EPOCH,
-        #     rnn_type=nn.GRU,
-        # )
-
-        # # Train xgboost
-        # logger.info("Training xgboost...")
-        # TO_COMPARE_PIPELINES["xgboost"] = train_global_model_tree(
-        #     name="xgboost",
-        #     tree_model=XGBRegressor(objective="reg:squarederror", random_state=42),
-        #     states_data=states_data_dict,
-        #     features=self.FEATURES,
-        #     targets=self.TARGETS,
-        #     sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
-        #     tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
-        # )
-
-        # # Train randomforest
-        # logger.info("Training random forest...")
-        # TO_COMPARE_PIPELINES["rf"] = train_global_model_tree(
-        #     name="rf",
-        #     tree_model=RandomForestRegressor(n_estimators=100, random_state=42),
-        #     states_data=states_data_dict,
-        #     features=self.FEATURES,
-        #     targets=self.TARGETS,
-        #     sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
-        #     tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
-        # )
 
         # TODO:
         # Train lightgbm - maybe? -> error in here
@@ -177,23 +230,6 @@ class SecondModelSelection(BaseExperiment):
         #     sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
         #     tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
         # )
-
-        # Train arima
-        # ARIMA needs to be trained for every state and every target independently
-        # For evaluation -> maybe try to optimize model comparision?
-
-        # For every states train ARIMA to predict targets
-        # for state in states_data_dict.keys():
-        #     logger.info(f"Training ARIMA for {state}")
-        #
-        #     model_name = f"ensemble-arima-{state}"
-        #     TO_COMPARE_PIPELINES[model_name] = train_global_arima_ensemble(
-        #         name=model_name,
-        #         features=self.FEATURES,
-        #         targets=self.TARGETS,
-        #         state=state,
-        #         split_rate=split_rate,
-        #     )
 
         # TODO: figure out how to display the results -
         # 0. Display only best and worst states for each model (except ARIMA)?
@@ -213,22 +249,42 @@ class SecondModelSelection(BaseExperiment):
         per_target_metrics_df = comparator.compare_models_by_states(
             pipelines=TO_COMPARE_PIPELINES, states=EVALUATION_STATES, by="per-targets"
         )
+
+        overall_metrics_per_state_df = comparator.compare_models_by_states(
+            pipelines=TO_COMPARE_PIPELINES,
+            states=EVALUATION_STATES,
+            by="overall-metrics",
+        )
+
         overall_metrics_df = comparator.compare_models_by_states(
             pipelines=TO_COMPARE_PIPELINES,
             states=EVALUATION_STATES,
             by="overall-one-metric",
         )
 
+        # Print bast performing and worst performing states for each method
+
+        # for model in self.MODEL_NAMES:
+        #     ...
+
+        # OR
+
+        # for target in self.TARGETS:
+        #   for state in states_data_dict.keys()
+        #       print best performing model per target per state
+
         # Print results to the readme
         # Add per metric rankings
         # Print all dataframe
-        pd.set_option("display.max_rows", None)
         self.readme_add_section(
             title="## Per target metrics - model comparision",
             text=f"```\n{per_target_metrics_df.sort_values(by=['state', 'target'])}\n```\n\n",
         )
 
-        pd.reset_option("display.max_rows")
+        self.readme_add_section(
+            title="## Overall metrics per state - model comparision",
+            text=f"```\n{overall_metrics_per_state_df.sort_values(by=['state'])}\n```\n\n",
+        )
 
         self.readme_add_section(
             title="## Overall metrics - model comparision",
