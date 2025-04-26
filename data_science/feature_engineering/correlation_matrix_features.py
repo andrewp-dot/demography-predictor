@@ -296,7 +296,7 @@ if __name__ == "__main__":
     get_corr_matrix(
         plot_name="only_feature_correlation_matrix.png",
         show_plot=True,
-        exclude_targets=False,
+        exclude_targets=True,
         exclude_highly_correlated=False,
         language="sk",
     )
