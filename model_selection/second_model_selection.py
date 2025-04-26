@@ -5,6 +5,8 @@ import logging
 from typing import List, Dict, Union
 from torch import nn
 
+import matplotlib.pyplot as plt
+
 # Import tested tree models
 from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
@@ -179,8 +181,11 @@ class SecondModelSelection(BaseExperiment):
         # Save training stats for rnns
         for name in self.RNN_NAMES:
             self.rnn_training_stats[name] = TrainingStats.from_dict(
-                stats_dict=TO_COMPARE_PIPELINES["simple-rnn"].model.training_stats
+                stats_dict=TO_COMPARE_PIPELINES[name].model.training_stats
             )
+
+            fig = self.rnn_training_stats[name].create_plot()
+            plt.savefig(os.path.join(self.SAVE_MODEL_DIR, name, "loss.png"))
 
         # Train xgboost
         logger.info("Training xgboost...")
@@ -240,21 +245,6 @@ class SecondModelSelection(BaseExperiment):
             split_rate=split_rate,
             display_nth_epoch=DISPLAY_NTH_EPOCH,
         )
-
-        # TODO:
-        # Train lightgbm - maybe? -> error in here
-        # logger.info("Training lightgbm...")
-        # TO_COMPARE_PIPELINES["rf"] = train_global_model_tree(
-        #     name="rf",
-        #     tree_model=LGBMRegressor(
-        #         n_estimators=100, learning_rate=0.1, num_leaves=31, random_state=42
-        #     ),
-        #     states_data=states_data_dict,
-        #     features=self.FEATURES,
-        #     targets=self.TARGETS,
-        #     sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
-        #     tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
-        # )
 
         # TODO: figure out how to display the results -
         # 0. Display only best and worst states for each model?
