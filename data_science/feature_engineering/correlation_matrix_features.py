@@ -44,9 +44,16 @@ def create_correlation_matrix(
     """
     df = pd.read_csv(dataset_path)
 
+    # Exclude target features
+    feature_df = df.drop(columns=settings.ALL_POSSIBLE_TARGET_FEATURES)
+
     if exclude_targets:
-        # Exclude target features
-        df = df.drop(columns=settings.ALL_POSSIBLE_TARGET_FEATURES)
+
+        # Get only features in here
+        df = feature_df
+    else:
+        # Put the targets to the end
+        df = pd.concat([feature_df, df[settings.ALL_POSSIBLE_TARGET_FEATURES]], axis=1)
 
     # Drop columns with high correlation
     if exclude_highly_correlated:
@@ -74,7 +81,27 @@ def display_corr_matrix(
         mask = np.triu(np.ones_like(corr_matrix, dtype=bool), k=1)
 
     # Plot the heatmap
-    corr_matrix_fig = plt.figure(figsize=(12, 10))
+    number_of_columns = len(corr_matrix.columns)
+    feature_row_size = 1.0
+    corr_matrix_fig = plt.figure(
+        figsize=(
+            number_of_columns * feature_row_size,
+            number_of_columns * feature_row_size,
+        )
+    )
+
+    # Dynamically adjust font size based on number of columns -> bigger the number, bigger the font due to readableness
+    if number_of_columns < 10:
+        font_scale = 1.0
+    elif number_of_columns < 20:
+        font_scale = 1.4
+    elif number_of_columns < 40:
+        font_scale = 1.6
+    else:
+        font_scale = 1.8
+
+    sns.set_theme(font_scale=font_scale, context="paper")
+
     sns.heatmap(
         corr_matrix,
         mask=mask,
@@ -85,6 +112,8 @@ def display_corr_matrix(
         square=True,
     )
     plt.title("Correlation Matrix Heatmap")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
 
     if save_path:
         plt.savefig(save_path)
@@ -145,7 +174,12 @@ def convert_highly_correlated_features_to_dict(
     return highly_correlated_dict
 
 
-def main(show_plot: bool = False, exclude_highly_correlated: bool = True) -> None:
+def main(
+    plot_name: str = "all_feature_correlation_matrix.png",
+    show_plot: bool = False,
+    exclude_targets: bool = True,
+    exclude_highly_correlated: bool = True,
+) -> None:
     DATASET_PATH = os.path.join(
         settings.save_dataset_path,
         f"dataset_{settings.dataset_version}",
@@ -153,16 +187,16 @@ def main(show_plot: bool = False, exclude_highly_correlated: bool = True) -> Non
     )
 
     corr_matrix = create_correlation_matrix(
-        DATASET_PATH, exclude_highly_correlated=exclude_highly_correlated
+        DATASET_PATH,
+        exclude_targets=exclude_targets,
+        exclude_highly_correlated=exclude_highly_correlated,
     )
 
     print(corr_matrix)
 
     display_corr_matrix(
         corr_matrix,
-        save_path=os.path.join(
-            settings.visualizations_dir, "all_feature_correlation_matrix.png"
-        ),
+        save_path=os.path.join(settings.visualizations_dir, plot_name),
         only_triangle=True,
     )
 
@@ -188,4 +222,34 @@ def main(show_plot: bool = False, exclude_highly_correlated: bool = True) -> Non
 
 
 if __name__ == "__main__":
-    main(show_plot=True, exclude_highly_correlated=False)
+
+    # All correlation features including targetes
+    main(
+        plot_name="only_feature_correlation_matrix.png",
+        show_plot=True,
+        exclude_targets=True,
+        exclude_highly_correlated=False,
+    )
+
+    main(
+        plot_name="only_feature_low_correlation_matrix.png",
+        show_plot=True,
+        exclude_targets=True,
+        exclude_highly_correlated=True,
+    )
+
+    # All features excluding high correlation features
+    main(
+        plot_name="all_feature_low_correlation_matrix.png",
+        show_plot=True,
+        exclude_targets=False,
+        exclude_highly_correlated=True,
+    )
+
+    # All correlation features including targetes
+    main(
+        plot_name="all_feature_correlation_matrix.png",
+        show_plot=True,
+        exclude_targets=False,
+        exclude_highly_correlated=False,
+    )
