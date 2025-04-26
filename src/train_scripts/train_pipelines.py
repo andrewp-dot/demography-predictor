@@ -111,7 +111,7 @@ def main():
 
     # Get global model settings
     GLOBAL_MODEL_ADDITIONAL_FEATURES: List[str] = [
-        col.lower() for col in ["year", "country name"]
+        col.lower() for col in ["year", "country_name"]
     ]
     GLOBAL_MODEL_TARGETS: List[str] = [
         # "population ages 15-64",

@@ -52,7 +52,7 @@ def main():
         local_model_data_dict=all_states_dict,
         local_model_features=FEATURES,
         hyperparameters=hyperparameters,
-        additional_global_model_features=["year", "country name"],
+        additional_global_model_features=["year", "country_name"],
         display_nth_epoch=2,
     )
 

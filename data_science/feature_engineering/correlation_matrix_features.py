@@ -47,7 +47,7 @@ def create_correlation_matrix(
     df = pd.read_csv(dataset_path)
 
     df = df.drop(
-        columns=["country name"]
+        columns=["country_name"]
     )  # remove this because it is not numerical feature
 
     # Exclude target features
@@ -83,7 +83,7 @@ def create_feature_target_correlation_matrix(
     df = pd.read_csv(dataset_path)
 
     df = df.drop(
-        columns=["country name"]
+        columns=["country_name"]
     )  # remove this because it is not numerical feature
 
     # Drop columns with high correlation

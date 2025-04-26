@@ -81,6 +81,9 @@ class GlobalModelRNN(CustomModelBase):
 
         self.fc = nn.Sequential(*layers)
 
+        # Save training stats
+        self.training_stats: Dict[str, List[int | float]] = {}
+
     def __initialize_hidden_states(
         self, batch_size: int
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -284,6 +287,8 @@ class GlobalModelRNN(CustomModelBase):
                     f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Validation loss: {validation_epoch_loss:.4f}"
                 )
 
+        # Save the training stats to the model
+        self.training_stats = training_stats
         return training_stats
 
     def shap_predict(self, input_tensor: pd.DataFrame) -> torch.Tensor:

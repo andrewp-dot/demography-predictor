@@ -16,6 +16,27 @@ class AgeDistribution:
         self.pop_15_64: float = pop_15_64
         self.pop_65_above: float = pop_65_above
 
+    def estimate_median_age(self, max_age: int = 100) -> float:
+        total_population = self.pop_0_14 + self.pop_15_64 + self.pop_65_above
+        p_0_14 = self.pop_0_14 / total_population
+        p_15_64 = self.pop_15_64 / total_population
+        p_65_above = self.pop_65_above / total_population
+
+        if p_0_14 >= 0.5:
+            # Median is in 0–14 group
+            proportion_in_group = 0.5 / p_0_14
+            median_age = proportion_in_group * 14
+        elif (p_0_14 + p_15_64) >= 0.5:
+            # Median is in 15–64 group
+            proportion_in_group = (0.5 - p_0_14) / p_15_64
+            median_age = 15 + proportion_in_group * (64 - 15)
+        else:
+            # Median is in 65+ group
+            proportion_in_group = (0.5 - p_0_14 - p_15_64) / p_65_above
+            median_age = 65 + proportion_in_group * (max_age - 65)
+
+        return median_age
+
     def get_params_for_age_distribution_curve(
         self,
         max_age: int = 100,
@@ -30,7 +51,7 @@ class AgeDistribution:
             max_age (int, optional): Gets the estimated max age of the people. Defaults to 100.
 
         Returns:
-            Tuple[float, float, float]: mean age, standard deviation, skewness
+            out: Tuple[float, float, float]: mean age, standard deviation, skewness
         """
 
         # Convert to fractions
@@ -44,12 +65,12 @@ class AgeDistribution:
         mid_15_64 = 40
         mid_65_above = (max_age + 65) / 2
 
-        # Compute mean (μ) by weighted mean
+        # Compute mean age by weighted mean
         mean_age = (
             (mid_0_14 * p_0_14) + (mid_15_64 * p_15_64) + (mid_65_above * p_65_above)
         )
 
-        # Compute standard deviation (σ)
+        # Compute standard deviation
         std_dev = np.sqrt(
             (p_0_14 * (mid_0_14 - mean_age) ** 2)
             + (p_15_64 * (mid_15_64 - mean_age) ** 2)
@@ -57,7 +78,9 @@ class AgeDistribution:
         )
 
         # Estimate skewness (α)
-        median_age = 40  # Approximate median from the largest group
+        median_age = self.estimate_median_age(
+            max_age=max_age
+        )  # Approximate median from the largest group
         skewness = 3 * (mean_age - median_age) / std_dev
 
         return mean_age, std_dev, skewness

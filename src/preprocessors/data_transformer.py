@@ -23,40 +23,40 @@ from src.utils.constants import get_core_hyperparameters
 class DataTransformer:
 
     # Categorical columns
-    CATEGORICAL_COLUMNS: List[str] = ["country name"]
+    CATEGORICAL_COLUMNS: List[str] = ["country_name"]
 
     # Division of features by types
     ABSOLUTE_COLUMNS: List[str] = [
         # Features
         "year",
-        "fertility rate, total",
-        "birth rate, crude",
-        "adolescent fertility rate",
-        "death rate, crude",
-        "life expectancy at birth, total",
+        "fertility_rate_total",
+        "birth_rate_crude",
+        "adolescent_fertility_rate",
+        "death_rate_crude",
+        "life_expectancy_at_birth_total",
     ]
 
     PERCENTUAL_COLUMNS: List[str] = [
         # Features
-        "population growth",
-        "arable land",
-        "gdp growth",
-        "agricultural land",
-        "rural population",
-        "rural population growth",
-        "urban population",
-        "age dependency ratio",
+        "population_growth",
+        "arable_land",
+        "gdp_growth",
+        "agricultural_land",
+        "rural_population",
+        "rural_population_growth",
+        "urban_population",
+        "age_dependency_ratio",
         # Targets
-        "population ages 15-64",
-        "population ages 0-14",
-        "population ages 65 and above",
-        "population, female",
-        "population, male",
+        "population_ages_15-64",
+        "population_ages_0-14",
+        "population_ages_65_and_above",
+        "population_female",
+        "population_male",
     ]
 
     SPECIAL_COLUMNS: Dict[str, Callable] = {
-        "net migration": "transform_net_migration",
-        "population, total": "transform_population_total",
+        "net_migration": "transform_net_migration",
+        "population_total": "transform_population_total",
     }
 
     def __init__(self):
@@ -845,7 +845,7 @@ def main():
 
     data = loader.load_data()
 
-    EXCLUDE_COLUMNS = ["country name", "year"]
+    EXCLUDE_COLUMNS = ["country_name", "year"]
     COLUMNS = [col for col in data.columns if col not in EXCLUDE_COLUMNS]
     TARGETS = [
         "population ages 15-64",

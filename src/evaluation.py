@@ -416,7 +416,7 @@ class EvaluateModel(BaseEvaluation):
                 input_data=final_input,
                 last_year=last_year,
                 target_year=target_year,
-                state=str(test_X["country name"].iloc[0]),
+                state=str(test_X["country_name"].iloc[0]),
             )
 
         elif isinstance(self.pipeline, PredictorPipeline):

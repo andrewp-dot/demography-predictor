@@ -386,10 +386,10 @@ class PredictorPipeline:
         )
 
         # Adjust additional info for global model if needed
-        if "country name" in self.global_model_pipeline.model.FEATURES:
-            future_feature_values_df["country name"] = input_data["country name"][0]
-            future_feature_values_df["country name"] = future_feature_values_df[
-                "country name"
+        if "country_name" in self.global_model_pipeline.model.FEATURES:
+            future_feature_values_df["country_name"] = input_data["country_name"][0]
+            future_feature_values_df["country_name"] = future_feature_values_df[
+                "country_name"
             ].astype("category")
 
         if "year" in self.global_model_pipeline.model.FEATURES:

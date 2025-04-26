@@ -244,11 +244,11 @@ class GlobalModel:
         y_test = states_loader.merge_states(state_dfs=y_test_dfs)
 
         # Set the country name as the categorical column
-        if "country name" in X_train.columns:
-            X_train["country name"] = X_train["country name"].astype(dtype="category")
+        if "country_name" in X_train.columns:
+            X_train["country_name"] = X_train["country_name"].astype(dtype="category")
 
         if "counrty name" in X_test.columns:
-            X_test["country name"] = X_test["country name"].astype(dtype="category")
+            X_test["country_name"] = X_test["country_name"].astype(dtype="category")
 
         # Create X
         # X_train, y_train = train_df[self.FEATURES], train_df[self.TARGETS]

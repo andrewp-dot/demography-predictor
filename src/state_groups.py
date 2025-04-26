@@ -18,7 +18,7 @@ def print_available_states(dataset_path: str) -> None:
         dataset_path (str): Path to the dataset.
     """
     df = pd.read_csv(dataset_path)
-    states = list(df["country name"].unique())
+    states = list(df["country_name"].unique())
 
     pprint.pprint(states)
 

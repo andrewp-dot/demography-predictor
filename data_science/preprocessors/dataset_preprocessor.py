@@ -315,10 +315,10 @@ class DatasetPreprocessor(BasePreprocessor):
             os.makedirs(states_dir, exist_ok=True)
 
         # Get states and save used states data
-        states = df["country name"].unique()
+        states = df["country_name"].unique()
 
         for state in list(states):
-            state_df = df[df["country name"] == state]
+            state_df = df[df["country_name"] == state]
 
             state_file_name = os.path.join(states_dir, f"{state}.csv")
             state_df.to_csv(state_file_name, index=False)
@@ -485,7 +485,12 @@ def main() -> None:
 
     print("Renaming columns ... ")
     merged.rename(mapping_dict, inplace=True, axis=1)
-    merged.columns = merged.columns.str.replace('"', "", regex=False)
+
+    # Delete unicode characters because of lightgbm
+    merged.columns = merged.columns.str.replace(r'["\'\\{}[\]:,]', "", regex=True)
+
+    # Replace space with underscore
+    merged.columns = merged.columns.str.replace(" ", "_")
 
     print(f"After after processing: {merged.shape}")
     preprocessor.save_states_separately(

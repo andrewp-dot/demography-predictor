@@ -34,7 +34,7 @@ class StatesDataLoader:
         self.__state_loaders: Dict[str, StateDataLoader] = {}
 
         # Get state loaders from all states
-        all_states = self.data["country name"].unique()
+        all_states = self.data["country_name"].unique()
         for state in all_states:
 
             # Create and save loader
@@ -77,7 +77,7 @@ class StatesDataLoader:
             out: Dict[str, pd.DataFrame]: Dictionary, where the key is the state name and the value is the state dataframe.
         """
         states_data_dict: Dict[str, pd.DataFrame] = {}
-        for country_name, group_df in states_df.groupby("country name"):
+        for country_name, group_df in states_df.groupby("country_name"):
             states_data_dict[country_name] = group_df
 
         return states_data_dict
@@ -191,7 +191,7 @@ if __name__ == "__main__":
         all_states_dict = states_loader.load_all_states()
 
         # Compare the number of all states in the dataset and loaded
-        ref_number_all_states = states_loader.data["country name"].nunique()
+        ref_number_all_states = states_loader.data["country_name"].nunique()
 
         got_number_of_states = len(all_states_dict.keys())
 
@@ -207,7 +207,7 @@ if __name__ == "__main__":
 
     # Get features
     FEATURES = list(all_states_dict["Czechia"].columns)
-    FEATURES.remove("country name")
+    FEATURES.remove("country_name")
 
     hyperparameters = RNNHyperparameters(
         input_size=len(FEATURES),

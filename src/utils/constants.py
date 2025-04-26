@@ -35,11 +35,11 @@ def get_core_hyperparameters(
 # Feature constants
 def highly_correlated_features() -> List[str]:
     return [
-        "life expectancy at birth, total",
-        "age dependency ratio",
-        "rural population",
-        "birth rate, crude",
-        "adolescent fertility rate",
+        "life_expectancy_at_birth_total",
+        "age_dependency_ratio",
+        "rural_population",
+        "birth_rate_crude",
+        "adolescent_fertility_rate",
     ]
 
 
@@ -48,20 +48,20 @@ def basic_features(exclude: List[str] | None = None) -> List[str]:
         col.lower()
         for col in [
             "year",
-            "fertility rate, total",
-            "net migration",
-            "arable land",
-            "birth rate, crude",
-            "gdp growth",
-            "death rate, crude",
-            "agricultural land",
-            "rural population",
-            "rural population growth",
-            "age dependency ratio",
-            "urban population",
-            "population growth",
-            "adolescent fertility rate",
-            "life expectancy at birth, total",
+            "fertility_rate_total",
+            "net_migration",
+            "arable_land",
+            "birth_rate_crude",
+            "gdp_growth",
+            "death_rate_crude",
+            "agricultural_land",
+            "rural_population",
+            "rural_population_growth",
+            "age_dependency_ratio",
+            "urban_population",
+            "population_growth",
+            "adolescent_fertility_rate",
+            "life_expectancy_at_birth_total",
         ]
         if col not in exclude
     ]
@@ -70,18 +70,18 @@ def basic_features(exclude: List[str] | None = None) -> List[str]:
 # Targets constants
 def aging_targets() -> List[str]:
     return [
-        "population ages 15-64",
-        "population ages 0-14",
-        "population ages 65 and above",
+        "population_ages_15-64",
+        "population_ages_0-14",
+        "population_ages_65_and_above",
     ]
 
 
 def gender_distribution_targets() -> List[str]:
     return [
-        "population, female",
-        "population, male",
+        "population_female",
+        "population_male",
     ]
 
 
 def population_total_targets() -> List[str]:
-    return ["population, total"]
+    return ["population_total"]

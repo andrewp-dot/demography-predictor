@@ -26,6 +26,8 @@ from src.train_scripts.train_global_models import (
     train_global_arima_ensemble,
 )
 
+from src.base import TrainingStats
+
 # TODO: change this -> add exogeneopus variables to the ARIMA model -> convert to global model
 # from src.train_scripts.train_local_models import train_arima_ensemble_model
 from src.global_model.model import XGBoostTuneParams
@@ -81,10 +83,16 @@ class SecondModelSelection(BaseExperiment):
         "base-gru",
         "xgboost",
         "rf",
+        "lightgbm",
     ]
+
+    # Need to save this to save their training stats for plot
+    RNN_NAMES = ["simple-rnn", "base-gru", "base-lstm"]
 
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
+
+        self.rnn_training_stats: Dict[str, TrainingStats] = {}
 
     def __get_models(self, model_names: List[str]) -> Dict[str, GlobalModelPipeline]:
 
@@ -168,6 +176,12 @@ class SecondModelSelection(BaseExperiment):
         )
         TO_COMPARE_PIPELINES["base-gru"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
+        # Save training stats for rnns
+        for name in self.RNN_NAMES:
+            self.rnn_training_stats[name] = TrainingStats.from_dict(
+                stats_dict=TO_COMPARE_PIPELINES["simple-rnn"].model.training_stats
+            )
+
         # Train xgboost
         logger.info("Training xgboost...")
         TO_COMPARE_PIPELINES["xgboost"] = train_global_model_tree(
@@ -194,7 +208,18 @@ class SecondModelSelection(BaseExperiment):
         )
         TO_COMPARE_PIPELINES["rf"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
-        # Save models
+        logger.info("Training lightgbm...")
+        TO_COMPARE_PIPELINES["lightgbm"] = train_global_model_tree(
+            name="lightgbm",
+            tree_model=LGBMRegressor(
+                n_estimators=100, learning_rate=0.1, num_leaves=31, random_state=42
+            ),
+            states_data=data,
+            features=self.FEATURES,
+            targets=self.TARGETS,
+            sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
+            tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
+        )
 
         return TO_COMPARE_PIPELINES
 
@@ -232,7 +257,7 @@ class SecondModelSelection(BaseExperiment):
         # )
 
         # TODO: figure out how to display the results -
-        # 0. Display only best and worst states for each model (except ARIMA)?
+        # 0. Display only best and worst states for each model?
         # 1. per target per state?
         # 2. per target per overall?
         # 3. per state overall?
