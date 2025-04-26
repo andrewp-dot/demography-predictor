@@ -31,6 +31,7 @@ def create_correlation_matrix(
     dataset_path: str,
     exclude_targets: bool = True,
     exclude_highly_correlated: bool = True,
+    features_to_target_correlation: bool = False,
 ) -> pd.DataFrame:
     """
     Create a correlation matrix from the dataset.
@@ -38,11 +39,16 @@ def create_correlation_matrix(
     Args:
         dataset_path (str): Path to the existing dataset.
         exclude_targets (bool): Whether to exclude target features. Defaults to True.
+        exclude_highly_correlated (bool): Excludes columns targeted as hihgly correlated.
 
     Returns:
         out: pd.DataFrame: Correlation matrix datframe.
     """
     df = pd.read_csv(dataset_path)
+
+    df = df.drop(
+        columns=["country name"]
+    )  # remove this because it is not numerical feature
 
     # Exclude target features
     feature_df = df.drop(columns=settings.ALL_POSSIBLE_TARGET_FEATURES)
@@ -59,12 +65,42 @@ def create_correlation_matrix(
     if exclude_highly_correlated:
         df = df.drop(columns=HIGHLY_CORRELATED_COLUMNS)
 
+    # Compute the correlation matrix
+    corr_matrix = df.corr()
+
+    if features_to_target_correlation:
+        corr_matrix = corr_matrix.loc[
+            feature_df.columns, settings.ALL_POSSIBLE_TARGET_FEATURES
+        ]
+
+    return corr_matrix
+
+
+def create_feature_target_correlation_matrix(
+    dataset_path: str, exclude_highly_correlated: bool = False
+) -> pd.DataFrame:
+    # Then select only the part you want (features vs targets)
+    df = pd.read_csv(dataset_path)
+
     df = df.drop(
         columns=["country name"]
     )  # remove this because it is not numerical feature
 
+    # Drop columns with high correlation
+    if exclude_highly_correlated:
+        df = df.drop(columns=HIGHLY_CORRELATED_COLUMNS)
+
+    # Exclude target features
+    feature_df = df.drop(columns=settings.ALL_POSSIBLE_TARGET_FEATURES)
+
+    # Put the targets to the end
+    df = pd.concat([feature_df, df[settings.ALL_POSSIBLE_TARGET_FEATURES]], axis=1)
+
     # Compute the correlation matrix
     corr_matrix = df.corr()
+    corr_matrix = corr_matrix.loc[
+        feature_df.columns, settings.ALL_POSSIBLE_TARGET_FEATURES
+    ]
 
     return corr_matrix
 
@@ -82,7 +118,7 @@ def display_corr_matrix(
         mask = np.triu(np.ones_like(corr_matrix, dtype=bool), k=1)
 
     # Plot the heatmap
-    number_of_columns = len(corr_matrix.columns)
+    number_of_columns = max(len(corr_matrix.columns), len(corr_matrix))
     feature_row_size = 1.0
     corr_matrix_fig = plt.figure(
         figsize=(
@@ -180,7 +216,7 @@ def convert_highly_correlated_features_to_dict(
     return highly_correlated_dict
 
 
-def main(
+def get_corr_matrix(
     plot_name: str = "all_feature_correlation_matrix.png",
     show_plot: bool = False,
     exclude_targets: bool = True,
@@ -229,18 +265,43 @@ def main(
         plt.show()
 
 
+def get_feature_target_correlation(
+    plot_name: str,
+    exclude_highly_correlated: bool = False,
+    language: Literal["sk", "en"] = "en",
+) -> None:
+    DATASET_PATH = os.path.join(
+        settings.save_dataset_path,
+        f"dataset_{settings.dataset_version}",
+        f"dataset_{settings.dataset_version}.csv",
+    )
+
+    corr_matrix = create_feature_target_correlation_matrix(
+        DATASET_PATH,
+        exclude_highly_correlated=exclude_highly_correlated,
+    )
+
+    print(corr_matrix)
+
+    display_corr_matrix(
+        corr_matrix,
+        save_path=os.path.join(settings.visualizations_dir, plot_name),
+        language=language,
+    )
+
+
 if __name__ == "__main__":
 
     # All correlation features including targetes
-    main(
+    get_corr_matrix(
         plot_name="only_feature_correlation_matrix.png",
         show_plot=True,
-        exclude_targets=True,
+        exclude_targets=False,
         exclude_highly_correlated=False,
         language="sk",
     )
 
-    main(
+    get_corr_matrix(
         plot_name="only_feature_low_correlation_matrix.png",
         show_plot=True,
         exclude_targets=True,
@@ -249,7 +310,7 @@ if __name__ == "__main__":
     )
 
     # All features excluding high correlation features
-    main(
+    get_corr_matrix(
         plot_name="all_feature_low_correlation_matrix.png",
         show_plot=True,
         exclude_targets=False,
@@ -258,10 +319,16 @@ if __name__ == "__main__":
     )
 
     # All correlation features including targetes
-    main(
+    get_corr_matrix(
         plot_name="all_feature_correlation_matrix.png",
         show_plot=True,
         exclude_targets=False,
         exclude_highly_correlated=False,
+        language="sk",
+    )
+
+    get_feature_target_correlation(
+        plot_name="low_correlation_feature_target.png",
+        exclude_highly_correlated=True,
         language="sk",
     )
