@@ -5,7 +5,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Literal
 import numpy as np
 
 import pprint
@@ -73,6 +73,7 @@ def display_corr_matrix(
     corr_matrix: pd.DataFrame,
     save_path: str | None = None,
     only_triangle: bool = False,
+    language: Literal["sk", "en"] = "en",
 ) -> Figure:
 
     # Create a mask for the upper triangle
@@ -90,15 +91,10 @@ def display_corr_matrix(
         )
     )
 
-    # Dynamically adjust font size based on number of columns -> bigger the number, bigger the font due to readableness
-    if number_of_columns < 10:
-        font_scale = 1.0
-    elif number_of_columns < 20:
-        font_scale = 1.4
-    elif number_of_columns < 40:
-        font_scale = 1.6
-    else:
-        font_scale = 1.8
+    # Adjust font size
+    font_scale = 1.0
+    annot_fontsize = 12
+    label_fontsize = 14
 
     sns.set_theme(font_scale=font_scale, context="paper")
 
@@ -106,13 +102,23 @@ def display_corr_matrix(
         corr_matrix,
         mask=mask,
         annot=True,
+        annot_kws={"size": annot_fontsize},
         cmap="coolwarm",
         fmt=".2f",
         linewidths=0.5,
         square=True,
     )
-    plt.title("Correlation Matrix Heatmap")
-    plt.xticks(rotation=45, ha="right")
+
+    TITLE: Dict[str, str] = {
+        "en": "Correlation Matrix Heatmap",
+        "sk": "Teplotná mapa korelačnej matice",
+    }
+
+    plt.title(TITLE[language], fontsize=label_fontsize + 2)
+    plt.xticks(
+        rotation=45, ha="right", fontsize=label_fontsize
+    )  # <-- set label font size
+    plt.yticks(fontsize=label_fontsize)  # <-- set y-axis label font size
     plt.tight_layout()
 
     if save_path:
@@ -179,6 +185,7 @@ def main(
     show_plot: bool = False,
     exclude_targets: bool = True,
     exclude_highly_correlated: bool = True,
+    language: Literal["sk", "en"] = "en",
 ) -> None:
     DATASET_PATH = os.path.join(
         settings.save_dataset_path,
@@ -198,6 +205,7 @@ def main(
         corr_matrix,
         save_path=os.path.join(settings.visualizations_dir, plot_name),
         only_triangle=True,
+        language=language,
     )
 
     higly_correlated_features = get_highly_correlated_features(
@@ -229,6 +237,7 @@ if __name__ == "__main__":
         show_plot=True,
         exclude_targets=True,
         exclude_highly_correlated=False,
+        language="sk",
     )
 
     main(
@@ -236,6 +245,7 @@ if __name__ == "__main__":
         show_plot=True,
         exclude_targets=True,
         exclude_highly_correlated=True,
+        language="sk",
     )
 
     # All features excluding high correlation features
@@ -244,6 +254,7 @@ if __name__ == "__main__":
         show_plot=True,
         exclude_targets=False,
         exclude_highly_correlated=True,
+        language="sk",
     )
 
     # All correlation features including targetes
@@ -252,4 +263,5 @@ if __name__ == "__main__":
         show_plot=True,
         exclude_targets=False,
         exclude_highly_correlated=False,
+        language="sk",
     )
