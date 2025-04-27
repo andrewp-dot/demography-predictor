@@ -8,12 +8,12 @@ from typing import Literal, Dict, List
 DATASET_VERSION: Literal["v0", "v1", "v2", "v3"] = "v3"
 
 ALL_POSSIBLE_TARGET_FEATURES: List[str] = [
-    "population, total",
-    "population ages 15-64",
-    "population ages 0-14",
-    "population ages 65 and above",
-    "population, female",
-    "population, male",
+    "population_total",
+    "population_ages_15-64",
+    "population_ages_0-14",
+    "population_ages_65_and_above",
+    "population_female",
+    "population_male",
 ]
 
 

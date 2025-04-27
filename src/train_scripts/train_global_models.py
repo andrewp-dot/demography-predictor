@@ -197,6 +197,9 @@ def train_global_arima_ensemble(
     features: List[str],
     targets: List[str],
     split_rate: float = 0.8,
+    p: int = 1,
+    d: int = 1,
+    q: int = 1,
 ) -> GlobalModelPipeline:
     """
     Trains CustomARima model
@@ -233,14 +236,15 @@ def train_global_arima_ensemble(
         trained_models: Dict[str, CustomARIMA] = {}
         for target in targets:
 
-            # Create ARIMA
+            # Create ARIMA (or ARMA if d = 0)
             arima = CustomARIMA(
-                p=1,
-                d=1,
-                q=1,
+                p=p,
+                d=d,
+                q=q,
                 features=arima_model_features,
                 target=target,
                 index="year",
+                trend="n" if d == 0 else None,
             )
 
             # Train model

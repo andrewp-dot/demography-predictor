@@ -18,7 +18,14 @@ np.random.seed(42)
 class CustomARIMA:
 
     def __init__(
-        self, p: int, d: int, q: int, features: List[str], target: str, index: str
+        self,
+        p: int,
+        d: int,
+        q: int,
+        features: List[str],
+        target: str,
+        index: str,
+        trend: Optional[str] = None,
     ):
         """
         Create custom ARIMA model: ARIMA(p,d,q).
@@ -30,6 +37,7 @@ class CustomARIMA:
             features (List[str]): List of features columns
             target (str): Values to predict.
             index (str): Features used for index (usually 'year', or 'date' - time columns)
+            trend (Optional[str]): Parameter which controls whether the model automatically includes a constant term (or a linear trend). Defaults to None.
         """
 
         # Parameters of ARIMA
@@ -41,6 +49,7 @@ class CustomARIMA:
         self.features: List[str] = features
         self.target: str = target
         self.index: str = index
+        self.trend: Optional[str] = trend
 
         # Create the model
         self.model: Optional[ARIMA] = None
@@ -70,6 +79,7 @@ class CustomARIMA:
             order=(self.p, self.d, self.q),
             enforce_stationarity=False,
             enforce_invertibility=False,
+            trend=self.trend,
         )
 
         # Fit the model

@@ -53,6 +53,7 @@ def basic_features(exclude: List[str] | None = None) -> List[str]:
             "arable_land",
             "birth_rate_crude",
             "gdp_growth",
+            "gdp",
             "death_rate_crude",
             "agricultural_land",
             "rural_population",

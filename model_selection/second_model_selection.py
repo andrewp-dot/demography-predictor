@@ -69,7 +69,8 @@ class SecondModelSelection(BaseExperiment):
         colsample_bytree=[0.8, 1.0],
     )
 
-    EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
+    # EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
+    EVALUATION_STATES: List[str] = None  # If None, select all
 
     # If empty select all states
     # EVALUATION_STATES: List[str] = []
@@ -131,6 +132,9 @@ class SecondModelSelection(BaseExperiment):
             features=self.FEATURES,
             targets=self.TARGETS,
             split_rate=split_rate,
+            p=1,
+            d=1,  # ARMA model - no need to integrate percentual data.
+            q=1,
         )
         TO_COMPARE_PIPELINES["ensemble-arimas"].save_pipeline(
             custom_dir=self.SAVE_MODEL_DIR
@@ -225,6 +229,7 @@ class SecondModelSelection(BaseExperiment):
             sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
             tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
         )
+        TO_COMPARE_PIPELINES["lightgbm"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         return TO_COMPARE_PIPELINES
 
@@ -251,7 +256,6 @@ class SecondModelSelection(BaseExperiment):
         # 1. per target per state?
         # 2. per target per overall?
         # 3. per state overall?
-        # 4. just overall (weighted average for targets including all states)?
 
         comparator = ModelComparator()
 
@@ -278,29 +282,72 @@ class SecondModelSelection(BaseExperiment):
         )
 
         # Print bast performing and worst performing states for each method
+        for model in self.MODEL_NAMES:
+            model_state_metrics_df = overall_metrics_per_state_df[
+                overall_metrics_per_state_df["model"] == model
+            ].sort_values(by=["mse", "r2"], ascending=[True, False])
 
-        # for model in self.MODEL_NAMES:
-        #     ...
+            # Top 5 best states
+            model_state_metrics_df.head(5)
 
-        # OR
+            # Top 5 worst states
+            model_state_metrics_df.tail(5)
 
-        # for target in self.TARGETS:
-        #   for state in states_data_dict.keys()
-        #       print best performing model per target per state
+            # Write section
+            self.readme_add_section(
+                title=f"## Model {model} - top states",
+                text=f"```\n{model_state_metrics_df.head()}\n```\n\n",
+            )
 
-        # Print results to the readme
-        # Add per metric rankings
-        # Print all dataframe
+            self.readme_add_section(
+                title=f"## Model {model} - worst states",
+                text=f"```\n{model_state_metrics_df.tail()}\n```\n\n",
+            )
+
+        # Print the rankings for each model target predictions
+        # Remove 'state' column
+
+        # Remove 'state' column as we don't need it anymore
+        per_target_metrics_df = per_target_metrics_df.drop(columns=["state"])
+
+        # # Adjust this to use correct weight
+        # def weighted_mean(group, metric, weight):
+        #     return (group[metric] * group[weight]).sum() / group[weight].sum()
+
+        # # Calculate weighted mean for mae, mse, rmse, and r2 using 'rank' as the weight
+        # per_target_metrics_df_mean = per_target_metrics_df.groupby(
+        #     ["target", "model"], as_index=False
+        # ).apply(
+        #     lambda group: pd.Series(
+        #         {
+        #             "mae": weighted_mean(group, "mae", "rank"),
+        #             "mse": weighted_mean(group, "mse", "rank"),
+        #             "rmse": weighted_mean(group, "rmse", "rank"),
+        #             "r2": weighted_mean(group, "r2", "rank"),
+        #         }
+        #     )
+        # )
+
+        per_target_metrics_df_mean = per_target_metrics_df.groupby(
+            ["target", "model"], as_index=False
+        ).mean()
+
+        # Sort by a specific metric (e.g., mae) and reset the index
+        per_target_metrics_df_sorted = per_target_metrics_df_mean.sort_values(
+            by=["target", "mse", "r2"], ascending=[True, True, False]
+        ).reset_index(drop=True)
+
+        # Add rank column based on sorted values
+        per_target_metrics_df_sorted["rank"] = (
+            per_target_metrics_df_sorted["mae"].rank(method="first").astype(int)
+        )
+
         self.readme_add_section(
             title="## Per target metrics - model comparision",
-            text=f"```\n{per_target_metrics_df.sort_values(by=['state', 'target'])}\n```\n\n",
+            text=f"```\n{per_target_metrics_df_sorted}\n```\n\n",
         )
 
-        self.readme_add_section(
-            title="## Overall metrics per state - model comparision",
-            text=f"```\n{overall_metrics_per_state_df.sort_values(by=['state'])}\n```\n\n",
-        )
-
+        # Overall model selection
         self.readme_add_section(
             title="## Overall metrics - model comparision",
             text=f"```\n{overall_metrics_df}\n```\n\n",
@@ -311,5 +358,7 @@ if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
-    exp = SecondModelSelection("test")
+    exp = SecondModelSelection(
+        description="Compares models to predict the target variable(s) using past data and future known (ground truth) data."
+    )
     exp.run(split_rate=0.8)

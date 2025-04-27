@@ -13,18 +13,9 @@ import pprint
 
 # Custom imports
 from config import DatasetCreatorSettings
+from src.utils.constants import highly_correlated_features
 
 settings = DatasetCreatorSettings()
-
-
-# Load the dataset (replace 'your_dataset.csv' with the actual file path)
-HIGHLY_CORRELATED_COLUMNS: List[str] = [
-    "life expectancy at birth, total",
-    "age dependency ratio",
-    "rural population",
-    "birth rate, crude",
-    "adolescent fertility rate",
-]
 
 
 def create_correlation_matrix(
@@ -63,7 +54,7 @@ def create_correlation_matrix(
 
     # Drop columns with high correlation
     if exclude_highly_correlated:
-        df = df.drop(columns=HIGHLY_CORRELATED_COLUMNS)
+        df = df.drop(columns=highly_correlated_features())
 
     # Compute the correlation matrix
     corr_matrix = df.corr()
@@ -88,7 +79,7 @@ def create_feature_target_correlation_matrix(
 
     # Drop columns with high correlation
     if exclude_highly_correlated:
-        df = df.drop(columns=HIGHLY_CORRELATED_COLUMNS)
+        df = df.drop(columns=highly_correlated_features())
 
     # Exclude target features
     feature_df = df.drop(columns=settings.ALL_POSSIBLE_TARGET_FEATURES)
