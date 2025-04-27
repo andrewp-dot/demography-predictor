@@ -5,7 +5,7 @@ from typing import Literal, Dict, List
 
 
 # Custom settings
-DATASET_VERSION: Literal["v0", "v1", "v2"] = "v2"
+DATASET_VERSION: Literal["v0", "v1", "v2", "v3"] = "v3"
 
 ALL_POSSIBLE_TARGET_FEATURES: List[str] = [
     "population, total",

@@ -181,3 +181,5 @@ pyrightconfig.json
 *.pkl
 
 ignore_*
+
+ourworldindata

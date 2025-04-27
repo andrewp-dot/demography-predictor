@@ -57,6 +57,7 @@ class DataTransformer:
     SPECIAL_COLUMNS: Dict[str, Callable] = {
         "net_migration": "transform_net_migration",
         "population_total": "transform_population_total",
+        "gdp": "transform_gdp",
     }
 
     def __init__(self):
@@ -139,6 +140,15 @@ class DataTransformer:
         self, population_total_data: pd.DataFrame, inverse: bool = False
     ):
         to_scale_data = population_total_data.copy()
+
+        # Decode
+        if inverse:
+            return to_scale_data.apply(lambda col: np.sign(col) * np.expm1(np.abs(col)))
+        # Encode
+        return to_scale_data.apply(lambda col: np.sign(col) * np.log1p(np.abs(col)))
+
+    def transform_gdp(self, gdp_data: pd.DataFrame, inverse: bool = False):
+        to_scale_data = gdp_data.copy()
 
         # Decode
         if inverse:

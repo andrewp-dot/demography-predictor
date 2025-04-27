@@ -262,9 +262,7 @@ class DatasetPreprocessor(BasePreprocessor):
         df_copy.drop(columns=["NaN_count"], inplace=True)
         return df_copy
 
-    def process(
-        self,
-    ) -> pd.DataFrame:
+    def process(self, skip_rows: int = 4) -> pd.DataFrame:
         """
         Processes states data. This is specified preprocessor just for state data configured in 'config.py' in the root of the project.
 
@@ -279,7 +277,6 @@ class DatasetPreprocessor(BasePreprocessor):
         csv_paths = self.get_csv_paths()
 
         # Skip header and merge indicators
-        skip_rows = 4
         merged_df = self.merge_indicators(csv_paths=csv_paths, skip_rows=skip_rows)
 
         # Sort values by country name and year
@@ -385,13 +382,22 @@ def main() -> None:
     Main function for the dataset preprocessor.
     """
 
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "-v", "--version", type=str, help="Version of the dataset", required=True
+    )
+
+    args = parser.parse_args()
+    dataset_version = args.version
+
     # Directory where the source data are stored
     source_data_dir = settings.source_data_dir
 
     # Save created dataset to directory path
-    to_save_dir = os.path.join(
-        settings.save_dataset_path, f"dataset_{settings.dataset_version}"
-    )
+    to_save_dir = os.path.join(settings.save_dataset_path, f"dataset_{dataset_version}")
 
     # Create directory if does not exist
     if not os.path.exists(to_save_dir):
@@ -493,11 +499,9 @@ def main() -> None:
     merged.columns = merged.columns.str.replace(" ", "_")
 
     print(f"After after processing: {merged.shape}")
-    preprocessor.save_states_separately(
-        merged, f"dataset_{settings.dataset_version}_states"
-    )
+    preprocessor.save_states_separately(merged, f"dataset_{dataset_version}_states")
 
-    preprocessor.save_data(merged, f"dataset_{settings.dataset_version}.csv")
+    preprocessor.save_data(merged, f"dataset_{dataset_version}.csv")
 
     print(merged.describe())
 
