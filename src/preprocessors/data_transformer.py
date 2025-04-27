@@ -54,10 +54,15 @@ class DataTransformer:
         "population_male",
     ]
 
-    SPECIAL_COLUMNS: Dict[str, Callable] = {
-        "net_migration": "transform_net_migration",
-        "population_total": "transform_population_total",
-        "gdp": "transform_gdp",
+    # WIDE_RANGE_COLUMNS: Dict[str, Callable] = {
+    #     "net_migration": "transform_net_migration",
+    #     "population_total": "transform_population_total",
+    #     "gdp": "transform_gdp",
+    # }
+    WIDE_RANGE_COLUMNS: Dict[str, Callable] = {
+        "net_migration": "transform_wide_range_data",
+        "population_total": "transform_wide_range_data",
+        "gdp": "transform_wide_range_data",
     }
 
     def __init__(self):
@@ -125,6 +130,23 @@ class DataTransformer:
 
         return to_scale_data[percentual_columns].apply(lambda x: x / 100)
 
+    def transform_wide_range_data(
+        self, data: pd.DataFrame, inverse: bool = False, C: float = 1.0
+    ) -> pd.DataFrame:
+        to_scale_data = data.copy()
+
+        # Decode
+        if inverse:
+            # return to_scale_data.apply(lambda col: np.sign(col) * np.expm1(np.abs(col)))
+            return to_scale_data.apply(
+                lambda col: np.sign(col) * C * (-1 + 10 ** (np.abs(col) / C))
+            )
+        # Encode
+        # return to_scale_data.apply(lambda col: np.sign(col) * np.log1p(np.abs(col)))
+        return to_scale_data.apply(
+            lambda col: np.sign(col) * (np.log10(1 + np.abs(col) / C))
+        )
+
     def transform_net_migration(
         self, net_migration_data: pd.DataFrame, inverse: bool = False
     ) -> pd.DataFrame:
@@ -181,19 +203,24 @@ class DataTransformer:
         absolute_columns_df = to_transform_data[absolute_columns]
 
         # Process special columns
-        special_columns_dfs: List[pd.DataFrame] = []
-        for col, func_name in self.SPECIAL_COLUMNS.items():
+        WIDE_RANGE_COLUMNS_dfs: List[pd.DataFrame] = []
+        for col, func_name in self.WIDE_RANGE_COLUMNS.items():
             if col in columns:
 
                 # Dynamically call the transformation methods
                 transform_func = getattr(self, func_name)
-                special_columns_dfs.append(
+                WIDE_RANGE_COLUMNS_dfs.append(
                     transform_func(to_transform_data[col], inverse=inverse)
                 )
 
         # Merge transformed columns
         transformed_data_df = pd.concat(
-            [categorical_df, absolute_columns_df, percentual_df, *special_columns_dfs],
+            [
+                categorical_df,
+                absolute_columns_df,
+                percentual_df,
+                *WIDE_RANGE_COLUMNS_dfs,
+            ],
             axis=1,
         )
 

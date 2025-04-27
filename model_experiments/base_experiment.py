@@ -73,7 +73,7 @@ class BaseExperiment:
         if not os.path.isdir(self.plot_dir):
             os.makedirs(self.plot_dir)
 
-    def create_readme(self) -> None:
+    def create_readme(self, readme_name: str = "README.md") -> None:
         """
         Creates README.md file for the experiment.
         """
@@ -84,7 +84,7 @@ class BaseExperiment:
         )
 
         # Save readme path
-        self.readme_path = os.path.join(self.experiment_dir, "README.md")
+        self.readme_path = os.path.join(self.experiment_dir, readme_name)
 
         with open(self.readme_path, "w") as readme:
             readme.write(readme_header)

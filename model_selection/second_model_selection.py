@@ -2,7 +2,7 @@
 import os
 import pandas as pd
 import logging
-from typing import List, Dict, Union
+from typing import List, Dict, Literal, Optional
 from torch import nn
 
 import matplotlib.pyplot as plt
@@ -19,6 +19,8 @@ from src.utils.constants import (
     basic_features,
     highly_correlated_features,
     aging_targets,
+    population_total_targets,
+    gender_distribution_targets,
 )
 
 from src.pipeline import GlobalModelPipeline
@@ -49,38 +51,13 @@ class SecondModelSelection(BaseExperiment):
     Question: How to evaluate this? GROUND TRUTH testing? For now YES.
     """
 
-    FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
-
-    TARGETS: List[str] = aging_targets()
-
-    BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
-        input_size=len(FEATURES + TARGETS),
-        hidden_size=256,
-        batch_size=16,
-        output_size=len(TARGETS),
-        epochs=30,
-    )
-
-    XGBOOST_TUNE_PARAMETERS: XGBoostTuneParams = XGBoostTuneParams(
-        n_estimators=[200, 400],
-        learning_rate=[0.01, 0.05, 0.1],
-        max_depth=[3, 5, 7],
-        subsample=[0.8, 1.0],
-        colsample_bytree=[0.8, 1.0],
-    )
-
-    # EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
-    EVALUATION_STATES: List[str] = None  # If None, select all
-
-    # If empty select all states
-    # EVALUATION_STATES: List[str] = []
-
     SAVE_MODEL_DIR: str = os.path.abspath(
         os.path.join(".", "model_selection", "trained_models")
     )
 
     MODEL_NAMES: List[str] = [
-        "ensemble-arimas",
+        "ensemble-arima",
+        "ensemble-arimax",
         "simple-rnn",
         "base-lstm",
         "base-gru",
@@ -92,8 +69,45 @@ class SecondModelSelection(BaseExperiment):
     # Need to save this to save their training stats for plot
     RNN_NAMES = ["simple-rnn", "base-gru", "base-lstm"]
 
-    def __init__(self, description: str):
+    def __init__(
+        self,
+        description: str,
+        target_group_prefix: Literal["pop_total", "aging", "gender_dist"],
+    ):
         super().__init__(name=self.__class__.__name__, description=description)
+        self.FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
+
+        # Add this just in order
+        self.TARGET_GROUP_PREFIX: str = target_group_prefix
+
+        self.TARGETS_BY_PREFIX: Dict[str, callable] = {
+            "pop_total": population_total_targets,
+            "aging": aging_targets,
+            "gender_dist": gender_distribution_targets,
+        }
+
+        self.TARGETS: List[str] = self.TARGETS_BY_PREFIX[self.TARGET_GROUP_PREFIX]()
+        print(self.TARGET)
+
+        self.BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+            input_size=len(self.FEATURES + self.TARGETS),
+            hidden_size=256,
+            batch_size=16,
+            output_size=len(self.TARGETS),
+            epochs=30,
+        )
+
+        self.XGBOOST_TUNE_PARAMETERS: XGBoostTuneParams = XGBoostTuneParams(
+            n_estimators=[200, 400],
+            learning_rate=[0.01, 0.05, 0.1],
+            max_depth=[3, 5, 7],
+            subsample=[0.8, 1.0],
+            colsample_bytree=[0.8, 1.0],
+        )
+
+        # EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
+        # If empty select all states
+        self.EVALUATION_STATES: List[str] = None  # If None, select all
 
         self.rnn_training_stats: Dict[str, TrainingStats] = {}
 
@@ -126,8 +140,9 @@ class SecondModelSelection(BaseExperiment):
             except Exception as e:
                 logger.info(f"Models not found. Reatraining all models ({e}).")
 
-        TO_COMPARE_PIPELINES["ensemble-arimas"] = train_global_arima_ensemble(
-            name="ensemble-arimas",
+        # Train ensemble ARIMAX model - ARIMAX model for each target for each state
+        TO_COMPARE_PIPELINES["ensemble-arimax"] = train_global_arima_ensemble(
+            name="ensemble-arimax",
             data=data,
             features=self.FEATURES,
             targets=self.TARGETS,
@@ -136,7 +151,21 @@ class SecondModelSelection(BaseExperiment):
             d=1,  # ARMA model - no need to integrate percentual data.
             q=1,
         )
-        TO_COMPARE_PIPELINES["ensemble-arimas"].save_pipeline(
+        TO_COMPARE_PIPELINES["ensemble-arimax"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
+
+        TO_COMPARE_PIPELINES["ensemble-arima"] = train_global_arima_ensemble(
+            name="ensemble-arima",
+            data=data,
+            features=[],
+            targets=self.TARGETS,
+            split_rate=split_rate,
+            p=1,
+            d=1,  # ARMA model - no need to integrate percentual data.
+            q=1,
+        )
+        TO_COMPARE_PIPELINES["ensemble-arima"].save_pipeline(
             custom_dir=self.SAVE_MODEL_DIR
         )
 
@@ -189,7 +218,11 @@ class SecondModelSelection(BaseExperiment):
             )
 
             fig = self.rnn_training_stats[name].create_plot()
-            plt.savefig(os.path.join(self.SAVE_MODEL_DIR, name, "loss.png"))
+            plt.savefig(
+                os.path.join(
+                    self.SAVE_MODEL_DIR, name, f"{self.TARGET_GROUP_PREFIX}_loss.png"
+                )
+            )
 
         # Train xgboost
         logger.info("Training xgboost...")
@@ -233,10 +266,15 @@ class SecondModelSelection(BaseExperiment):
 
         return TO_COMPARE_PIPELINES
 
-    def run(self, split_rate: float = 0.8, force_retrain: bool = False) -> None:
+    def run(
+        self,
+        split_rate: float = 0.8,
+        force_retrain: bool = False,
+        evaluation_states: Optional[List[str]] = None,
+    ) -> None:
 
         # Create readme
-        self.create_readme()
+        self.create_readme(readme_name=f"{self.TARGET_GROUP_PREFIX}_README.md")
         DISPLAY_NTH_EPOCH = 1
 
         # Load data
@@ -251,17 +289,11 @@ class SecondModelSelection(BaseExperiment):
             display_nth_epoch=DISPLAY_NTH_EPOCH,
         )
 
-        # TODO: figure out how to display the results -
-        # 0. Display only best and worst states for each model?
-        # 1. per target per state?
-        # 2. per target per overall?
-        # 3. per state overall?
-
         comparator = ModelComparator()
 
         # If empty select all states
-        if self.EVALUATION_STATES:
-            EVALUATION_STATES = self.EVALUATION_STATES
+        if evaluation_states:
+            EVALUATION_STATES = evaluation_states
         else:
             EVALUATION_STATES = list(states_data_dict.keys())
 
@@ -285,7 +317,7 @@ class SecondModelSelection(BaseExperiment):
         for model in self.MODEL_NAMES:
             model_state_metrics_df = overall_metrics_per_state_df[
                 overall_metrics_per_state_df["model"] == model
-            ].sort_values(by=["mse", "r2"], ascending=[True, False])
+            ].sort_values(by=["r2", "mse"], ascending=[False, True])
 
             # Top 5 best states
             model_state_metrics_df.head(5)
@@ -304,29 +336,8 @@ class SecondModelSelection(BaseExperiment):
                 text=f"```\n{model_state_metrics_df.tail()}\n```\n\n",
             )
 
-        # Print the rankings for each model target predictions
-        # Remove 'state' column
-
         # Remove 'state' column as we don't need it anymore
         per_target_metrics_df = per_target_metrics_df.drop(columns=["state"])
-
-        # # Adjust this to use correct weight
-        # def weighted_mean(group, metric, weight):
-        #     return (group[metric] * group[weight]).sum() / group[weight].sum()
-
-        # # Calculate weighted mean for mae, mse, rmse, and r2 using 'rank' as the weight
-        # per_target_metrics_df_mean = per_target_metrics_df.groupby(
-        #     ["target", "model"], as_index=False
-        # ).apply(
-        #     lambda group: pd.Series(
-        #         {
-        #             "mae": weighted_mean(group, "mae", "rank"),
-        #             "mse": weighted_mean(group, "mse", "rank"),
-        #             "rmse": weighted_mean(group, "rmse", "rank"),
-        #             "r2": weighted_mean(group, "r2", "rank"),
-        #         }
-        #     )
-        # )
 
         per_target_metrics_df_mean = per_target_metrics_df.groupby(
             ["target", "model"], as_index=False
@@ -334,8 +345,10 @@ class SecondModelSelection(BaseExperiment):
 
         # Sort by a specific metric (e.g., mae) and reset the index
         per_target_metrics_df_sorted = per_target_metrics_df_mean.sort_values(
-            by=["target", "mse", "r2"], ascending=[True, True, False]
+            by=["target", "r2", "mse"], ascending=[True, False, True]
         ).reset_index(drop=True)
+
+        print(f"FEATURES = {self.FEATURES}")
 
         # Add rank column based on sorted values
         per_target_metrics_df_sorted["rank"] = (
@@ -358,7 +371,25 @@ if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
-    exp = SecondModelSelection(
-        description="Compares models to predict the target variable(s) using past data and future known (ground truth) data."
+    # Experiment for aging
+    exp_aging = SecondModelSelection(
+        description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
+        target_group_prefix="aging",
     )
-    exp.run(split_rate=0.8)
+
+    exp_aging.run(split_rate=0.8, force_retrain=True)
+
+    # Experiment for population total
+    exp_pop_total = SecondModelSelection(
+        description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
+        target_group_prefix="pop_total",
+    )
+    exp_pop_total.run(split_rate=0.8, force_retrain=True)
+
+    # Experiment for gender distribution
+    exp_gender_dist = SecondModelSelection(
+        description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
+        target_group_prefix="gender_dist",
+    )
+
+    exp_gender_dist.run(split_rate=0.8, force_retrain=True)

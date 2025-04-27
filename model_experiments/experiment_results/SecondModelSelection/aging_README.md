@@ -6,44 +6,44 @@
 ## Model ensemble-arima - top states
 ```
           mae       mse      rmse        r2               state           model    rank
-22   0.277230  0.136327  0.317043  0.949151              Bhutan  ensemble-arima  1022.0
-101  0.043808  0.004980  0.062891  0.946293           Indonesia  ensemble-arima    18.0
-58   0.178961  0.046040  0.212277  0.943811             Ecuador  ensemble-arima   414.0
-189  0.098822  0.019187  0.120513  0.942912        Small states  ensemble-arima   103.0
-230  0.066466  0.008926  0.080386  0.917491  West Bank and Gaza  ensemble-arima    47.0
+259  0.277230  0.136327  0.317043  0.949151              Bhutan  ensemble-arima  1022.0
+338  0.043808  0.004980  0.062891  0.946293           Indonesia  ensemble-arima    18.0
+295  0.178961  0.046040  0.212277  0.943811             Ecuador  ensemble-arima   414.0
+426  0.098822  0.019187  0.120513  0.942912        Small states  ensemble-arima   103.0
+467  0.066466  0.008926  0.080386  0.917491  West Bank and Gaza  ensemble-arima    47.0
 ```
 
 
 ## Model ensemble-arima - worst states
 ```
           mae       mse      rmse         r2                       state           model    rank
-124  0.424703  0.281701  0.521969 -61.087523                     Lesotho  ensemble-arima  3281.0
-93   1.272058  2.823852  1.528139 -61.409078                     Hungary  ensemble-arima  5141.0
-59   1.111168  2.110862  1.320316 -67.254335            Egypt, Arab Rep.  ensemble-arima  4974.0
-143  1.438625  3.477969  1.680949 -68.918634  Middle East & North Africa  ensemble-arima  5259.0
-28   0.523723  0.558305  0.663370 -86.225393                    Bulgaria  ensemble-arima  3817.0
+361  0.424703  0.281701  0.521969 -61.087523                     Lesotho  ensemble-arima  3281.0
+330  1.272058  2.823852  1.528139 -61.409078                     Hungary  ensemble-arima  5141.0
+296  1.111168  2.110862  1.320316 -67.254335            Egypt, Arab Rep.  ensemble-arima  4974.0
+380  1.438625  3.477969  1.680949 -68.918634  Middle East & North Africa  ensemble-arima  5259.0
+265  0.523723  0.558305  0.663370 -86.225393                    Bulgaria  ensemble-arima  3817.0
 ```
 
 
 ## Model ensemble-arimax - top states
 ```
           mae       mse      rmse        r2             state            model    rank
-405  0.204322  0.095617  0.271720  0.858752  Papua New Guinea  ensemble-arimax   768.0
-259  0.555398  0.548058  0.622878  0.822267            Bhutan  ensemble-arimax  2365.0
-397  0.112085  0.020175  0.137482  0.813108   North Macedonia  ensemble-arimax   188.0
-251  0.495715  0.389683  0.601109  0.795908      Bahamas, The  ensemble-arimax  2189.0
-317  0.148184  0.039338  0.180412  0.780259             Ghana  ensemble-arimax   361.0
+168  0.204322  0.095617  0.271720  0.858752  Papua New Guinea  ensemble-arimax   768.0
+22   0.555398  0.548058  0.622878  0.822267            Bhutan  ensemble-arimax  2365.0
+160  0.112085  0.020175  0.137482  0.813108   North Macedonia  ensemble-arimax   188.0
+14   0.495715  0.389683  0.601109  0.795908      Bahamas, The  ensemble-arimax  2189.0
+80   0.148184  0.039338  0.180412  0.780259             Ghana  ensemble-arimax   361.0
 ```
 
 
 ## Model ensemble-arimax - worst states
 ```
            mae          mse       rmse             r2                 state            model    rank
-390   1.719036     5.118961   1.923757    -667.830412               Namibia  ensemble-arimax  5721.0
-445   1.117657     2.393342   1.300861    -823.036269            Tajikistan  ensemble-arimax  5290.0
-329  12.478125   238.507282  14.261997    -823.207273  Hong Kong SAR, China  ensemble-arimax  7429.0
-280   2.991219    13.049206   3.144580   -1357.230961      Congo, Dem. Rep.  ensemble-arimax  6354.0
-299  67.007888  8864.620110  77.321071 -255384.632098               Eritrea  ensemble-arimax  7584.0
+153   1.719036     5.118961   1.923757    -667.830412               Namibia  ensemble-arimax  5721.0
+208   1.117657     2.393342   1.300861    -823.036269            Tajikistan  ensemble-arimax  5290.0
+92   12.478125   238.507282  14.261997    -823.207273  Hong Kong SAR, China  ensemble-arimax  7429.0
+43    2.991219    13.049206   3.144580   -1357.230961      Congo, Dem. Rep.  ensemble-arimax  6354.0
+62   67.007888  8864.620110  77.321071 -255384.632098               Eritrea  ensemble-arimax  7584.0
 ```
 
 
@@ -215,9 +215,9 @@
 5  0.469907   0.773085  0.594448    -3.162772          xgboost   6.0
 7  0.474313   0.730706  0.571284    -3.477708         lightgbm   6.0
 6  0.527944   1.059187  0.647563    -4.679068               rf  12.0
-0  0.662969   1.390415  0.825622    -5.468615   ensemble-arima  16.0
+1  0.662969   1.390415  0.825622    -5.468615   ensemble-arima  16.0
 3  1.714147   6.136379  1.843400   -65.930570        base-lstm  22.0
-1  1.195244  17.666922  1.427050  -430.936536  ensemble-arimax  23.0
+0  1.195244  17.666922  1.427050  -430.936536  ensemble-arimax  23.0
 4  3.237727  26.113308  3.694253  -300.603000         base-gru  27.0
 2  7.200624  96.417500  8.915308 -3037.640703       simple-rnn  32.0
 ```
