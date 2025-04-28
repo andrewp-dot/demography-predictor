@@ -9,6 +9,7 @@ from torch import nn
 # Custom imports
 from src.utils.log import setup_logging
 from src.utils.constants import get_core_hyperparameters
+from src.utils.early_stopping import EarlyStopping
 
 from src.utils.constants import (
     basic_features,
@@ -154,6 +155,7 @@ class GlobalModelRNN(CustomModelBase):
         batch_validation_targets: torch.Tensor | None = None,
         display_nth_epoch: int = 10,
         loss_function: Union[nn.MSELoss, nn.L1Loss, nn.HuberLoss] = None,
+        enable_early_stopping: bool = True,
     ) -> Dict[str, List[int | float]]:
         """
         Trains model using batched input sequences and batched target sequences.
@@ -199,12 +201,15 @@ class GlobalModelRNN(CustomModelBase):
 
         # Define the training loop
         num_epochs = self.hyperparameters.epochs
-        training_stats["epochs"] = list(range(num_epochs))
 
         # Set the flag for gettting the validation loss
         GET_VALIDATION_CURVE: bool = (
             not batch_validation_inputs is None and not batch_validation_targets is None
         )
+
+        # Early stopping
+        if enable_early_stopping:
+            early_stopping = EarlyStopping(patience=5, delta=0.001)
 
         # Training loop
         for epoch in range(num_epochs):
@@ -280,12 +285,19 @@ class GlobalModelRNN(CustomModelBase):
                 training_stats["validation_loss"].append(validation_epoch_loss)
 
             # Display loss
+            training_stats["epochs"].append(epoch + 1)
             if not epoch % display_nth_epoch or epoch == (
                 num_epochs - 1
             ):  # Display first, nth epoch and last
                 logger.info(
                     f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Validation loss: {validation_epoch_loss:.4f}"
                 )
+
+            if enable_early_stopping:
+                early_stopping(validation_epoch_loss, self)
+                if early_stopping.early_stop:
+                    logger.info(f"Early stopping at epoch {epoch+1}.")
+                    break
 
         # Save the training stats to the model
         self.training_stats = training_stats

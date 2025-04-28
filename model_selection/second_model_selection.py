@@ -1,5 +1,6 @@
 # Standard library imports
 import os
+import json
 import pandas as pd
 import logging
 from typing import List, Dict, Literal, Optional
@@ -32,8 +33,6 @@ from src.train_scripts.train_global_models import (
 
 from src.base import TrainingStats
 
-# TODO: change this -> add exogeneopus variables to the ARIMA model -> convert to global model
-# from src.train_scripts.train_local_models import train_arima_ensemble_model
 from src.global_model.model import XGBoostTuneParams
 
 from model_experiments.base_experiment import BaseExperiment
@@ -69,6 +68,9 @@ class SecondModelSelection(BaseExperiment):
     # Need to save this to save their training stats for plot
     RNN_NAMES = ["simple-rnn", "base-gru", "base-lstm"]
 
+    # Need this to save the parameters used for comparision
+    TREE_NAMES = ["xgboost", "rf", "lightgbm"]
+
     def __init__(
         self,
         description: str,
@@ -86,17 +88,18 @@ class SecondModelSelection(BaseExperiment):
             "gender_dist": gender_distribution_targets,
         }
 
+        # Get targets by experiment
         self.TARGETS: List[str] = self.TARGETS_BY_PREFIX[self.TARGET_GROUP_PREFIX]()
-        print(self.TARGET)
 
         self.BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
             input_size=len(self.FEATURES + self.TARGETS),
-            hidden_size=256,
+            hidden_size=64,
             batch_size=16,
             output_size=len(self.TARGETS),
             epochs=30,
         )
 
+        # This is used to tune x
         self.XGBOOST_TUNE_PARAMETERS: XGBoostTuneParams = XGBoostTuneParams(
             n_estimators=[200, 400],
             learning_rate=[0.01, 0.05, 0.1],
@@ -105,11 +108,14 @@ class SecondModelSelection(BaseExperiment):
             colsample_bytree=[0.8, 1.0],
         )
 
-        # EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
         # If empty select all states
         self.EVALUATION_STATES: List[str] = None  # If None, select all
 
+        # Training stats of trained neural networks
         self.rnn_training_stats: Dict[str, TrainingStats] = {}
+
+        # Parameters of compared trees
+        self.tree_params: Dict[str, dict] = {}
 
     def __get_models(self, model_names: List[str]) -> Dict[str, GlobalModelPipeline]:
 
@@ -121,6 +127,32 @@ class SecondModelSelection(BaseExperiment):
             )
 
         return pipelines
+
+    def __get_tree_params(
+        self, to_compare_pipelines: Dict[str, GlobalModelPipeline]
+    ) -> None:
+        def make_json_serializable(d: dict):
+            serializable_dict = {}
+            for k, v in d.items():
+                if isinstance(v, (str, int, float, bool, type(None), list, dict)):
+                    serializable_dict[k] = v
+                else:
+                    serializable_dict[k] = str(v)  # fallback: convert to string
+            return serializable_dict
+
+        for name in self.TREE_NAMES:
+            # Get model hyperparameters and save them do local variable object of the class
+            raw_params = to_compare_pipelines[name].model.model.get_params()
+
+            self.tree_params[name] = make_json_serializable(raw_params)
+
+            # Path of the model
+            tree_model_params_path = os.path.join(
+                self.SAVE_MODEL_DIR, name, "params.json"
+            )
+
+            with open(tree_model_params_path, "w") as f:
+                json.dump(self.tree_params[name], fp=f, indent=4)
 
     def __train_models(
         self,
@@ -228,12 +260,14 @@ class SecondModelSelection(BaseExperiment):
         logger.info("Training xgboost...")
         TO_COMPARE_PIPELINES["xgboost"] = train_global_model_tree(
             name="xgboost",
-            tree_model=XGBRegressor(objective="reg:squarederror", random_state=42),
+            tree_model=XGBRegressor(
+                n_estimators=100, objective="reg:squarederror", random_state=42
+            ),
             states_data=data,
             features=self.FEATURES,
             targets=self.TARGETS,
             sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
-            tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
+            xgb_tune_parameters=None,  # Do not tune parameters
         )
         TO_COMPARE_PIPELINES["xgboost"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
@@ -241,16 +275,21 @@ class SecondModelSelection(BaseExperiment):
         logger.info("Training random forest...")
         TO_COMPARE_PIPELINES["rf"] = train_global_model_tree(
             name="rf",
-            tree_model=RandomForestRegressor(n_estimators=100, random_state=42),
+            tree_model=RandomForestRegressor(
+                n_estimators=100,
+                random_state=42,
+                min_samples_leaf=20,
+            ),
             states_data=data,
             features=self.FEATURES,
             targets=self.TARGETS,
             sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
-            tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
+            xgb_tune_parameters=None,  # Nothing to tune in here
         )
         TO_COMPARE_PIPELINES["rf"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         logger.info("Training lightgbm...")
+
         TO_COMPARE_PIPELINES["lightgbm"] = train_global_model_tree(
             name="lightgbm",
             tree_model=LGBMRegressor(
@@ -260,9 +299,12 @@ class SecondModelSelection(BaseExperiment):
             features=self.FEATURES,
             targets=self.TARGETS,
             sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
-            tune_parameters=self.XGBOOST_TUNE_PARAMETERS,
+            xgb_tune_parameters=None,  # Nothing to tune in here
         )
         TO_COMPARE_PIPELINES["lightgbm"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+
+        # Save tree params
+        self.__get_tree_params(to_compare_pipelines=TO_COMPARE_PIPELINES)
 
         return TO_COMPARE_PIPELINES
 
@@ -347,8 +389,6 @@ class SecondModelSelection(BaseExperiment):
         per_target_metrics_df_sorted = per_target_metrics_df_mean.sort_values(
             by=["target", "r2", "mse"], ascending=[True, False, True]
         ).reset_index(drop=True)
-
-        print(f"FEATURES = {self.FEATURES}")
 
         # Add rank column based on sorted values
         per_target_metrics_df_sorted["rank"] = (

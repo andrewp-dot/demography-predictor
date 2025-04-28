@@ -149,17 +149,6 @@ class LocalModelPipeline(BasePipeline):
                 data=input_data, features=FEATURES, targets=TARGETS
             )
 
-        # Predict
-        # Predict values to the future
-
-        # if isinstance(self.model, ExpLSTM):
-        #     future_feature_values_scaled = self.__experimental_model_predict(
-        #         state_data=scaled_data_df[FEATURES],
-        #         last_year=last_year,
-        #         target_year=target_year,
-        #     )
-        # else:
-
         future_feature_values_scaled = self.model.predict(
             input_data=scaled_data_df[FEATURES],
             last_year=last_year,
@@ -188,14 +177,10 @@ class GlobalModelPipeline(BasePipeline):
         model: GlobalModel,
         transformer: DataTransformer,
         name: str = "global_model_pipeline",
-        is_statistical_model: bool = False,
     ):
         self.name: str = name
         self.model: Union[GlobalModel, GlobalModelRNN] = model
         self.transformer: DataTransformer = transformer
-
-        # This flag is used to detect whether need to or does not need to scale data in predict method
-        self.IS_STATISTICAL_MODEL: bool = is_statistical_model
 
     def __tree_based_model_predict(
         self, input_data_batch: pd.DataFrame

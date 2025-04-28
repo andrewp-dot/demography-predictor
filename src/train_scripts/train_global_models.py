@@ -35,8 +35,8 @@ def train_global_model_tree(
     features: List[str],
     targets: List[str],
     sequence_len: int,
-    tune_parameters: XGBoostTuneParams,
     tree_model: Union[XGBRegressor, RandomForestRegressor, LGBMRegressor],
+    xgb_tune_parameters: Optional[XGBoostTuneParams] = None,
     transformer: Optional[DataTransformer] = None,
     split_size: float = 0.8,
 ) -> GlobalModelPipeline:
@@ -46,7 +46,7 @@ def train_global_model_tree(
         features=features,
         targets=targets,
         sequence_len=sequence_len,
-        params=tune_parameters,
+        params=xgb_tune_parameters,
     )
 
     states_loader = StatesDataLoader()
@@ -69,13 +69,11 @@ def train_global_model_tree(
         )
     else:
         scaled_training_data = transformer.scale_data(data=X_train, features=features)
-        # scaled_validation_data = transfomer.scale_data(data=X_test)
 
     # Train XGB
     global_model.train(
         X_train=scaled_training_data,
         y_train=y_train,
-        # tune_hyperparams=True
     )
 
     # Create Pipeline

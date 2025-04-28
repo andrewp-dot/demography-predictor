@@ -11,6 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 # Custom imports
 from src.utils.log import setup_logging
+from src.utils.early_stopping import EarlyStopping
 from src.utils.constants import get_core_hyperparameters
 from src.utils.save_model import save_model
 
@@ -30,6 +31,11 @@ logger = logging.getLogger("local_model")
 # h_n = h_n.detach()
 # c_n = c_n.detach()
 
+# LSTM explanation - https://medium.com/analytics-vidhya/lstms-explained-a-complete-technically-accurate-conceptual-guide-with-keras-2a650327e8f2
+
+# Notes:
+# statefull vs stateless LSTM - can I pass data with different batch sizes?
+
 
 class BaseRNN(CustomModelBase):
 
@@ -37,14 +43,13 @@ class BaseRNN(CustomModelBase):
         self,
         hyperparameters: RNNHyperparameters,
         features: List[str],
-        targets: Optional[List[str]] = None,
         # Additional bpnn layers? -> hidden size or tuple(hidden_size, activation function)
         additional_bpnn: Optional[List[int]] = None,
         rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
     ):
         super(BaseRNN, self).__init__(
             features=features,
-            targets=(targets if targets else features),
+            targets=features,
             hyperparameters=hyperparameters,
             device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         )
@@ -79,6 +84,9 @@ class BaseRNN(CustomModelBase):
         layers.append(nn.Linear(input_dim, output_dim))
 
         self.fc = nn.Sequential(*layers)
+
+        # Save training stats
+        self.training_stats: Dict[str, List[int | float]] = {}
 
     def __initialize_hidden_states(
         self, batch_size: int
@@ -153,6 +161,7 @@ class BaseRNN(CustomModelBase):
         batch_validation_targets: torch.Tensor | None = None,
         display_nth_epoch: int = 10,
         loss_function: Union[nn.MSELoss, nn.L1Loss, nn.HuberLoss] = None,
+        enable_early_stopping: bool = True,
     ) -> Dict[str, List[int | float]]:
         """
         Trains model using batched input sequences and batched target sequences.
@@ -198,12 +207,15 @@ class BaseRNN(CustomModelBase):
 
         # Define the training loop
         num_epochs = self.hyperparameters.epochs
-        training_stats["epochs"] = list(range(num_epochs))
 
         # Set the flag for gettting the validation loss
         GET_VALIDATION_CURVE: bool = (
             not batch_validation_inputs is None and not batch_validation_targets is None
         )
+
+        # Early stopping
+        if enable_early_stopping:
+            early_stopping = EarlyStopping(patience=5, delta=0.001)
 
         # Training loop
         for epoch in range(num_epochs):
@@ -239,7 +251,7 @@ class BaseRNN(CustomModelBase):
                 optimizer.step()  # Update weights and biases
 
             epoch_loss /= len(batch_inputs)
-            training_stats["training_loss"].append(epoch_loss)
+            training_stats["epochs"].append(epoch + 1)
 
             # Get validation loss if available
             if GET_VALIDATION_CURVE:
@@ -278,7 +290,8 @@ class BaseRNN(CustomModelBase):
                 validation_epoch_loss /= len(batch_validation_inputs)
                 training_stats["validation_loss"].append(validation_epoch_loss)
 
-            # Display loss
+            # Display loss and append epoch
+            training_stats["epochs"].append(epoch)
             if not epoch % display_nth_epoch or epoch == (
                 num_epochs - 1
             ):  # Display first, nth epoch and last
@@ -286,6 +299,13 @@ class BaseRNN(CustomModelBase):
                     f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Validation loss: {validation_epoch_loss:.4f}"
                 )
 
+            if enable_early_stopping:
+                early_stopping(validation_epoch_loss, self)
+                if early_stopping.early_stop:
+                    logger.info(f"Early stopping at epoch {epoch+1}.")
+                    break
+
+        self.training_stats = training_stats
         return training_stats
 
     def shap_predict(self, input_tensor: torch.Tensor) -> torch.Tensor:
@@ -373,114 +393,3 @@ class BaseRNN(CustomModelBase):
         new_predictions_tensor = new_predictions_tensor[:to_predict_years_num]
 
         return new_predictions_tensor
-
-
-def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50):
-    # Setup logging
-    setup_logging()
-
-    FEATURES = [
-        col.lower()
-        for col in [
-            # "year",
-            "Fertility rate, total",
-            "Population, total",
-            "Net migration",
-            "Arable land",
-            # "Birth rate, crude",
-            "GDP growth",
-            "Death rate, crude",
-            "Agricultural land",
-            # "Rural population",
-            "Rural population growth",
-            # "Age dependency ratio",
-            "Urban population",
-            "Population growth",
-            # "Adolescent fertility rate",
-            # "Life expectancy at birth, total",
-            # Population total target
-        ]
-    ]
-
-    TARGETS: List[str] = [
-        # "population, total",
-        # Aging targets
-        "population ages 15-64",
-        "population ages 0-14",
-        "population ages 65 and above",
-        # Gender targets
-        # "population, female",
-        # "population, male",
-    ]
-
-    LSTM_FEATURES = FEATURES + TARGETS
-
-    # Setup model
-    hyperparameters = get_core_hyperparameters(
-        input_size=len(LSTM_FEATURES), epochs=epochs, batch_size=32
-    )
-    rnn = BaseRNN(hyperparameters, features=LSTM_FEATURES, targets=TARGETS)
-
-    # Load data
-    states_loader = StatesDataLoader()
-    states_data_dict = states_loader.load_all_states()
-
-    # Get training data and validation data
-    train_data_dict, test_data_dict = states_loader.split_data(
-        states_dict=states_data_dict, sequence_len=hyperparameters.sequence_length
-    )
-    train_states_df = states_loader.merge_states(train_data_dict)
-    test_states_df = states_loader.merge_states(test_data_dict)
-
-    # Transform data
-    transformer = DataTransformer()
-
-    # This is useless maybe -> just for fitting the scaler on training data after transformation in datatransforme
-    scaled_training_data, scaled_test_data, _ = transformer.scale_and_fit(
-        training_data=train_states_df,
-        validation_data=test_states_df,
-        columns=LSTM_FEATURES,
-        scaler=MinMaxScaler(),
-    )
-
-    # Create a dictionary from it
-    scaled_states_dict = states_loader.parse_states(scaled_training_data)
-
-    batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
-        transformer.create_train_test_multiple_states_batches(
-            data=scaled_states_dict,
-            hyperparameters=hyperparameters,
-            features=LSTM_FEATURES,
-        )
-    )
-
-    logger.info(f"Batch inputs shape: {batch_inputs.shape}")
-    logger.info(f"Batch targets shape: {batch_targets.shape}")
-
-    # Train model
-    stats = rnn.train_model(
-        batch_inputs=batch_inputs,
-        batch_targets=batch_targets,
-        batch_validation_inputs=batch_validation_inputs,
-        batch_validation_targets=batch_validation_targets,
-        display_nth_epoch=10,
-    )
-
-    training_stats = TrainingStats.from_dict(stats_dict=stats)
-
-    if save_plots:
-        fig = training_stats.create_plot()
-        fig.savefig(f"BaseRNN_training_stats_{hyperparameters.epochs}_epochs.png")
-
-    if to_save_model:
-        save_model(name=f"BaseRNN.pkl", model=rnn)
-        save_model(name=f"BaseRNN_transformer.pkl", model=transformer)
-
-
-if __name__ == "__main__":
-    # LSTM explanation - https://medium.com/analytics-vidhya/lstms-explained-a-complete-technically-accurate-conceptual-guide-with-keras-2a650327e8f2
-
-    # Notes:
-    # statefull vs stateless LSTM - can I pass data with different batch sizes?
-
-    main(save_plots=True, to_save_model=True, epochs=50)
