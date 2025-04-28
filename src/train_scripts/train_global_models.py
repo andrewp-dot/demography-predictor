@@ -24,7 +24,7 @@ from src.global_model.global_rnn import GlobalModelRNN
 # Import this just for ARIMA
 from src.statistical_models.arima import CustomARIMA
 from src.local_model.ensemble_model import PureEnsembleModel
-from src.global_model.statistical_wrapper import GlobalStatisticalWrapper
+from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
 
 logger = logging.getLogger("training")
 
@@ -258,7 +258,7 @@ def train_global_arima_ensemble(
             target_models=trained_models, features=arima_model_features
         )
 
-    model = GlobalStatisticalWrapper(
+    model = StatisticalMultistateWrapper(
         model=global_states_models, features=arima_model_features, targets=targets
     )
 

@@ -251,7 +251,7 @@ class BaseRNN(CustomModelBase):
                 optimizer.step()  # Update weights and biases
 
             epoch_loss /= len(batch_inputs)
-            training_stats["epochs"].append(epoch + 1)
+            training_stats["training_loss"].append(epoch_loss)
 
             # Get validation loss if available
             if GET_VALIDATION_CURVE:
@@ -291,7 +291,7 @@ class BaseRNN(CustomModelBase):
                 training_stats["validation_loss"].append(validation_epoch_loss)
 
             # Display loss and append epoch
-            training_stats["epochs"].append(epoch)
+            training_stats["epochs"].append(epoch + 1)
             if not epoch % display_nth_epoch or epoch == (
                 num_epochs - 1
             ):  # Display first, nth epoch and last

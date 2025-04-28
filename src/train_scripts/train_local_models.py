@@ -1,16 +1,17 @@
 # Standard libraries
-import os
 import pandas as pd
 import torch
 from torch import nn
-
-from typing import List, Tuple, Union, Dict, Optional, Type
-
 import copy
 
-from config import Config
+import warnings
+
+from typing import List, Tuple, Union, Dict, Optional, Type
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
+
 
 # Custom imports
+from config import Config
 from src.base import TrainingStats
 
 from src.preprocessors.data_transformer import DataTransformer
@@ -24,6 +25,8 @@ from src.statistical_models.arima import CustomARIMA
 
 from src.pipeline import LocalModelPipeline
 
+
+from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
 
 settings = Config()
 
@@ -304,4 +307,109 @@ def train_arima_ensemble_model(
         name=name,
         transformer=DataTransformer(),
         model=PureEnsembleModel(feature_models=trained_models),
+    )
+
+
+def train_arima_ensemble_all_states(
+    name: str,
+    data: Dict[str, pd.DataFrame],
+    features: List[str],
+    split_rate: float = 0.8,
+    p: int = 1,
+    d: int = 1,
+    q: int = 1,
+) -> LocalModelPipeline:
+    """
+    Trains CustomARima model
+
+    Args:
+        name (str): Name of the pipeline.
+        data: (Dict[str, pd.DataFrame]): The training data for the model to train statistical models.
+        features (List[str]): Exogeneous features which can influence predictions (need to know their future values).
+        targets (List[str]): Targets to predict.
+        state (str): State which is used for predictions.
+        split_rate (float, optional): The size of the training data. Defaults to 0.8.
+
+    Returns:
+        out: GlobalModelPipeline: Pipeline with arima ensemble model. Note: transformer in this pipeline is not fitted -> pipeline is created in order to be compatible with comparators etc.
+    """
+
+    # Need this loader just to split the state data
+    loader = StateDataLoader(state=list(data.keys())[0])
+    state_data = loader.load_data()
+
+    states_models: Dict[str, PureEnsembleModel] = {}
+    for state, state_data in data.items():
+
+        # Create copy to prevent overwrite of the original list
+        arima_model_features = list(features)
+
+        if "year" in features:
+            arima_model_features.remove("year")
+
+        # Split data
+        train_df, _ = loader.split_data(data=state_data, split_rate=split_rate)
+
+        # Train and save models
+        trained_models: Dict[str, CustomARIMA] = {}
+        for target in features:
+
+            # Create ARIMA (or ARMA if d = 0)
+            arima = CustomARIMA(
+                p=p,
+                d=d,
+                q=q,
+                features=arima_model_features,
+                target=target,
+                index="year",
+                trend="n" if d == 0 else None,
+            )
+
+            # Train model
+            try:
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("error", category=ConvergenceWarning)
+                    arima.train_model(data=train_df)
+
+            except ConvergenceWarning:
+                print(
+                    f"ConvergenceWarning for {state}-{target}: trying simpler ARIMA..."
+                )
+                # Try a simpler model if it fails
+                simpler_arima = CustomARIMA(
+                    p=1,
+                    d=0,
+                    q=0,
+                    features=arima_model_features,
+                    target=target,
+                    index="year",
+                    trend="n",
+                )
+                simpler_arima.train_model(data=train_df)
+                trained_models[target] = simpler_arima
+            else:
+                trained_models[target] = arima
+
+            # Train model
+            arima.train_model(data=train_df)
+
+            # Save trained model
+            trained_models[target] = arima
+
+        # Save the pure ensemble for state
+
+        # logger.info(f"ARIMA model for state: '{state}' has been created!")
+        states_models[state] = PureEnsembleModel(
+            target_models=trained_models, features=arima_model_features
+        )
+
+    model = StatisticalMultistateWrapper(
+        model=states_models, features=arima_model_features, targets=features
+    )
+
+    # Create pipeline -> put here datatransformer just to in order to create pipeline (for comparators etc)
+    return LocalModelPipeline(
+        name=name,
+        transformer=DataTransformer(),
+        model=model,
     )

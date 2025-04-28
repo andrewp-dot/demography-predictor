@@ -22,7 +22,7 @@ from src.local_model.ensemble_model import PureEnsembleModel
 
 from src.global_model.model import GlobalModel
 from src.global_model.global_rnn import GlobalModelRNN
-from src.global_model.statistical_wrapper import GlobalStatisticalWrapper
+from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
 
 
 settings = Config()
@@ -247,7 +247,7 @@ class GlobalModelPipeline(BasePipeline):
             TO_SCALE_TARGETS = None
 
         # Do not scale targets for statistial model
-        if isinstance(self.model, GlobalStatisticalWrapper):
+        if isinstance(self.model, StatisticalMultistateWrapper):
             scaled_data_df = input_data
         else:
             scaled_data_df = self.transformer.scale_data(
@@ -255,11 +255,11 @@ class GlobalModelPipeline(BasePipeline):
             )
 
         # If the model is statisical, model
-        if isinstance(self.model, GlobalStatisticalWrapper):
+        if isinstance(self.model, StatisticalMultistateWrapper):
 
             if state is None:
                 raise ValueError(
-                    "For the GlobalModelPipeline with model of type 'GlobalStatisticalWrapper' need state to be provided as argument!"
+                    "For the GlobalModelPipeline with model of type 'StatisticalMultistateWrapper' need state to be provided as argument!"
                 )
 
             return self.__statistical_model_predict(

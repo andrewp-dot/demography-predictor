@@ -18,7 +18,7 @@ from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 
 from src.global_model.model import GlobalModel
-from src.global_model.statistical_wrapper import GlobalStatisticalWrapper
+from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
@@ -221,7 +221,7 @@ class ModelComparator:
                         pipeline.local_model_pipeline.model.hyperparameters.sequence_length
                     )
             elif isinstance(pipeline.model, PureEnsembleModel) or isinstance(
-                pipeline.model, GlobalStatisticalWrapper
+                pipeline.model, StatisticalMultistateWrapper
             ):
                 model_sequence_len = get_core_hyperparameters(
                     input_size=1
