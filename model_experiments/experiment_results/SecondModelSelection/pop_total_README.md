@@ -47,69 +47,69 @@
 ```
 
 
-## Model simple-rnn - top states
+## Model RNN - top states
 ```
-              mae           mse          rmse        r2                        state       model    rank
-558  2.272938e+05  7.578971e+10  2.752993e+05  0.919797                    Guatemala  simple-rnn  1750.0
-485  5.747171e+05  4.485607e+11  6.697468e+05  0.744889                    Australia  simple-rnn  2611.0
-503  7.719248e+05  1.137952e+12  1.066748e+06  0.722536                 Burkina Faso  simple-rnn  2955.0
-631  1.747022e+06  3.889938e+12  1.972293e+06  0.531839                        Niger  simple-rnn  3590.0
-639  5.206234e+04  3.718951e+09  6.098320e+04  0.488197  Pacific island small states  simple-rnn  1112.0
-```
-
-
-## Model simple-rnn - worst states
-```
-              mae           mse          rmse            r2               state       model    rank
-579  2.798858e+04  8.231106e+08  2.868990e+04 -12813.750034         Isle of Man  simple-rnn  2291.0
-646  1.078004e+07  1.239713e+14  1.113424e+07 -19521.415126              Poland  simple-rnn  6344.0
-653  4.066490e+07  1.737464e+15  4.168289e+07 -29511.376771  Russian Federation  simple-rnn  6869.0
-623  2.076987e+05  4.363813e+10  2.088974e+05 -30582.151053          Montenegro  simple-rnn  3285.0
-522  2.666337e+06  7.320552e+12  2.705652e+06 -32525.471932                Cuba  simple-rnn  5407.0
+              mae           mse          rmse        r2                        state model    rank
+558  2.272938e+05  7.578971e+10  2.752993e+05  0.919797                    Guatemala   RNN  1750.0
+485  5.747171e+05  4.485607e+11  6.697468e+05  0.744889                    Australia   RNN  2611.0
+503  7.719248e+05  1.137952e+12  1.066748e+06  0.722536                 Burkina Faso   RNN  2955.0
+631  1.747022e+06  3.889938e+12  1.972293e+06  0.531839                        Niger   RNN  3590.0
+639  5.206234e+04  3.718951e+09  6.098320e+04  0.488197  Pacific island small states   RNN  1112.0
 ```
 
 
-## Model base-lstm - top states
+## Model RNN - worst states
 ```
-               mae           mse           rmse        r2       state      model    rank
-891  113481.734818  1.956584e+10  139877.955531  0.982650      Rwanda  base-lstm  1191.0
-850   67714.920875  6.422162e+09   80138.394216  0.953696  Mauritania  base-lstm  1002.0
-846   20238.752596  5.297154e+08   23015.547460  0.789195    Maldives  base-lstm   625.0
-732  544149.214052  3.695816e+11  607932.239272  0.742265       Benin  base-lstm  2558.0
-874  214406.272784  9.191700e+10  303178.160107  0.713364        Oman  base-lstm  1918.0
-```
-
-
-## Model base-lstm - worst states
-```
-              mae           mse          rmse             r2                state      model    rank
-819  1.247943e+08  1.667284e+16  1.291234e+08  -37270.173779                Japan  base-lstm  7140.0
-816  8.218149e+04  7.145204e+09  8.452931e+04 -111240.438130          Isle of Man  base-lstm  2808.0
-898  3.154488e+06  1.003033e+13  3.167069e+06 -118052.011975      Slovak Republic  base-lstm  5552.0
-883  3.074624e+07  9.717476e+14  3.117287e+07 -153025.235818               Poland  base-lstm  6787.0
-908  6.306192e+04  4.181850e+09  6.466722e+04 -972533.376962  St. Kitts and Nevis  base-lstm  2669.0
+              mae           mse          rmse            r2               state model    rank
+579  2.798858e+04  8.231106e+08  2.868990e+04 -12813.750034         Isle of Man   RNN  2291.0
+646  1.078004e+07  1.239713e+14  1.113424e+07 -19521.415126              Poland   RNN  6344.0
+653  4.066490e+07  1.737464e+15  4.168289e+07 -29511.376771  Russian Federation   RNN  6869.0
+623  2.076987e+05  4.363813e+10  2.088974e+05 -30582.151053          Montenegro   RNN  3285.0
+522  2.666337e+06  7.320552e+12  2.705652e+06 -32525.471932                Cuba   RNN  5407.0
 ```
 
 
-## Model base-gru - top states
+## Model LSTM - top states
 ```
-               mae           mse          rmse        r2                       state     model    rank
-1001  6.592916e+04  7.728819e+09  8.791370e+04  0.963176          Dominican Republic  base-gru  1011.0
-1128  2.859182e+05  1.114410e+11  3.338278e+05  0.901180                      Rwanda  base-gru  1936.0
-1084  3.886381e+05  3.542155e+11  5.951601e+05  0.898256                        Mali  base-gru  2332.0
-986   4.546292e+05  3.259613e+11  5.709302e+05  0.896537                        Chad  base-gru  2357.0
-1002  4.017084e+07  2.704980e+15  5.200942e+07  0.894234  Early-demographic dividend  base-gru  5211.0
+               mae           mse           rmse        r2       state model    rank
+891  113481.734818  1.956584e+10  139877.955531  0.982650      Rwanda  LSTM  1191.0
+850   67714.920875  6.422162e+09   80138.394216  0.953696  Mauritania  LSTM  1002.0
+846   20238.752596  5.297154e+08   23015.547460  0.789195    Maldives  LSTM   625.0
+732  544149.214052  3.695816e+11  607932.239272  0.742265       Benin  LSTM  2558.0
+874  214406.272784  9.191700e+10  303178.160107  0.713364        Oman  LSTM  1918.0
 ```
 
 
-## Model base-gru - worst states
+## Model LSTM - worst states
 ```
-               mae           mse          rmse             r2                state     model    rank
-965   3.290445e+05  1.229057e+11  3.505792e+05  -24084.495466             Barbados  base-gru  3701.0
-1120  2.157318e+07  4.868600e+14  2.206490e+07  -76667.413608               Poland  base-gru  6665.0
-1135  2.598493e+06  6.871498e+12  2.621354e+06  -80873.840590      Slovak Republic  base-gru  5390.0
-1053  1.548027e+05  2.595337e+10  1.611005e+05 -404058.828765          Isle of Man  base-gru  3134.0
-1145  4.790959e+04  2.504333e+09  5.004331e+04 -582408.654988  St. Kitts and Nevis  base-gru  2531.0
+              mae           mse          rmse             r2                state model    rank
+819  1.247943e+08  1.667284e+16  1.291234e+08  -37270.173779                Japan  LSTM  7140.0
+816  8.218149e+04  7.145204e+09  8.452931e+04 -111240.438130          Isle of Man  LSTM  2808.0
+898  3.154488e+06  1.003033e+13  3.167069e+06 -118052.011975      Slovak Republic  LSTM  5552.0
+883  3.074624e+07  9.717476e+14  3.117287e+07 -153025.235818               Poland  LSTM  6787.0
+908  6.306192e+04  4.181850e+09  6.466722e+04 -972533.376962  St. Kitts and Nevis  LSTM  2669.0
+```
+
+
+## Model GRU - top states
+```
+               mae           mse          rmse        r2                       state model    rank
+1001  6.592916e+04  7.728819e+09  8.791370e+04  0.963176          Dominican Republic   GRU  1011.0
+1128  2.859182e+05  1.114410e+11  3.338278e+05  0.901180                      Rwanda   GRU  1936.0
+1084  3.886381e+05  3.542155e+11  5.951601e+05  0.898256                        Mali   GRU  2332.0
+986   4.546292e+05  3.259613e+11  5.709302e+05  0.896537                        Chad   GRU  2357.0
+1002  4.017084e+07  2.704980e+15  5.200942e+07  0.894234  Early-demographic dividend   GRU  5211.0
+```
+
+
+## Model GRU - worst states
+```
+               mae           mse          rmse             r2                state model    rank
+965   3.290445e+05  1.229057e+11  3.505792e+05  -24084.495466             Barbados   GRU  3701.0
+1120  2.157318e+07  4.868600e+14  2.206490e+07  -76667.413608               Poland   GRU  6665.0
+1135  2.598493e+06  6.871498e+12  2.621354e+06  -80873.840590      Slovak Republic   GRU  5390.0
+1053  1.548027e+05  2.595337e+10  1.611005e+05 -404058.828765          Isle of Man   GRU  3134.0
+1145  4.790959e+04  2.504333e+09  5.004331e+04 -582408.654988  St. Kitts and Nevis   GRU  2531.0
 ```
 
 
@@ -184,9 +184,9 @@
              target            model           mae           mse          rmse            r2  rank
 0  population_total   ensemble-arima  2.212649e+06  8.947748e+13  2.690339e+06 -3.512941e+00     1
 1  population_total               rf  2.542539e+07  1.756521e+16  2.905972e+07 -1.114141e+02     4
-2  population_total       simple-rnn  1.478877e+08  3.268141e+17  1.533154e+08 -8.542537e+02     8
-3  population_total         base-gru  3.684453e+07  9.955284e+15  3.878141e+07 -5.603892e+03     5
-4  population_total        base-lstm  8.312116e+07  3.864121e+16  8.853397e+07 -7.607874e+03     7
+2  population_total              RNN  1.478877e+08  3.268141e+17  1.533154e+08 -8.542537e+02     8
+3  population_total              GRU  3.684453e+07  9.955284e+15  3.878141e+07 -5.603892e+03     5
+4  population_total             LSTM  8.312116e+07  3.864121e+16  8.853397e+07 -7.607874e+03     7
 5  population_total          xgboost  1.939745e+07  8.165994e+15  2.316393e+07 -1.944929e+04     2
 6  population_total         lightgbm  1.949421e+07  1.030385e+16  2.230181e+07 -9.331249e+04     3
 7  population_total  ensemble-arimax  6.323247e+07  2.004456e+18  1.183307e+08 -3.333835e+07     6
@@ -200,9 +200,9 @@
 5  2.265237e+07  9.597812e+15  2.705595e+07 -1.646297e+04          xgboost  13.0
 6  2.964558e+07  2.064097e+16  3.388443e+07 -9.968031e+01               rf  15.0
 7  2.278202e+07  1.211098e+16  2.606263e+07 -7.849881e+04         lightgbm  16.0
-4  4.260481e+07  1.167613e+16  4.485065e+07 -4.441516e+03         base-gru  17.0
-3  9.581791e+07  4.517649e+16  1.021448e+08 -6.262269e+03        base-lstm  25.0
-2  1.728076e+08  3.840784e+17  1.791426e+08 -5.779527e+02       simple-rnn  26.0
+4  4.260481e+07  1.167613e+16  4.485065e+07 -4.441516e+03              GRU  17.0
+3  9.581791e+07  4.517649e+16  1.021448e+08 -6.262269e+03             LSTM  25.0
+2  1.728076e+08  3.840784e+17  1.791426e+08 -5.779527e+02              RNN  26.0
 0  5.342596e+07  1.490051e+18  9.770157e+07 -2.437582e+07  ensemble-arimax  28.0
 ```
 

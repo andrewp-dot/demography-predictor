@@ -57,16 +57,16 @@ class SecondModelSelection(BaseExperiment):
     MODEL_NAMES: List[str] = [
         "ensemble-arima",
         "ensemble-arimax",
-        "simple-rnn",
-        "base-lstm",
-        "base-gru",
+        "RNN",
+        "LSTM",
+        "GRU",
         "xgboost",
         "rf",
         "lightgbm",
     ]
 
     # Need to save this to save their training stats for plot
-    RNN_NAMES = ["simple-rnn", "base-gru", "base-lstm"]
+    RNN_NAMES = ["RNN", "GRU", "LSTM"]
 
     # Need this to save the parameters used for comparision
     TREE_NAMES = ["xgboost", "rf", "lightgbm"]
@@ -154,6 +154,50 @@ class SecondModelSelection(BaseExperiment):
             with open(tree_model_params_path, "w") as f:
                 json.dump(self.tree_params[name], fp=f, indent=4)
 
+    def __plot_rnn_model_losses(
+        self, TO_COMPARE_PIPELINES: Dict[str, GlobalModelPipeline]
+    ):
+        fig, ax = plt.subplots(
+            nrows=len(self.RNN_NAMES), ncols=1, figsize=(10, 5 * len(self.RNN_NAMES))
+        )
+
+        # If only one model, make ax a list of one element for consistency
+        if len(self.RNN_NAMES) == 1:
+            ax = [ax]
+
+        # Save training stats for RNNs
+        for index, name in enumerate(self.RNN_NAMES):
+            stats = TrainingStats.from_dict(
+                stats_dict=TO_COMPARE_PIPELINES[name].model.training_stats
+            )
+
+            # Set labels and title
+            ax[index].set_xlabel("Epocha")  # Corrected "Epocha" to "Epoch"
+            ax[index].set_ylabel("Strata")
+            ax[index].set_title(name)
+            ax[index].grid(True)
+
+            # Plot training loss for the model
+            ax[index].plot(stats.epochs, stats.training_loss, label="Tréningová strata")
+
+            ax[index].plot(
+                stats.epochs,
+                stats.validation_loss,
+                label="Validačná strata",
+            )
+
+            ax[index].legend()
+
+        fig.tight_layout()
+        fig.grid(True)
+
+        # Save the figure
+
+        save_path = os.path.join(self.SAVE_MODEL_DIR, "imgs")
+
+        os.makedirs(save_path, exist_ok=True)
+        plt.savefig(os.path.join(save_path, f"{self.TARGET_GROUP_PREFIX}_rnn_loss.png"))
+
     def __train_models(
         self,
         data: Dict[str, pd.DataFrame],
@@ -203,8 +247,8 @@ class SecondModelSelection(BaseExperiment):
 
         # Train classic rnn
         logger.info("Training simple rnn...")
-        TO_COMPARE_PIPELINES["simple-rnn"] = train_global_rnn(
-            name="simple-rnn",
+        TO_COMPARE_PIPELINES["RNN"] = train_global_rnn(
+            name="RNN",
             hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
@@ -213,12 +257,12 @@ class SecondModelSelection(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.RNN,
         )
-        TO_COMPARE_PIPELINES["simple-rnn"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+        TO_COMPARE_PIPELINES["RNN"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         # Train lstm
         logger.info("Training base lstm...")
-        TO_COMPARE_PIPELINES["base-lstm"] = train_global_rnn(
-            name="base-lstm",
+        TO_COMPARE_PIPELINES["LSTM"] = train_global_rnn(
+            name="LSTM",
             hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
@@ -227,12 +271,12 @@ class SecondModelSelection(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.LSTM,
         )
-        TO_COMPARE_PIPELINES["base-lstm"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+        TO_COMPARE_PIPELINES["LSTM"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         # Train gru
         logger.info("Training base gru...")
-        TO_COMPARE_PIPELINES["base-gru"] = train_global_rnn(
-            name="base-gru",
+        TO_COMPARE_PIPELINES["GRU"] = train_global_rnn(
+            name="GRU",
             hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
@@ -241,20 +285,10 @@ class SecondModelSelection(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.GRU,
         )
-        TO_COMPARE_PIPELINES["base-gru"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+        TO_COMPARE_PIPELINES["GRU"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
-        # Save training stats for rnns
-        for name in self.RNN_NAMES:
-            self.rnn_training_stats[name] = TrainingStats.from_dict(
-                stats_dict=TO_COMPARE_PIPELINES[name].model.training_stats
-            )
-
-            fig = self.rnn_training_stats[name].create_plot()
-            plt.savefig(
-                os.path.join(
-                    self.SAVE_MODEL_DIR, name, f"{self.TARGET_GROUP_PREFIX}_loss.png"
-                )
-            )
+        # Save pipeline
+        self.__plot_rnn_model_losses(TO_COMPARE_PIPELINES=TO_COMPARE_PIPELINES)
 
         # Train xgboost
         logger.info("Training xgboost...")

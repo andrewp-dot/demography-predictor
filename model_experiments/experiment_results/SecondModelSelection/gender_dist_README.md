@@ -47,69 +47,69 @@
 ```
 
 
-## Model simple-rnn - top states
+## Model RNN - top states
 ```
-          mae       mse      rmse        r2                     state       model    rank
-628  0.148530  0.051484  0.226602  0.719811                     Nepal  simple-rnn  2814.0
-687  0.258897  0.085501  0.292404  0.661520                     Tonga  simple-rnn  3287.0
-597  0.291893  0.105845  0.324997  0.407740                   Lebanon  simple-rnn  3510.0
-510  0.177515  0.047557  0.217675  0.351319  Central African Republic  simple-rnn  2963.0
-488  0.244941  0.073460  0.256455 -0.174806              Bahamas, The  simple-rnn  3395.0
-```
-
-
-## Model simple-rnn - worst states
-```
-          mae       mse      rmse             r2         state       model    rank
-665  1.129892  1.393907  1.176989  -15589.700665       Somalia  simple-rnn  7232.0
-477  1.295529  1.787519  1.334538  -19385.976644       Albania  simple-rnn  7323.0
-691  0.512589  0.285823  0.533545  -36526.345587  Turkmenistan  simple-rnn  5953.0
-610  0.850555  0.767565  0.876024  -60954.608433          Mali  simple-rnn  6838.0
-606  1.520662  2.573371  1.603308 -134784.904727    Madagascar  simple-rnn  7405.0
+          mae       mse      rmse        r2                     state model    rank
+628  0.148530  0.051484  0.226602  0.719811                     Nepal   RNN  2814.0
+687  0.258897  0.085501  0.292404  0.661520                     Tonga   RNN  3287.0
+597  0.291893  0.105845  0.324997  0.407740                   Lebanon   RNN  3510.0
+510  0.177515  0.047557  0.217675  0.351319  Central African Republic   RNN  2963.0
+488  0.244941  0.073460  0.256455 -0.174806              Bahamas, The   RNN  3395.0
 ```
 
 
-## Model base-lstm - top states
+## Model RNN - worst states
 ```
-          mae       mse      rmse        r2                   state      model    rank
-908  0.090292  0.012070  0.109759  0.835199     St. Kitts and Nevis  base-lstm  1888.0
-717  0.020820  0.000571  0.023731  0.607413     Antigua and Barbuda  base-lstm   486.0
-746  0.088861  0.010857  0.100051  0.559356  Caribbean small states  base-lstm  1919.0
-892  0.166591  0.033130  0.174100  0.535894                   Samoa  base-lstm  2713.0
-798  0.275713  0.097648  0.312464  0.316556                  Guyana  base-lstm  3485.0
-```
-
-
-## Model base-lstm - worst states
-```
-          mae       mse      rmse            r2         state      model    rank
-896  0.377617  0.149433  0.377747  -8238.747480        Serbia  base-lstm  5426.0
-902  0.980318  1.016774  1.002951 -11371.506222       Somalia  base-lstm  7031.0
-847  0.657547  0.466126  0.666337 -37016.064513          Mali  base-lstm  6362.0
-928  0.634090  0.406192  0.636414 -51909.152124  Turkmenistan  base-lstm  6266.0
-843  1.098421  1.285408  1.133738 -67325.040906    Madagascar  base-lstm  7189.0
+          mae       mse      rmse             r2         state model    rank
+665  1.129892  1.393907  1.176989  -15589.700665       Somalia   RNN  7232.0
+477  1.295529  1.787519  1.334538  -19385.976644       Albania   RNN  7323.0
+691  0.512589  0.285823  0.533545  -36526.345587  Turkmenistan   RNN  5953.0
+610  0.850555  0.767565  0.876024  -60954.608433          Mali   RNN  6838.0
+606  1.520662  2.573371  1.603308 -134784.904727    Madagascar   RNN  7405.0
 ```
 
 
-## Model base-gru - top states
+## Model LSTM - top states
 ```
-           mae       mse      rmse        r2                state     model    rank
-1145  0.090772  0.012535  0.111830  0.828857  St. Kitts and Nevis  base-gru  1923.0
-1061  0.124120  0.026506  0.162785  0.716033          Korea, Rep.  base-gru  2439.0
-964   0.161869  0.031441  0.176896  0.394671           Bangladesh  base-gru  2733.0
-1035  0.249619  0.090119  0.285690  0.369246               Guyana  base-gru  3354.0
-1089  0.089484  0.008937  0.094492  0.116233               Mexico  base-gru  1996.0
+          mae       mse      rmse        r2                   state model    rank
+908  0.090292  0.012070  0.109759  0.835199     St. Kitts and Nevis  LSTM  1888.0
+717  0.020820  0.000571  0.023731  0.607413     Antigua and Barbuda  LSTM   486.0
+746  0.088861  0.010857  0.100051  0.559356  Caribbean small states  LSTM  1919.0
+892  0.166591  0.033130  0.174100  0.535894                   Samoa  LSTM  2713.0
+798  0.275713  0.097648  0.312464  0.316556                  Guyana  LSTM  3485.0
 ```
 
 
-## Model base-gru - worst states
+## Model LSTM - worst states
 ```
-           mae       mse      rmse            r2         state     model    rank
-1133  0.359803  0.149486  0.363376  -8241.663801        Serbia  base-gru  5400.0
-1139  0.979671  1.001187  0.998386 -11197.172134       Somalia  base-gru  7021.0
-1165  0.429913  0.191586  0.436612 -24483.099787  Turkmenistan  base-gru  5634.0
-1084  0.688970  0.491688  0.700280 -39046.087497          Mali  base-gru  6444.0
-1080  0.930812  0.939254  0.968685 -49194.477587    Madagascar  base-gru  6969.0
+          mae       mse      rmse            r2         state model    rank
+896  0.377617  0.149433  0.377747  -8238.747480        Serbia  LSTM  5426.0
+902  0.980318  1.016774  1.002951 -11371.506222       Somalia  LSTM  7031.0
+847  0.657547  0.466126  0.666337 -37016.064513          Mali  LSTM  6362.0
+928  0.634090  0.406192  0.636414 -51909.152124  Turkmenistan  LSTM  6266.0
+843  1.098421  1.285408  1.133738 -67325.040906    Madagascar  LSTM  7189.0
+```
+
+
+## Model GRU - top states
+```
+           mae       mse      rmse        r2                state model    rank
+1145  0.090772  0.012535  0.111830  0.828857  St. Kitts and Nevis   GRU  1923.0
+1061  0.124120  0.026506  0.162785  0.716033          Korea, Rep.   GRU  2439.0
+964   0.161869  0.031441  0.176896  0.394671           Bangladesh   GRU  2733.0
+1035  0.249619  0.090119  0.285690  0.369246               Guyana   GRU  3354.0
+1089  0.089484  0.008937  0.094492  0.116233               Mexico   GRU  1996.0
+```
+
+
+## Model GRU - worst states
+```
+           mae       mse      rmse            r2         state model    rank
+1133  0.359803  0.149486  0.363376  -8241.663801        Serbia   GRU  5400.0
+1139  0.979671  1.001187  0.998386 -11197.172134       Somalia   GRU  7021.0
+1165  0.429913  0.191586  0.436612 -24483.099787  Turkmenistan   GRU  5634.0
+1084  0.688970  0.491688  0.700280 -39046.087497          Mali   GRU  6444.0
+1080  0.930812  0.939254  0.968685 -49194.477587    Madagascar   GRU  6969.0
 ```
 
 
@@ -186,17 +186,17 @@
 1   population_female          xgboost   0.149675  1.055876e-01   0.185706     -10.355222     1
 2   population_female         lightgbm   0.165890  1.383926e-01   0.195994     -13.530153     5
 3   population_female               rf   0.218305  4.520139e-01   0.247069     -16.151870     7
-4   population_female         base-gru   0.731105  1.326647e+00   0.761868    -906.950224    10
-5   population_female        base-lstm   0.748053  1.102718e+00   0.774127   -1315.414691    11
-6   population_female       simple-rnn   0.917243  1.546056e+00   0.952018   -1805.284201    14
+4   population_female              GRU   0.731105  1.326647e+00   0.761868    -906.950224    10
+5   population_female             LSTM   0.748053  1.102718e+00   0.774127   -1315.414691    11
+6   population_female              RNN   0.917243  1.546056e+00   0.952018   -1805.284201    14
 7   population_female  ensemble-arimax  30.238622  1.057600e+06  67.287719 -804473.192254    15
 8     population_male   ensemble-arima   0.164117  2.103296e-01   0.198891      -3.042964     4
 9     population_male          xgboost   0.149958  1.052209e-01   0.185871     -10.560817     2
 10    population_male         lightgbm   0.165890  1.383926e-01   0.195994     -13.530154     6
 11    population_male               rf   0.218337  4.520309e-01   0.247076     -16.156741     8
-12    population_male        base-lstm   0.636409  9.327216e-01   0.662322    -950.966584     9
-13    population_male         base-gru   0.749724  1.316380e+00   0.779522   -1060.654022    12
-14    population_male       simple-rnn   0.781984  1.418513e+00   0.829988   -1691.327587    13
+12    population_male             LSTM   0.636409  9.327216e-01   0.662322    -950.966584     9
+13    population_male              GRU   0.749724  1.316380e+00   0.779522   -1060.654022    12
+14    population_male              RNN   0.781984  1.418513e+00   0.829988   -1691.327587    13
 15    population_male  ensemble-arimax  30.238622  1.057600e+06  67.287719 -804473.192247    16
 ```
 
@@ -208,9 +208,9 @@
 7   0.164130  1.358177e-01   0.193887     -10.233497         lightgbm   9.0
 1   0.167004  2.205109e-01   0.202825      -3.034367   ensemble-arima  10.0
 6   0.220588  4.598631e-01   0.249659     -15.561229               rf  16.0
-3   0.703759  1.037625e+00   0.730663   -1072.765528        base-lstm  21.0
-4   0.758816  1.368895e+00   0.790422    -962.848544         base-gru  23.0
-2   0.855707  1.499688e+00   0.897700   -1724.578089       simple-rnn  28.0
+3   0.703759  1.037625e+00   0.730663   -1072.765528             LSTM  21.0
+4   0.758816  1.368895e+00   0.790422    -962.848544              GRU  23.0
+2   0.855707  1.499688e+00   0.897700   -1724.578089              RNN  28.0
 0  29.555098  1.035961e+06  65.822687 -786680.232731  ensemble-arimax  32.0
 ```
 

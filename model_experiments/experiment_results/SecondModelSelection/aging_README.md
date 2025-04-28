@@ -47,69 +47,69 @@
 ```
 
 
-## Model simple-rnn - top states
+## Model RNN - top states
 ```
-          mae       mse      rmse        r2                           state       model    rank
-565  0.833097  1.228834  0.927726  0.754899                        Honduras  simple-rnn  3526.0
-710  0.233231  0.084487  0.286763  0.595908                     New Zealand  simple-rnn   927.0
-534  0.549611  0.637874  0.721922  0.505780                     El Salvador  simple-rnn  2776.0
-508  0.393075  0.215022  0.452249  0.405069                          Canada  simple-rnn  1756.0
-673  0.371067  0.277969  0.493001  0.404321  St. Vincent and the Grenadines  simple-rnn  1867.0
-```
-
-
-## Model simple-rnn - worst states
-```
-          mae       mse      rmse           r2            state       model    rank
-479  1.973919  5.545804  2.097560  -710.123801           Angola  simple-rnn  7084.0
-474  0.339973  0.126383  0.351037  -939.057379      Afghanistan  simple-rnn  2978.0
-631  1.076350  1.726221  1.178741 -1150.117559            Niger  simple-rnn  5924.0
-682  1.474445  3.279030  1.567263 -1155.546908       Tajikistan  simple-rnn  6626.0
-664  0.817539  1.002656  0.884941 -4023.244168  Solomon Islands  simple-rnn  5162.0
+          mae       mse      rmse        r2                           state model    rank
+565  0.833097  1.228834  0.927726  0.754899                        Honduras   RNN  3526.0
+710  0.233231  0.084487  0.286763  0.595908                     New Zealand   RNN   927.0
+534  0.549611  0.637874  0.721922  0.505780                     El Salvador   RNN  2776.0
+508  0.393075  0.215022  0.452249  0.405069                          Canada   RNN  1756.0
+673  0.371067  0.277969  0.493001  0.404321  St. Vincent and the Grenadines   RNN  1867.0
 ```
 
 
-## Model base-lstm - top states
+## Model RNN - worst states
 ```
-          mae       mse      rmse        r2     state      model    rank
-769  0.360529  0.201748  0.402274  0.808446   Ecuador  base-lstm  1396.0
-915  0.246044  0.079364  0.280379  0.767009  Suriname  base-lstm   819.0
-731  0.898385  1.482235  1.058393  0.581302    Belize  base-lstm  3897.0
-852  0.544720  0.335171  0.564253  0.519771    Mexico  base-lstm  2262.0
-822  0.675522  0.860409  0.793211  0.428671     Kenya  base-lstm  3183.0
-```
-
-
-## Model base-lstm - worst states
-```
-           mae         mse       rmse           r2                   state      model    rank
-931  11.072154  139.884736  11.135324  -439.499574    United Arab Emirates  base-lstm  7557.0
-940   4.098937   20.753158   4.118071  -582.293446   Virgin Islands (U.S.)  base-lstm  7518.0
-735   1.286369    2.115042   1.451115  -653.446585  Bosnia and Herzegovina  base-lstm  6328.0
-901   0.310930    0.134763   0.332600 -1662.322688         Solomon Islands  base-lstm  2929.0
-888  10.854022  133.694320  10.931977 -1765.148953                   Qatar  base-lstm  7573.0
+          mae       mse      rmse           r2            state model    rank
+479  1.973919  5.545804  2.097560  -710.123801           Angola   RNN  7084.0
+474  0.339973  0.126383  0.351037  -939.057379      Afghanistan   RNN  2978.0
+631  1.076350  1.726221  1.178741 -1150.117559            Niger   RNN  5924.0
+682  1.474445  3.279030  1.567263 -1155.546908       Tajikistan   RNN  6626.0
+664  0.817539  1.002656  0.884941 -4023.244168  Solomon Islands   RNN  5162.0
 ```
 
 
-## Model base-gru - top states
+## Model LSTM - top states
 ```
-           mae       mse      rmse        r2                   state     model    rank
-1039  0.199642  0.049078  0.220859  0.892255                Honduras  base-gru   475.0
-983   0.260964  0.107845  0.314112  0.868836  Caribbean small states  base-gru   902.0
-1119  0.285071  0.137990  0.337911  0.857373             Philippines  base-gru  1047.0
-1032  0.325543  0.169204  0.341925  0.850811               Guatemala  base-gru  1188.0
-1117  0.365050  0.218685  0.422044  0.814855                Paraguay  base-gru  1458.0
+          mae       mse      rmse        r2     state model    rank
+769  0.360529  0.201748  0.402274  0.808446   Ecuador  LSTM  1396.0
+915  0.246044  0.079364  0.280379  0.767009  Suriname  LSTM   819.0
+731  0.898385  1.482235  1.058393  0.581302    Belize  LSTM  3897.0
+852  0.544720  0.335171  0.564253  0.519771    Mexico  LSTM  2262.0
+822  0.675522  0.860409  0.793211  0.428671     Kenya  LSTM  3183.0
 ```
 
 
-## Model base-gru - worst states
+## Model LSTM - worst states
 ```
-           mae       mse      rmse          r2                  state     model    rank
-995   1.033084  1.679813  1.077872 -376.009735                Croatia  base-gru  5752.0
-1138  0.334592  0.124232  0.342388 -378.485779        Solomon Islands  base-gru  2934.0
-1177  1.559376  2.480257  1.561449 -423.091562  Virgin Islands (U.S.)  base-gru  6525.0
-976   0.776282  1.181063  0.851974 -524.763441               Bulgaria  base-gru  5154.0
-1156  1.149760  1.783694  1.191561 -591.553795             Tajikistan  base-gru  5999.0
+           mae         mse       rmse           r2                   state model    rank
+931  11.072154  139.884736  11.135324  -439.499574    United Arab Emirates  LSTM  7557.0
+940   4.098937   20.753158   4.118071  -582.293446   Virgin Islands (U.S.)  LSTM  7518.0
+735   1.286369    2.115042   1.451115  -653.446585  Bosnia and Herzegovina  LSTM  6328.0
+901   0.310930    0.134763   0.332600 -1662.322688         Solomon Islands  LSTM  2929.0
+888  10.854022  133.694320  10.931977 -1765.148953                   Qatar  LSTM  7573.0
+```
+
+
+## Model GRU - top states
+```
+           mae       mse      rmse        r2                   state model    rank
+1039  0.199642  0.049078  0.220859  0.892255                Honduras   GRU   475.0
+983   0.260964  0.107845  0.314112  0.868836  Caribbean small states   GRU   902.0
+1119  0.285071  0.137990  0.337911  0.857373             Philippines   GRU  1047.0
+1032  0.325543  0.169204  0.341925  0.850811               Guatemala   GRU  1188.0
+1117  0.365050  0.218685  0.422044  0.814855                Paraguay   GRU  1458.0
+```
+
+
+## Model GRU - worst states
+```
+           mae       mse      rmse          r2                  state model    rank
+995   1.033084  1.679813  1.077872 -376.009735                Croatia   GRU  5752.0
+1138  0.334592  0.124232  0.342388 -378.485779        Solomon Islands   GRU  2934.0
+1177  1.559376  2.480257  1.561449 -423.091562  Virgin Islands (U.S.)   GRU  6525.0
+976   0.776282  1.181063  0.851974 -524.763441               Bulgaria   GRU  5154.0
+1156  1.149760  1.783694  1.191561 -591.553795             Tajikistan   GRU  5999.0
 ```
 
 
@@ -186,26 +186,26 @@
 1           population_ages_0-14          xgboost  0.478217   0.667427  0.606794    -2.497383     6
 2           population_ages_0-14   ensemble-arima  0.656464   1.359651  0.814877    -6.946118    11
 3           population_ages_0-14               rf  0.731907   1.371745  0.846763   -14.960379    13
-4           population_ages_0-14        base-lstm  1.258235   2.961044  1.327640   -38.478883    18
-5           population_ages_0-14         base-gru  1.032458   2.035067  1.102606   -48.452562    16
-6           population_ages_0-14       simple-rnn  1.719437   5.085545  1.873695   -62.701022    21
+4           population_ages_0-14             LSTM  1.258235   2.961044  1.327640   -38.478883    18
+5           population_ages_0-14              GRU  1.032458   2.035067  1.102606   -48.452562    16
+6           population_ages_0-14              RNN  1.719437   5.085545  1.873695   -62.701022    21
 7           population_ages_0-14  ensemble-arimax  1.674727  60.287081  1.977694 -1127.636009    20
 8          population_ages_15-64          xgboost  0.544665   1.033470  0.687576    -3.305675     8
 9          population_ages_15-64         lightgbm  0.606528   1.126280  0.735565    -4.340259     9
 10         population_ages_15-64   ensemble-arima  0.834058   2.029728  1.028809    -5.558373    14
-11         population_ages_15-64         base-gru  1.038094   2.136933  1.128540   -17.537314    17
+11         population_ages_15-64              GRU  1.038094   2.136933  1.128540   -17.537314    17
 12         population_ages_15-64               rf  1.026569   2.791326  1.195392   -19.449460    15
-13         population_ages_15-64        base-lstm  1.926743   8.223467  2.023543   -32.524107    24
-14         population_ages_15-64       simple-rnn  1.769856   5.027429  1.916310   -58.992910    22
+13         population_ages_15-64             LSTM  1.926743   8.223467  2.023543   -32.524107    24
+14         population_ages_15-64              RNN  1.769856   5.027429  1.916310   -58.992910    22
 15         population_ages_15-64  ensemble-arimax  1.892892  64.122585  2.241989 -2217.177694    23
 16  population_ages_65_and_above               rf  0.455044   0.720366  0.544857    -2.737803     5
 17  population_ages_65_and_above   ensemble-arima  0.386520   0.509008  0.489265    -3.444971     3
 18  population_ages_65_and_above          xgboost  0.295210   0.380312  0.373121    -4.008964     1
 19  population_ages_65_and_above         lightgbm  0.297900   0.377071  0.359557    -4.307343     2
 20  population_ages_65_and_above  ensemble-arimax  0.629898   1.256158  0.761840   -11.284446    10
-21  population_ages_65_and_above         base-gru  0.523149   0.603195  0.567575   -26.990299     7
-22  population_ages_65_and_above        base-lstm  1.326672   3.924366  1.383892  -108.493627    19
-23  population_ages_65_and_above       simple-rnn  0.668340   0.972692  0.727008  -132.926165    12
+21  population_ages_65_and_above              GRU  0.523149   0.603195  0.567575   -26.990299     7
+22  population_ages_65_and_above             LSTM  1.326672   3.924366  1.383892  -108.493627    19
+23  population_ages_65_and_above              RNN  0.668340   0.972692  0.727008  -132.926165    12
 ```
 
 
@@ -216,10 +216,10 @@
 7  0.474313   0.730706  0.571284   -3.477708         lightgbm   6.0
 1  0.662969   1.390415  0.825622   -5.468615   ensemble-arima  12.0
 6  0.748777   1.724899  0.879608  -11.892065               rf  17.0
-4  0.843680   1.546331  0.915101  -25.179205         base-gru  19.0
-2  1.403268   3.794362  1.529983  -73.651774       simple-rnn  27.0
+4  0.843680   1.546331  0.915101  -25.179205              GRU  19.0
+2  1.403268   3.794362  1.529983  -73.651774              RNN  27.0
 0  1.195244  17.666922  1.427050 -430.936536  ensemble-arimax  28.0
-3  1.474452   4.927603  1.550890  -50.803958        base-lstm  29.0
+3  1.474452   4.927603  1.550890  -50.803958             LSTM  29.0
 ```
 
 

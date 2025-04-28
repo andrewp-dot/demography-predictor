@@ -1,4 +1,5 @@
-# Local model benchmark
+# Model experiments
+
 
 TODO: description
 
@@ -6,5 +7,3 @@ TODO: description
 
 TODO: description
 
-### ARIMA implementation
-https://www.statology.org/how-to-implement-arima-modeling-in-python/
