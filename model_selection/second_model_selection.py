@@ -110,6 +110,7 @@ class SecondModelSelection(BaseExperiment):
 
         # If empty select all states
         self.EVALUATION_STATES: List[str] = None  # If None, select all
+        self.EVALUATION_STATES: List[str] = ["Czechia"]
 
         # Training stats of trained neural networks
         self.rnn_training_stats: Dict[str, TrainingStats] = {}
@@ -143,6 +144,7 @@ class SecondModelSelection(BaseExperiment):
 
         for name in self.TREE_NAMES:
             # Get model hyperparameters and save them do local variable object of the class
+            name = f"{self.TARGET_GROUP_PREFIX}_{name}"  # Update name due to multiple parameters predictions
             raw_params = to_compare_pipelines[name].model.model.get_params()
 
             self.tree_params[name] = make_json_serializable(raw_params)
@@ -169,7 +171,9 @@ class SecondModelSelection(BaseExperiment):
         # Save training stats for RNNs
         for index, name in enumerate(self.RNN_NAMES):
             stats = TrainingStats.from_dict(
-                stats_dict=TO_COMPARE_PIPELINES[name].model.training_stats
+                stats_dict=TO_COMPARE_PIPELINES[
+                    f"{self.TARGET_GROUP_PREFIX}_{name}"
+                ].model.training_stats
             )
 
             # Set labels and title
@@ -201,6 +205,7 @@ class SecondModelSelection(BaseExperiment):
         split_rate: float = 0.8,
         display_nth_epoch: int = 1,
         force_retrain: bool = False,
+        evaluation_states: Optional[List[str]] = None,
     ) -> Dict[str, TargetModelPipeline]:
 
         # Try to get the models
@@ -214,10 +219,16 @@ class SecondModelSelection(BaseExperiment):
                 logger.info(f"Models not found. Reatraining all models ({e}).")
 
         # Train ensemble ARIMAX model - ARIMAX model for each target for each state
+
+        if evaluation_states:
+            arima_data = {state: data[state] for state in evaluation_states}
+        else:
+            arima_data = data
+
         name = f"{self.TARGET_GROUP_PREFIX}_ARIMAX"
         TO_COMPARE_PIPELINES[name] = train_global_arima_ensemble(
             name=name,
-            data=data,
+            data=arima_data,
             features=self.FEATURES,
             targets=self.TARGETS,
             split_rate=split_rate,
@@ -230,7 +241,7 @@ class SecondModelSelection(BaseExperiment):
         name = f"{self.TARGET_GROUP_PREFIX}_ARIMA"
         TO_COMPARE_PIPELINES[name] = train_global_arima_ensemble(
             name=name,
-            data=data,
+            data=arima_data,
             features=[],
             targets=self.TARGETS,
             split_rate=split_rate,
@@ -363,6 +374,7 @@ class SecondModelSelection(BaseExperiment):
             force_retrain=force_retrain,
             split_rate=split_rate,
             display_nth_epoch=DISPLAY_NTH_EPOCH,
+            evaluation_states=evaluation_states,
         )
 
         comparator = ModelComparator()
@@ -391,25 +403,20 @@ class SecondModelSelection(BaseExperiment):
 
         # Print bast performing and worst performing states for each method
         for model in self.MODEL_NAMES:
+
             model_state_metrics_df = overall_metrics_per_state_df[
                 overall_metrics_per_state_df["model"] == model
             ].sort_values(by=["r2", "mse"], ascending=[False, True])
 
-            # Top 5 best states
-            model_state_metrics_df.head(5)
-
-            # Top 5 worst states
-            model_state_metrics_df.tail(5)
-
             # Write section
             self.readme_add_section(
                 title=f"## Model {model} - top states",
-                text=f"```\n{model_state_metrics_df.head()}\n```\n\n",
+                text=f"```\n{model_state_metrics_df.head(3)}\n```\n\n",
             )
 
             self.readme_add_section(
                 title=f"## Model {model} - worst states",
-                text=f"```\n{model_state_metrics_df.tail()}\n```\n\n",
+                text=f"```\n{model_state_metrics_df.tail(3)}\n```\n\n",
             )
 
         # Remove 'state' column as we don't need it anymore
@@ -451,14 +458,14 @@ if __name__ == "__main__":
         target_group_prefix="aging",
     )
 
-    exp_aging.run(split_rate=0.8, force_retrain=True)
+    exp_aging.run(split_rate=0.8, force_retrain=False)
 
     # Experiment for population total
     exp_pop_total = SecondModelSelection(
         description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
         target_group_prefix="pop_total",
     )
-    exp_pop_total.run(split_rate=0.8, force_retrain=True)
+    exp_pop_total.run(split_rate=0.8, force_retrain=False)
 
     # Experiment for gender distribution
     exp_gender_dist = SecondModelSelection(
@@ -466,4 +473,4 @@ if __name__ == "__main__":
         target_group_prefix="gender_dist",
     )
 
-    exp_gender_dist.run(split_rate=0.8, force_retrain=True)
+    exp_gender_dist.run(split_rate=0.8, force_retrain=False)

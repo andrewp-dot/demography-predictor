@@ -182,7 +182,9 @@ class FeatureModelPipeline(BasePipeline):
 
             # Inverse transform
             future_feature_values_scaled = self.transformer.transform_data(
-                data=future_feature_values_scaled, columns=TARGETS, inverse=True
+                data=future_feature_values_scaled,
+                columns=TARGETS,
+                inverse=True,
             )
 
         else:
@@ -273,7 +275,7 @@ class TargetModelPipeline(BasePipeline):
 
         # Inverse transform
         inverse_transformed_pred_df = self.transformer.transform_data(
-            data=prediction_df, columns=COLUMNS, inverse=True
+            data=prediction_df, columns=self.model.TARGETS, inverse=True
         )
 
         return inverse_transformed_pred_df

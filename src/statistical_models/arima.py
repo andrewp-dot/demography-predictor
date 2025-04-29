@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from typing import List, Optional, Tuple
 import warnings
+from itertools import product
 
 from statsmodels.tsa.arima.model import ARIMA
 
@@ -69,38 +70,36 @@ class CustomARIMA:
         self,
         target_values: np.ndarray,
         exog_values: np.ndarray,
-        max_p: int = 5,
+        max_p: int = 3,
         max_d: int = 3,
-        max_q: int = 5,
+        max_q: int = 3,
     ) -> Tuple[int, int, int]:
         best_aic = np.inf
         best_order = (0, 0, 0)
 
         # Iterate over possible p, d, q values
-        for p in range(max_p):
-            for d in range(max_d):  # Usually 0 or 1 for differencing
-                for q in range(max_q):
-                    try:
-                        with warnings.catch_warnings():
-                            warnings.filterwarnings("ignore")
-                            model = ARIMA(
-                                endog=target_values,
-                                exog=exog_values,
-                                order=(p, d, q),
-                                enforce_stationarity=True,
-                                enforce_invertibility=False,
-                                trend=self.trend,
-                            )
+        for p, d, q in product(range(max_p), range(max_d), range(max_q)):
+            try:
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore")
+                    model = ARIMA(
+                        endog=target_values,
+                        exog=exog_values,
+                        order=(p, d, q),
+                        enforce_stationarity=True,
+                        enforce_invertibility=False,
+                        trend=self.trend,
+                    )
 
-                            model_fit = model.fit()
-                        current_aic = model_fit.aic
-                        if current_aic < best_aic:
-                            best_aic = current_aic
-                            best_order = (p, d, q)
-                    except KeyboardInterrupt as e:
-                        raise KeyboardInterrupt(e)
-                    except:
-                        continue
+                    model_fit = model.fit()
+                current_aic = model_fit.aic
+                if current_aic < best_aic:
+                    best_aic = current_aic
+                    best_order = (p, d, q)
+            except KeyboardInterrupt as e:
+                raise KeyboardInterrupt(e)
+            except:
+                continue
 
         return best_order
 

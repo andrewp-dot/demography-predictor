@@ -51,13 +51,6 @@ class FirstModelExperiment(BaseExperiment):
         "feature_GRU",
         "feature_LSTM",
         "feature_LSTM_NN",
-        # Maybe do this?
-        # "feature_univariate_RNN",
-        # "feature_univariate_GRU",
-        # "feature_univariate_LSTM",
-        # "xgboost",
-        # "rf",
-        # "lightgbm",
     ]
 
     # Need to save this to save their training stats for plot
@@ -244,6 +237,36 @@ class FirstModelExperiment(BaseExperiment):
             custom_dir=self.SAVE_MODEL_DIR
         )
 
+        logger.info("Training RNN + NN...")
+        TO_COMPARE_PIPELINES["feature_RNN_NN"] = train_base_rnn(
+            name="feature_RNN_NN",
+            hyperparameters=self.RNN_NN_HYPERPARAMETERS,
+            data=data,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=display_nth_epoch,
+            rnn_type=nn.RNN,
+            additional_bpnn=[32],
+        )
+        TO_COMPARE_PIPELINES["feature_RNN_NN"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
+
+        logger.info("Training GRU + NN...")
+        TO_COMPARE_PIPELINES["feature_RNN_NN"] = train_base_rnn(
+            name="feature_RNN_NN",
+            hyperparameters=self.RNN_NN_HYPERPARAMETERS,
+            data=data,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=display_nth_epoch,
+            rnn_type=nn.GRU,
+            additional_bpnn=[32],
+        )
+        TO_COMPARE_PIPELINES["feature_GRU_NN"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
+
         # Plot loss for all rnns or nns
         self.__plot_rnn_model_losses(TO_COMPARE_PIPELINES=TO_COMPARE_PIPELINES)
 
@@ -300,21 +323,15 @@ class FirstModelExperiment(BaseExperiment):
                 overall_metrics_per_state_df["model"] == model
             ].sort_values(by=["r2", "mse"], ascending=[False, True])
 
-            # Top 5 best states
-            model_state_metrics_df.head(5)
-
-            # Top 5 worst states
-            model_state_metrics_df.tail(5)
-
             # Write section
             self.readme_add_section(
                 title=f"## Model {model} - top states",
-                text=f"```\n{model_state_metrics_df.head()}\n```\n\n",
+                text=f"```\n{model_state_metrics_df.head(3)}\n```\n\n",
             )
 
             self.readme_add_section(
                 title=f"## Model {model} - worst states",
-                text=f"```\n{model_state_metrics_df.tail()}\n```\n\n",
+                text=f"```\n{model_state_metrics_df.tail(3)}\n```\n\n",
             )
 
         # Remove 'state' column as we don't need it anymore
@@ -346,6 +363,10 @@ class FirstModelExperiment(BaseExperiment):
         )
 
 
+class ARIMAvsUnivariateRNN(BaseExperiment):
+    pass
+
+
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
@@ -354,10 +375,11 @@ if __name__ == "__main__":
         description="Compare models for predicting all features which are used for target predictions."
     )
 
-    # exp.run(force_reatrain=True)
+    # Run for all
+    exp.run(force_reatrain=True)
 
-    STATE = "Brunei Darussalam"
-    exp.run(evaluation_states=["Brazil", "Qatar", STATE], force_reatrain=True)
+    # STATE = "Brunei Darussalam"
+    # exp.run(evaluation_states=["Brazil", "Qatar", STATE], force_reatrain=True)
 
     # models = exp.get_models(model_names=["feature_ARIMA"])
 

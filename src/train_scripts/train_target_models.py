@@ -12,9 +12,11 @@ from sklearn.ensemble import RandomForestRegressor
 
 # Custom imports
 from src.utils.log import setup_logging
+from src.utils.constants import categorical_columns
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
+
 
 from src.base import RNNHyperparameters
 from src.pipeline import TargetModelPipeline
@@ -218,6 +220,8 @@ def train_global_arima_ensemble(
     loader = StateDataLoader(state=list(data.keys())[0])
     state_data = loader.load_data()
 
+    transformer = DataTransformer()
+
     global_states_models: Dict[str, PureEnsembleModel] = {}
     for state, state_data in data.items():
 
@@ -229,6 +233,17 @@ def train_global_arima_ensemble(
 
         # Split data
         train_df, _ = loader.split_data(data=state_data, split_rate=split_rate)
+
+        # Transform data
+        columns = list(train_df.columns)
+
+        # Remove categorical columns
+        for categorical_col in categorical_columns():
+            columns.remove(categorical_col)
+
+        transformed_train_df = transformer.transform_data(
+            data=train_df, columns=columns
+        )
 
         # Train and save models
         trained_models: Dict[str, CustomARIMA] = {}
@@ -246,7 +261,7 @@ def train_global_arima_ensemble(
             )
 
             # Train model
-            arima.train_model(data=train_df)
+            arima.train_model(data=transformed_train_df)
 
             # Save trained model
             trained_models[target] = arima

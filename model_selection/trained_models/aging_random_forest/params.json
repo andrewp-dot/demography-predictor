@@ -1,0 +1,22 @@
+{
+    "estimator__bootstrap": true,
+    "estimator__ccp_alpha": 0.0,
+    "estimator__criterion": "squared_error",
+    "estimator__max_depth": null,
+    "estimator__max_features": 1.0,
+    "estimator__max_leaf_nodes": null,
+    "estimator__max_samples": null,
+    "estimator__min_impurity_decrease": 0.0,
+    "estimator__min_samples_leaf": 20,
+    "estimator__min_samples_split": 2,
+    "estimator__min_weight_fraction_leaf": 0.0,
+    "estimator__monotonic_cst": null,
+    "estimator__n_estimators": 100,
+    "estimator__n_jobs": null,
+    "estimator__oob_score": false,
+    "estimator__random_state": 42,
+    "estimator__verbose": 0,
+    "estimator__warm_start": false,
+    "estimator": "RandomForestRegressor(min_samples_leaf=20, random_state=42)",
+    "n_jobs": null
+}

@@ -263,7 +263,6 @@ class ModelComparator:
                 states_evaluation_for_model: pd.DataFrame | None = None
                 for state in train_data_dict.keys():
 
-                    print(state)
                     # Get per target per state evaluation
                     model_evaluation.eval(
                         test_X=train_data_dict[state], test_y=test_data_dict[state]
