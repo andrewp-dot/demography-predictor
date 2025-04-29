@@ -4,10 +4,8 @@ import torch
 from torch import nn
 import copy
 
-import warnings
 
 from typing import List, Tuple, Union, Dict, Optional, Type
-from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 import pprint
 
@@ -318,10 +316,10 @@ def train_arima_ensemble_all_states(
     data: Dict[str, pd.DataFrame],
     features: List[str],
     split_rate: float = 0.8,
+    min_required_points: int = 10,
     p: int = 1,
     d: int = 1,
     q: int = 1,
-    min_required_points: int = 10,
 ) -> FeatureModelPipeline:
     """
     Trains CustomARIMA model
@@ -337,7 +335,6 @@ def train_arima_ensemble_all_states(
         out: TargetModelPipeline: Pipeline with arima ensemble model. Note: transformer in this pipeline is not fitted -> pipeline is created in order to be compatible with comparators etc.
     """
 
-    pprint.pprint(features)
     # Need this loader just to split the state data
     loader = StateDataLoader(state=list(data.keys())[0])
     state_data = loader.load_data()
@@ -386,33 +383,7 @@ def train_arima_ensemble_all_states(
                 features=arima_model_features,
                 target=target,
                 index="year",
-                trend="n" if d == 0 else None,
             )
-
-            # Train model
-            try:
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("error", category=ConvergenceWarning)
-                    arima.train_model(data=transformed_train_df)
-
-            except ConvergenceWarning:
-                print(
-                    f"ConvergenceWarning for {state}-{target}: trying simpler ARIMA..."
-                )
-                # Try a simpler model if it fails
-                simpler_arima = CustomARIMA(
-                    p=1,
-                    d=0,
-                    q=0,
-                    features=arima_model_features,
-                    target=target,
-                    index="year",
-                    trend="n",
-                )
-                simpler_arima.train_model(data=transformed_train_df)
-                trained_models[target] = simpler_arima
-            else:
-                trained_models[target] = arima
 
             # Train model
             arima.train_model(data=transformed_train_df)

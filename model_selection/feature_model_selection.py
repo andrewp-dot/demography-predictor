@@ -178,9 +178,6 @@ class FirstModelExperiment(BaseExperiment):
             data=arima_data,
             features=self.FEATURES,
             split_rate=split_rate,
-            p=1,
-            d=1,
-            q=1,
         )
         TO_COMPARE_PIPELINES["feature_ARIMA"].save_pipeline(
             custom_dir=self.SAVE_MODEL_DIR
@@ -357,10 +354,10 @@ if __name__ == "__main__":
         description="Compare models for predicting all features which are used for target predictions."
     )
 
-    exp.run(force_reatrain=True)
+    # exp.run(force_reatrain=True)
 
-    # STATE = "Brunei Darussalam"
-    # exp.run(evaluation_states=["Brazil", "Qatar", STATE], force_reatrain=True)
+    STATE = "Brunei Darussalam"
+    exp.run(evaluation_states=["Brazil", "Qatar", STATE], force_reatrain=True)
 
     # models = exp.get_models(model_names=["feature_ARIMA"])
 
