@@ -1,16 +1,16 @@
 import os
-from model_experiments.config import LocalModelBenchmarkSettings
+from model_experiments.config import FeatureModelBenchmarkSettings
 from abc import abstractmethod
 from matplotlib.figure import Figure
 from typing import List, Union
 
-from src.local_model.model import CustomModelBase
-from src.local_model.model import BaseRNN
-from src.local_model.finetunable_model import FineTunableLSTM
+from src.feature_model.model import CustomModelBase
+from src.feature_model.model import BaseRNN
+from src.feature_model.finetunable_model import FineTunableLSTM
 from src.base import RNNHyperparameters
 
 # Get settings
-settings = LocalModelBenchmarkSettings()
+settings = FeatureModelBenchmarkSettings()
 
 
 class BaseExperiment:

@@ -4,7 +4,7 @@ from typing import List, Dict
 
 # Custom imports
 
-from src.local_model.ensemble_model import PureEnsembleModel
+from src.feature_model.ensemble_model import PureEnsembleModel
 
 
 # TODO make this not just for one model, but train X MILLION models for every states (bcs it is fcking shitty arima which needs to be fitted just only ON ONE FUCKING STATE)

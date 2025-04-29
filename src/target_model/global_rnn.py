@@ -30,7 +30,7 @@ from src.preprocessors.data_transformer import DataTransformer
 logger = logging.getLogger("local_model")
 
 
-class GlobalModelRNN(CustomModelBase):
+class TargetModelRNN(CustomModelBase):
 
     def __init__(
         self,
@@ -42,7 +42,7 @@ class GlobalModelRNN(CustomModelBase):
         rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
     ):
 
-        super(GlobalModelRNN, self).__init__(
+        super(TargetModelRNN, self).__init__(
             features=features,
             targets=targets,
             hyperparameters=hyperparameters,
@@ -378,7 +378,7 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
         batch_size=32,
         output_size=len(TARGETS),
     )
-    rnn = GlobalModelRNN(
+    rnn = TargetModelRNN(
         hyperparameters, features=WHOLE_MODEL_FEATURES, targets=TARGETS
     )
 

@@ -19,11 +19,11 @@ from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
-from src.local_model.model import RNNHyperparameters, BaseRNN
-from src.local_model.finetunable_model import FineTunableLSTM
-from src.local_model.ensemble_model import PureEnsembleModel
+from src.feature_model.model import RNNHyperparameters, BaseRNN
+from src.feature_model.finetunable_model import FineTunableLSTM
+from src.feature_model.ensemble_model import PureEnsembleModel
 
-from src.pipeline import LocalModelPipeline
+from src.pipeline import FeatureModelPipeline
 
 
 settings = Config()

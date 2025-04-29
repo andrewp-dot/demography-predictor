@@ -10,12 +10,12 @@ from typing import List, Dict, Union
 from src.utils.log import setup_logging
 from src.base import CustomModelBase, RNNHyperparameters
 
-from src.pipeline import LocalModelPipeline
+from src.pipeline import FeatureModelPipeline
 from src.evaluation import EvaluateModel
 
 from src.utils.constants import get_core_hyperparameters
 
-from src.train_scripts.train_local_models import preprocess_data
+from train_scripts.train_feature_models import preprocess_data
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
@@ -333,7 +333,7 @@ def create_seq_to_seq():
         display_nth_epoch=1,
     )
 
-    pipeline = LocalModelPipeline(
+    pipeline = FeatureModelPipeline(
         name="seq2seq", transformer=transformer, model=Seq2Seq
     )
 
@@ -342,7 +342,7 @@ def create_seq_to_seq():
 
 def eval():
 
-    pipeline = LocalModelPipeline.get_pipeline(name="seq2seq")
+    pipeline = FeatureModelPipeline.get_pipeline(name="seq2seq")
     evaluation = EvaluateModel(pipeline=pipeline)
 
     loader = StatesDataLoader()

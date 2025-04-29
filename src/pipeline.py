@@ -16,12 +16,12 @@ from src.preprocessors.data_transformer import DataTransformer
 from src.base import TrainingStats
 
 
-from src.local_model.model import RNNHyperparameters, BaseRNN
-from src.local_model.finetunable_model import FineTunableLSTM
-from src.local_model.ensemble_model import PureEnsembleModel
+from src.feature_model.model import RNNHyperparameters, BaseRNN
+from src.feature_model.finetunable_model import FineTunableLSTM
+from src.feature_model.ensemble_model import PureEnsembleModel
 
-from src.global_model.model import GlobalModelTree
-from src.global_model.global_rnn import GlobalModelRNN
+from src.target_model.model import TargetModelTree
+from src.target_model.global_rnn import TargetModelRNN
 from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
 
 
@@ -30,11 +30,16 @@ settings = Config()
 
 class BasePipeline:
 
-    def __init__(self, model: Any, transformer: DataTransformer, name: str):
+    def __init__(
+        self,
+        name: str,
+        model: Any,
+        transformer: Optional[DataTransformer] = None,
+    ):
 
         self.name: str = name
         self.model: Any = model
-        self.transformer: DataTransformer = transformer
+        self.transformer: Optional[DataTransformer] = transformer
 
     def save_pipeline(self, custom_dir: Optional[str] = None):
         """
@@ -60,7 +65,10 @@ class BasePipeline:
 
         # Save local model and its transformer
         save_to_pipeline_dir(model=self.model, name="model.pkl")
-        save_to_pipeline_dir(model=self.transformer, name="transformer.pkl")
+
+        # Save the data transformer if any
+        if self.transformer:
+            save_to_pipeline_dir(model=self.transformer, name="transformer.pkl")
 
     @classmethod
     def get_pipeline(
@@ -99,12 +107,17 @@ class BasePipeline:
 
         # Save local model and its transformer
         model = get_from_pipeline_dir(name="model.pkl")
-        transformer = get_from_pipeline_dir(name="transformer.pkl")
+
+        # Get transformer if any
+        try:
+            transformer = get_from_pipeline_dir(name="transformer.pkl")
+        except:
+            pass
 
         return cls(name=name, model=model, transformer=transformer)
 
 
-class LocalModelPipeline(BasePipeline):
+class FeatureModelPipeline(BasePipeline):
 
     # Set the correct typehints
     model: Union["BaseRNN", "FineTunableLSTM", "PureEnsembleModel"]
@@ -117,7 +130,7 @@ class LocalModelPipeline(BasePipeline):
         name: str = "local_model_pipeline",
         training_stats: Optional["TrainingStats"] = None,
     ):
-        super(LocalModelPipeline, self).__init__(
+        super(FeatureModelPipeline, self).__init__(
             model=model, transformer=transformer, name=name
         )
         self.training_stats = training_stats
@@ -128,18 +141,12 @@ class LocalModelPipeline(BasePipeline):
         FEATURES: List[str] = self.model.FEATURES
         TARGETS: List[str] = self.model.TARGETS
 
-        # Scale data
-
-        # If it is pure ensemble model and transformer is None, it is supposed that it is ensemble local arima model
-        SUPPOSED_ARIMA_MODEL: bool = False
-        if (
-            isinstance(self.model, PureEnsembleModel)
-            and self.transformer.SCALER is None
-        ):
+        # Scale data if needed
+        SCALE_DATA: bool = not self.transformer is None
+        if SCALE_DATA:
             scaled_data_df = input_data
-            SUPPOSED_ARIMA_MODEL = True
 
-        elif FEATURES == TARGETS:
+        if FEATURES == TARGETS:
             scaled_data_df = self.transformer.scale_data(
                 data=input_data,
                 features=FEATURES,
@@ -149,6 +156,7 @@ class LocalModelPipeline(BasePipeline):
                 data=input_data, features=FEATURES, targets=TARGETS
             )
 
+        # Predict by the model
         future_feature_values_scaled = self.model.predict(
             input_data=scaled_data_df[FEATURES],
             last_year=last_year,
@@ -159,27 +167,27 @@ class LocalModelPipeline(BasePipeline):
             future_feature_values_scaled, columns=FEATURES
         )
 
-        # Unscale targets
-        if SUPPOSED_ARIMA_MODEL:
-            future_feature_values_df = future_feature_values_scaled_df
-        else:
+        # Unscale targets if needed
+        if SCALE_DATA:
             future_feature_values_df = self.transformer.unscale_data(
                 data=future_feature_values_scaled_df, targets=TARGETS
             )
+        else:
+            future_feature_values_df = future_feature_values_scaled_df
 
         return future_feature_values_df
 
 
-class GlobalModelPipeline(BasePipeline):
+class TargetModelPipeline(BasePipeline):
 
     def __init__(
         self,
-        model: GlobalModelTree,
+        model: TargetModelTree,
         transformer: DataTransformer,
         name: str = "global_model_pipeline",
     ):
         self.name: str = name
-        self.model: Union[GlobalModelTree, GlobalModelRNN] = model
+        self.model: Union[TargetModelTree, TargetModelRNN] = model
         self.transformer: DataTransformer = transformer
 
     def __tree_based_model_predict(
@@ -242,7 +250,7 @@ class GlobalModelPipeline(BasePipeline):
         # Scale features
         TO_SCALE_TARGETS = TARGETS
         # If there is tree based model -> do not scale the targets
-        if isinstance(self.model, GlobalModelTree):
+        if isinstance(self.model, TargetModelTree):
             TO_SCALE_TARGETS = None
 
         scaled_data_df = self.transformer.scale_data(
@@ -273,7 +281,7 @@ class GlobalModelPipeline(BasePipeline):
             )
 
             # Predict next target
-            if isinstance(self.model, GlobalModelTree):
+            if isinstance(self.model, TargetModelTree):
                 next_target_preds = self.__tree_based_model_predict(
                     input_data_batch=input_batch_df
                 )
@@ -281,7 +289,7 @@ class GlobalModelPipeline(BasePipeline):
                 # Convert to tensor
                 next_target_preds = next_target_preds.values  # (samples, target_num)
 
-            elif isinstance(self.model, GlobalModelRNN):
+            elif isinstance(self.model, TargetModelRNN):
                 next_target_preds = self.__rnn_based_model_predict(
                     input_data_batch=input_batch_df
                 )
@@ -349,7 +357,7 @@ class GlobalModelPipeline(BasePipeline):
 
             if state is None:
                 raise ValueError(
-                    "For the GlobalModelPipeline with model of type 'StatisticalMultistateWrapper' need state to be provided as argument!"
+                    "For the TargetModelPipeline with model of type 'StatisticalMultistateWrapper' need state to be provided as argument!"
                 )
 
             return self.__statistical_model_predict(
@@ -373,8 +381,8 @@ class PredictorPipeline:
     def __init__(
         self,
         name: str,
-        local_model_pipeline: LocalModelPipeline,
-        global_model_pipeline: GlobalModelPipeline,
+        local_model_pipeline: FeatureModelPipeline,
+        global_model_pipeline: TargetModelPipeline,
     ):
         # Name for storing the pipeline
         self.name: str = name
@@ -524,7 +532,7 @@ class PredictorPipeline:
         local_model = get_from_pipeline_dir(name="local_model.pkl")
         local_transformer = get_from_pipeline_dir(name="local_transformer.pkl")
 
-        lm_pipeline = LocalModelPipeline(
+        lm_pipeline = FeatureModelPipeline(
             model=local_model, transformer=local_transformer
         )
 
@@ -532,7 +540,7 @@ class PredictorPipeline:
         global_model = get_from_pipeline_dir(name="global_model.pkl")
         global_transformer = get_from_pipeline_dir(name="global_transformer.pkl")
 
-        gm_pipeline = GlobalModelPipeline(
+        gm_pipeline = TargetModelPipeline(
             model=global_model, transformer=global_transformer
         )
 

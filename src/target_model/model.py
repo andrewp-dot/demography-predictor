@@ -80,7 +80,7 @@ class XGBoostTuneParams(BaseModel):
         return modified_dict
 
 
-class GlobalModelTree:
+class TargetModelTree:
 
     def __init__(
         self,
@@ -309,7 +309,7 @@ class GlobalModelTree:
 
     def eval(self, X_test: pd.DataFrame, y_test: pd.DataFrame) -> None:
         """
-        Evaluates model using test data. Saves the data into the `evaluation_results` parameter of the GlobalModelTree class.
+        Evaluates model using test data. Saves the data into the `evaluation_results` parameter of the TargetModelTree class.
 
         Args:
             X_test (pd.DataFrame): Test input data.
@@ -330,7 +330,7 @@ class GlobalModelTree:
             {"mse": [mse], "rmse": [rmse], "mae": [mae], "r2": [r2]}
         )
 
-        logger.info(f"GlobalModelTree evaluation:\n{self.evaluation_results}")
+        logger.info(f"TargetModelTree evaluation:\n{self.evaluation_results}")
 
     def predict_human_readable(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -379,7 +379,7 @@ def try_single_target_global_model():
     )
 
     # Create global model
-    gm = GlobalModelTree(
+    gm = TargetModelTree(
         model=XGBRegressor(objective="reg:squarederror", random_state=42),
         features=FEATURES,
         targets=targets,
@@ -452,7 +452,7 @@ def try_sequences_creation():
         ]
     ]
 
-    gm = GlobalModelTree(
+    gm = TargetModelTree(
         model=XGBRegressor(), features=FEATURES, targets=targets, sequence_len=10
     )
     inputs, outputs = gm.create_state_inputs_outputs(states_dict=state_dfs)

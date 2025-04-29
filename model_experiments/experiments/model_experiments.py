@@ -16,7 +16,7 @@ from src.utils.constants import (
 )
 
 from model_experiments.config import (
-    LocalModelBenchmarkSettings,
+    FeatureModelBenchmarkSettings,
 )
 
 from src.utils.constants import get_core_hyperparameters
@@ -24,8 +24,8 @@ from src.utils.constants import get_core_hyperparameters
 # from src.utils.save_model import save_experiment_model, get_experiment_model
 from src.state_groups import StatesByGeolocation, StatesByWealth
 
-from src.pipeline import LocalModelPipeline
-from src.train_scripts.train_local_models import (
+from src.pipeline import FeatureModelPipeline
+from train_scripts.train_feature_models import (
     train_base_rnn,
     train_finetunable_model,
     train_finetunable_model_from_scratch,
@@ -36,9 +36,9 @@ from src.train_scripts.train_local_models import (
 from src.compare_models.compare import ModelComparator
 
 from model_experiments.base_experiment import BaseExperiment
-from src.local_model.model import RNNHyperparameters, BaseRNN
+from src.feature_model.model import RNNHyperparameters, BaseRNN
 
-from src.local_model.ensemble_model import (
+from src.feature_model.ensemble_model import (
     PureEnsembleModel,
     # train_models_for_ensemble_model,
     # train_arima_models_for_ensemble_model,
@@ -47,7 +47,7 @@ from src.local_model.ensemble_model import (
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 
-settings = LocalModelBenchmarkSettings()
+settings = FeatureModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
 
 
@@ -84,7 +84,7 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
         states_loader: StatesDataLoader,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> LocalModelPipeline:
+    ) -> FeatureModelPipeline:
 
         # Preprocess data
         states_data_dict = states_loader.load_all_states()
@@ -103,7 +103,7 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
 
     def __train_ensemble_model(
         self, split_rate: float, display_nth_epoch=10
-    ) -> LocalModelPipeline:
+    ) -> FeatureModelPipeline:
 
         loader = StatesDataLoader()
         all_states_dict = loader.load_all_states()
@@ -123,7 +123,7 @@ class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
         # Create readme
         self.create_readme()
 
-        TO_COMPARE_MODELS: Dict[str, Union[LocalModelPipeline]] = {}
+        TO_COMPARE_MODELS: Dict[str, Union[FeatureModelPipeline]] = {}
 
         # Get data loader
         states_loader: StatesDataLoader = StatesDataLoader()
@@ -196,7 +196,7 @@ class FineTunedModels(BaseExperiment):
         states_loader: StatesDataLoader,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> LocalModelPipeline:
+    ) -> FeatureModelPipeline:
 
         states_data_dict = states_loader.load_all_states()
 
@@ -219,12 +219,12 @@ class FineTunedModels(BaseExperiment):
     def __train_finetuned_lstm_model(
         self,
         name: str,
-        base_pipeline: LocalModelPipeline,
+        base_pipeline: FeatureModelPipeline,
         states_loader: StatesDataLoader,
         states: List[str],
         split_rate: float = 0.8,
         display_nth_epoch: int = 10,
-    ) -> LocalModelPipeline:
+    ) -> FeatureModelPipeline:
 
         # Load states data and get training data
         states_data_dict = states_loader.load_states(states=states)
@@ -329,7 +329,7 @@ class CompareWithStatisticalModels(BaseExperiment):
         states_loader: StatesDataLoader,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> LocalModelPipeline:
+    ) -> FeatureModelPipeline:
 
         # Preprocess data
         states_data_dict = states_loader.load_all_states()
@@ -347,7 +347,7 @@ class CompareWithStatisticalModels(BaseExperiment):
 
     def __train_ensemble_model(
         self, split_rate: float, display_nth_epoch=10
-    ) -> LocalModelPipeline:
+    ) -> FeatureModelPipeline:
 
         loader = StatesDataLoader()
         all_states_dict = loader.load_all_states()
@@ -380,7 +380,9 @@ class CompareWithStatisticalModels(BaseExperiment):
         # Create readme
         self.create_readme()
 
-        TO_COMPARE_MODELS: Dict[str, Union[LocalModelPipeline, PureEnsembleModel]] = {}
+        TO_COMPARE_MODELS: Dict[str, Union[FeatureModelPipeline, PureEnsembleModel]] = (
+            {}
+        )
 
         # Get data loader
         states_loader: StatesDataLoader = StatesDataLoader()
@@ -448,7 +450,7 @@ class DifferentHiddenLayers(BaseExperiment):
         all_states_dict = loader.load_all_states()
 
         # Train models with different
-        TO_COMPARE_MODELS: Dict[str, LocalModelPipeline] = {}
+        TO_COMPARE_MODELS: Dict[str, FeatureModelPipeline] = {}
         for hidden_size in self.HIDDEN_SIZE_TO_TRY:
 
             MODEL_NAME = f"lstm-{hidden_size}"
@@ -570,9 +572,9 @@ class DifferentArchitecturesComparision(BaseExperiment):
 
     def __train_arima_models_for_states(
         self, states: List[str]
-    ) -> Dict[str, LocalModelPipeline]:
+    ) -> Dict[str, FeatureModelPipeline]:
 
-        state_arimas: Dict[str, LocalModelPipeline] = {}
+        state_arimas: Dict[str, FeatureModelPipeline] = {}
         for state in states:
             state_arimas[state] = train_arima_ensemble_model(
                 name=f"ensemble-arima-{state}", state=str
@@ -589,7 +591,7 @@ class DifferentArchitecturesComparision(BaseExperiment):
         loader = StatesDataLoader()
         states_data_dict = loader.load_all_states()
 
-        TO_COMPARE_PIPELINES: Dict[str, LocalModelPipeline] = {}
+        TO_COMPARE_PIPELINES: Dict[str, FeatureModelPipeline] = {}
 
         DISPLAY_NTH_EPOCH = 1
 

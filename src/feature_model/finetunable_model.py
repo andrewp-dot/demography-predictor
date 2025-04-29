@@ -14,7 +14,7 @@ from src.utils.save_model import save_model, get_model, save_experiment_model
 from src.base import RNNHyperparameters, TrainingStats, CustomModelBase
 
 # from src.evaluation import EvaluateModel
-from src.local_model.model import BaseRNN
+from src.feature_model.model import BaseRNN
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader

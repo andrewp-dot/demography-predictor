@@ -10,12 +10,12 @@ import matplotlib.pyplot as plt
 # Cutsom imports
 from src.utils.log import setup_logging
 from src.evaluation import EvaluateModel
-from src.pipeline import LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
+from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 
 def create_prediction_plots(
-    pipeline: Union[LocalModelPipeline | GlobalModelPipeline | PredictorPipeline],
+    pipeline: Union[FeatureModelPipeline | TargetModelPipeline | PredictorPipeline],
     states: List[str],
 ) -> Dict[str, Figure]:
 
@@ -23,12 +23,12 @@ def create_prediction_plots(
     loader = StatesDataLoader()
     to_plot_states_dict = loader.load_states(states=states)
 
-    if isinstance(pipeline, LocalModelPipeline):
+    if isinstance(pipeline, FeatureModelPipeline):
         # FEATURES = pipeline.model.FEATURES
         # TARGETS = pipeline.model.TARGETS
 
         sequence_len = pipeline.model.hyperparameters.sequence_length
-    elif isinstance(pipeline, GlobalModelPipeline):
+    elif isinstance(pipeline, TargetModelPipeline):
         sequence_len = pipeline.model.sequence_len
         # FEATURES = pipeline.model.FEATURES
         # TARGETS = pipeline.model.TARGETS
@@ -83,8 +83,8 @@ if __name__ == "__main__":
 
     TO_PLOT_STATES: List[str] = ["Czechia", "Honduras"]
 
-    # PIPELINE = LocalModelPipeline.get_pipeline(name="lstm_features_only")
-    # PIPELINE = GlobalModelPipeline.get_pipeline(name="test_gm")
+    # PIPELINE = FeatureModelPipeline.get_pipeline(name="lstm_features_only")
+    # PIPELINE = TargetModelPipeline.get_pipeline(name="test_gm")
     PIPELINE = PredictorPipeline.get_pipeline(name="test_predictor")
 
     BEST_PERFORMING_STATES: List[str] = [

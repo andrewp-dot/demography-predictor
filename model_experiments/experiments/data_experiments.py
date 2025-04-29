@@ -12,7 +12,7 @@ import pprint
 # Custom imports
 from src.utils.log import setup_logging
 from model_experiments.config import (
-    LocalModelBenchmarkSettings,
+    FeatureModelBenchmarkSettings,
 )
 
 from src.utils.constants import (
@@ -28,19 +28,19 @@ from src.compare_models.compare import ModelComparator
 from src.state_groups import StatesGroups, StatesByGeolocation, StatesByWealth
 
 from model_experiments.base_experiment import BaseExperiment
-from src.train_scripts.train_local_models import (
+from train_scripts.train_feature_models import (
     train_base_rnn,
     train_finetunable_model,
     train_finetunable_model_from_scratch,
 )
-from src.pipeline import LocalModelPipeline
-from src.local_model.model import RNNHyperparameters, BaseRNN
+from src.pipeline import FeatureModelPipeline
+from src.feature_model.model import RNNHyperparameters, BaseRNN
 from src.evaluation import EvaluateModel
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
 
-settings = LocalModelBenchmarkSettings()
+settings = FeatureModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
 
 
@@ -80,7 +80,7 @@ class DataUsedForTraining(BaseExperiment):
         state: str,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> LocalModelPipeline:
+    ) -> FeatureModelPipeline:
 
         # Load data
         states_loader = StatesDataLoader()
@@ -103,7 +103,7 @@ class DataUsedForTraining(BaseExperiment):
         states: List[str],
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> LocalModelPipeline:
+    ) -> FeatureModelPipeline:
 
         # Load data
         states_loader = StatesDataLoader()
@@ -125,7 +125,7 @@ class DataUsedForTraining(BaseExperiment):
         name: str,
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> LocalModelPipeline:
+    ) -> FeatureModelPipeline:
 
         # Load data
         states_loader = StatesDataLoader()
@@ -263,7 +263,7 @@ class StatesByGroup(BaseExperiment):
         states: List[str],
         split_rate: float,
         display_nth_epoch: int = 10,
-    ) -> Tuple[LocalModelPipeline, List[str]]:
+    ) -> Tuple[FeatureModelPipeline, List[str]]:
         """
         Trains model using the group of states. Returns the model and the states which was used for training.
 
@@ -273,7 +273,7 @@ class StatesByGroup(BaseExperiment):
             display_nth_epoch (int, optional): Display every nth epoch. Defaults to 10.
 
         Returns:
-            out: Tuple[LocalModelPipeline, List[str]]: model, training_states_list
+            out: Tuple[FeatureModelPipeline, List[str]]: model, training_states_list
         """
 
         # Load data
@@ -307,7 +307,7 @@ class StatesByGroup(BaseExperiment):
 
     def __train_models_for_each_group(
         self, state_groups: StatesGroups, split_rate: float = 0.8
-    ) -> Dict[str, Tuple[LocalModelPipeline, List[str]]]:
+    ) -> Dict[str, Tuple[FeatureModelPipeline, List[str]]]:
         """
         Trains model for each group of states.
 
@@ -316,15 +316,15 @@ class StatesByGroup(BaseExperiment):
             split_rate (float, optional): Split rate of data for training and validation. Defaults to 0.8.
 
         Returns:
-            out: Dict[str, Tuple[LocalModelPipeline, List[str]]]: The key is the group name and the value is a tuple of the model and the states which will be used for validation.
+            out: Dict[str, Tuple[FeatureModelPipeline, List[str]]]: The key is the group name and the value is a tuple of the model and the states which will be used for validation.
         """
 
         # Load data and setup variables
         group_states_dict: Dict[str, List[str]] = state_groups.model_dump()
 
-        GROUP_MODEL_VALIDATION_DATA: Dict[str, Tuple[LocalModelPipeline, List[str]]] = (
-            {}
-        )
+        GROUP_MODEL_VALIDATION_DATA: Dict[
+            str, Tuple[FeatureModelPipeline, List[str]]
+        ] = {}
 
         # Train model for each group
         for group, states in group_states_dict.items():
@@ -361,11 +361,11 @@ class StatesByGroup(BaseExperiment):
 
         # Create group models vs base model tuples
 
-        GROUP_MODELS: Dict[str, Tuple[LocalModelPipeline, List[str]]] = (
+        GROUP_MODELS: Dict[str, Tuple[FeatureModelPipeline, List[str]]] = (
             self.__train_models_for_each_group(state_groups=state_groups)
         )
 
-        COMPARATION_MODELS_DICT: Dict[str, LocalModelPipeline] = {}
+        COMPARATION_MODELS_DICT: Dict[str, FeatureModelPipeline] = {}
 
         for group, (group_model, validation_states) in GROUP_MODELS.items():
 
@@ -573,7 +573,7 @@ class StatesSubsetExperiment(BaseExperiment):
         all_states_dict = group_data
 
         # Train models with different
-        TO_COMPARE_MODELS: Dict[str, LocalModelPipeline] = {}
+        TO_COMPARE_MODELS: Dict[str, FeatureModelPipeline] = {}
         for hidden_size in self.HIDDEN_SIZE_TO_TRY:
 
             MODEL_NAME = f"lstm-{hidden_size}"

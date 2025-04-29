@@ -8,15 +8,15 @@ from src.utils.constants import get_core_hyperparameters
 from src.base import RNNHyperparameters
 from src.evaluation import EvaluateModel
 
-from src.global_model.model import XGBoostTuneParams
+from src.target_model.model import XGBoostTuneParams
 
 
 from src.state_groups import StatesByWealth
 
 from src.pipeline import PredictorPipeline
 
-from src.train_scripts.train_local_models import train_base_rnn
-from src.train_scripts.train_global_models import train_global_model_tree
+from train_scripts.train_feature_models import train_base_rnn
+from train_scripts.train_target_models import train_global_model_tree
 
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader

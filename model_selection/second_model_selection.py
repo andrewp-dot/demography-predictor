@@ -24,8 +24,8 @@ from src.utils.constants import (
     gender_distribution_targets,
 )
 
-from src.pipeline import GlobalModelPipeline
-from src.train_scripts.train_global_models import (
+from src.pipeline import TargetModelPipeline
+from train_scripts.train_target_models import (
     train_global_model_tree,
     train_global_rnn,
     train_global_arima_ensemble,
@@ -33,7 +33,7 @@ from src.train_scripts.train_global_models import (
 
 from src.base import TrainingStats
 
-from src.global_model.model import XGBoostTuneParams
+from src.target_model.model import XGBoostTuneParams
 
 from model_experiments.base_experiment import BaseExperiment
 from src.base import RNNHyperparameters
@@ -117,19 +117,19 @@ class SecondModelSelection(BaseExperiment):
         # Parameters of compared trees
         self.tree_params: Dict[str, dict] = {}
 
-    def __get_models(self, model_names: List[str]) -> Dict[str, GlobalModelPipeline]:
+    def __get_models(self, model_names: List[str]) -> Dict[str, TargetModelPipeline]:
 
         # Try to get model
-        pipelines: Dict[str, GlobalModelPipeline] = {}
+        pipelines: Dict[str, TargetModelPipeline] = {}
         for name in model_names:
-            pipelines[name] = GlobalModelPipeline.get_pipeline(
+            pipelines[name] = TargetModelPipeline.get_pipeline(
                 name=name, custom_dir=self.SAVE_MODEL_DIR
             )
 
         return pipelines
 
     def __get_tree_params(
-        self, to_compare_pipelines: Dict[str, GlobalModelPipeline]
+        self, to_compare_pipelines: Dict[str, TargetModelPipeline]
     ) -> None:
         def make_json_serializable(d: dict):
             serializable_dict = {}
@@ -155,7 +155,7 @@ class SecondModelSelection(BaseExperiment):
                 json.dump(self.tree_params[name], fp=f, indent=4)
 
     def __plot_rnn_model_losses(
-        self, TO_COMPARE_PIPELINES: Dict[str, GlobalModelPipeline]
+        self, TO_COMPARE_PIPELINES: Dict[str, TargetModelPipeline]
     ):
         fig, ax = plt.subplots(
             nrows=len(self.RNN_NAMES), ncols=1, figsize=(10, 5 * len(self.RNN_NAMES))
@@ -204,11 +204,11 @@ class SecondModelSelection(BaseExperiment):
         split_rate: float = 0.8,
         display_nth_epoch: int = 1,
         force_retrain: bool = False,
-    ) -> Dict[str, GlobalModelPipeline]:
+    ) -> Dict[str, TargetModelPipeline]:
 
         # Try to get the models
         # Train ARIMA models for states
-        TO_COMPARE_PIPELINES: Dict[str, GlobalModelPipeline] = {}
+        TO_COMPARE_PIPELINES: Dict[str, TargetModelPipeline] = {}
 
         if not force_retrain:
             try:
@@ -358,7 +358,7 @@ class SecondModelSelection(BaseExperiment):
         states_data_dict = loader.load_all_states()
 
         # Get or train models
-        TO_COMPARE_PIPELINES: Dict[str, GlobalModelPipeline] = self.__train_models(
+        TO_COMPARE_PIPELINES: Dict[str, TargetModelPipeline] = self.__train_models(
             data=states_data_dict,
             force_retrain=force_retrain,
             split_rate=split_rate,

@@ -20,7 +20,7 @@ from sklearn.metrics import (
 from src.utils.log import setup_logging
 from src.statistical_models.arima import CustomARIMA
 
-from src.pipeline import LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
+from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
 
 
 logger = logging.getLogger("evaluation")
@@ -332,7 +332,7 @@ class EvaluateModel(BaseEvaluation):
     def __init__(
         self,
         pipeline: Union[
-            "LocalModelPipeline", "GlobalModelPipeline", "PredictorPipeline"
+            "FeatureModelPipeline", "TargetModelPipeline", "PredictorPipeline"
         ],
     ):
         super().__init__()
@@ -340,7 +340,7 @@ class EvaluateModel(BaseEvaluation):
         # self.model: CustomModelBase = pipeline.model
 
         self.pipeline: Union[
-            "LocalModelPipeline", "GlobalModelPipeline", "PredictorPipeline"
+            "FeatureModelPipeline", "TargetModelPipeline", "PredictorPipeline"
         ] = pipeline
 
         # Reference values for every state
@@ -352,8 +352,8 @@ class EvaluateModel(BaseEvaluation):
     ) -> None:
         # Get features and targets
 
-        if isinstance(self.pipeline, LocalModelPipeline) or isinstance(
-            self.pipeline, GlobalModelPipeline
+        if isinstance(self.pipeline, FeatureModelPipeline) or isinstance(
+            self.pipeline, TargetModelPipeline
         ):
             # Get features and targets
             FEATURES = self.pipeline.model.FEATURES
@@ -380,13 +380,13 @@ class EvaluateModel(BaseEvaluation):
         logger.debug(f"[Eval]: predicting values from {last_year} to {target_year}...")
 
         # Get predictions
-        if isinstance(self.pipeline, LocalModelPipeline):
+        if isinstance(self.pipeline, FeatureModelPipeline):
             input_data = test_X
             predictions_df = self.pipeline.predict(
                 input_data=input_data, last_year=last_year, target_year=target_year
             )
 
-        elif isinstance(self.pipeline, GlobalModelPipeline):
+        elif isinstance(self.pipeline, TargetModelPipeline):
 
             # This is ground truth evaluation, so the last year and target year are the same
             input_data = test_X
@@ -471,10 +471,10 @@ class EvaluateModel(BaseEvaluation):
         self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
 
         # Get metrics for per target evaluation
-        if isinstance(self.pipeline, LocalModelPipeline):
+        if isinstance(self.pipeline, FeatureModelPipeline):
             TARGETS = self.pipeline.model.TARGETS
 
-        elif isinstance(self.pipeline, GlobalModelPipeline):
+        elif isinstance(self.pipeline, TargetModelPipeline):
             TARGETS = self.pipeline.model.TARGETS
 
         elif isinstance(self.pipeline, PredictorPipeline):

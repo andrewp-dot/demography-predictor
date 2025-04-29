@@ -16,7 +16,7 @@ def get_experiment_result_dir() -> DirectoryPath:
     return experiment_result_dir
 
 
-class LocalModelBenchmarkSettings(BaseSettings):
+class FeatureModelBenchmarkSettings(BaseSettings):
 
     # Path configs
     benchmark_results_dir: DirectoryPath = Field(

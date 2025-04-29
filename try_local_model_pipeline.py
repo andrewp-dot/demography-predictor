@@ -14,8 +14,8 @@ from src.utils.constants import (
 )
 from src.state_groups import StatesByWealth
 from src.utils.log import setup_logging
-from src.pipeline import LocalModelPipeline
-from src.train_scripts.train_local_models import train_base_rnn
+from src.pipeline import FeatureModelPipeline
+from train_scripts.train_feature_models import train_base_rnn
 
 
 from src.preprocessors.data_transformer import DataTransformer
@@ -121,8 +121,10 @@ def evaluate_pipelines():
     )
 
     # Load pipelines
-    features_only_pipeline = LocalModelPipeline.get_pipeline(name="lstm_features_only")
-    including_targets_pipeline = LocalModelPipeline.get_pipeline(
+    features_only_pipeline = FeatureModelPipeline.get_pipeline(
+        name="lstm_features_only"
+    )
+    including_targets_pipeline = FeatureModelPipeline.get_pipeline(
         name="lstm_features_targets"
     )
 

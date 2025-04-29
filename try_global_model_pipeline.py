@@ -19,13 +19,13 @@ from src.base import TrainingStats
 
 from src.state_groups import StatesByWealth
 
-from src.pipeline import GlobalModelPipeline
-from src.train_scripts.train_global_models import (
+from src.pipeline import TargetModelPipeline
+from train_scripts.train_target_models import (
     train_global_model_tree,
     train_global_rnn,
 )
-from src.global_model.model import XGBoostTuneParams
-from src.global_model.global_rnn import GlobalModelRNN
+from src.target_model.model import XGBoostTuneParams
+from src.target_model.global_rnn import TargetModelRNN
 
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -69,7 +69,7 @@ def train_pipeline(name: str, sequence_len: int):
         colsample_bytree=[0.8, 1.0],
     )
 
-    pipeline: GlobalModelPipeline = train_global_model_tree(
+    pipeline: TargetModelPipeline = train_global_model_tree(
         name=name,
         states_data=all_states_data,
         features=FEATURES,
@@ -152,7 +152,7 @@ def train_rnn_pipeline(
 def eval_pipeline(name: str, sequence_len: int):
 
     # Evaluation
-    pipeline = GlobalModelPipeline.get_pipeline(name=name)
+    pipeline = TargetModelPipeline.get_pipeline(name=name)
     gmeval = EvaluateModel(pipeline=pipeline)
 
     loader = StatesDataLoader()

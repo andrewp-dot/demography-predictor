@@ -14,16 +14,16 @@ from src.utils.constants import get_core_hyperparameters
 
 from src.base import CustomModelBase
 from src.evaluation import EvaluateModel
-from src.local_model.finetunable_model import FineTunableLSTM
-from src.local_model.ensemble_model import PureEnsembleModel
+from src.feature_model.finetunable_model import FineTunableLSTM
+from src.feature_model.ensemble_model import PureEnsembleModel
 
-from src.global_model.model import GlobalModelTree
+from src.target_model.model import TargetModelTree
 from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
 
-from src.pipeline import LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
+from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
 
 
 logger = logging.getLogger("model_compare")
@@ -146,7 +146,7 @@ class ModelComparator:
     def compare_models_by_states(
         self,
         pipelines: Dict[
-            str, Union[LocalModelPipeline, GlobalModelPipeline, PredictorPipeline]
+            str, Union[FeatureModelPipeline, TargetModelPipeline, PredictorPipeline]
         ],
         states: List[str] | None = None,
         by: Literal[
@@ -227,7 +227,7 @@ class ModelComparator:
                     input_size=1
                 ).sequence_length
 
-            elif isinstance(pipeline.model, GlobalModelTree):
+            elif isinstance(pipeline.model, TargetModelTree):
                 model_sequence_len = pipeline.model.sequence_len
             else:
                 model_sequence_len = pipeline.model.hyperparameters.sequence_length

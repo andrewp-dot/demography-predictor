@@ -10,8 +10,8 @@ from src.utils.save_model import save_model, get_model
 
 from src.base import RNNHyperparameters
 
-from src.local_model.model import BaseRNN
-from src.local_model.finetunable_model import FineTunableLSTM
+from src.feature_model.model import BaseRNN
+from src.feature_model.finetunable_model import FineTunableLSTM
 from src.statistical_models.arima import CustomARIMA
 
 from src.preprocessors.data_transformer import DataTransformer

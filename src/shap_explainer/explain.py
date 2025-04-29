@@ -1,5 +1,5 @@
 # TODO:
-# 1. get pipeline - (LocalModelPipeline, GlobalModelPipeline) or (PredictorPipeline)
+# 1. get pipeline - (FeatureModelPipeline, TargetModelPipeline) or (PredictorPipeline)
 # 2. get the data (state) as an inputs
 #   2.1 figure out where to store results
 # 3. explain features
@@ -18,8 +18,8 @@ from typing import Union, List
 
 # Custom imports
 from src.utils.log import setup_logging
-from src.pipeline import LocalModelPipeline, GlobalModelPipeline, PredictorPipeline
-from src.feature_explainer.explainers import LSTMExplainer, GlobalModelExplainer
+from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
+from src.feature_explainer.explainers import LSTMExplainer, TargetModelExplainer
 
 # TODO: create logger
 logger = logging.getLogger("feature_engineering")
@@ -30,7 +30,7 @@ def setup_save_dir(save_path: str):
         os.makedirs(save_path)
 
 
-def explain_lstm(pipeline: LocalModelPipeline, save_path: str, states: List[str]):
+def explain_lstm(pipeline: FeatureModelPipeline, save_path: str, states: List[str]):
     setup_save_dir(save_path=save_path)
 
     explainer = LSTMExplainer(pipeline=pipeline)
@@ -82,10 +82,10 @@ def explain_lstm(pipeline: LocalModelPipeline, save_path: str, states: List[str]
         print()
 
 
-def explain_tree(pipeline: GlobalModelPipeline, save_path: str, states: List[str]):
+def explain_tree(pipeline: TargetModelPipeline, save_path: str, states: List[str]):
     setup_save_dir(save_path=save_path)
 
-    explainer = GlobalModelExplainer(pipeline=pipeline)
+    explainer = TargetModelExplainer(pipeline=pipeline)
 
     for state in states:
 
@@ -116,7 +116,7 @@ def explain_tree(pipeline: GlobalModelPipeline, save_path: str, states: List[str
 
 
 def main(
-    pipeline: Union[LocalModelPipeline, GlobalModelPipeline, PredictorPipeline],
+    pipeline: Union[FeatureModelPipeline, TargetModelPipeline, PredictorPipeline],
     states: List[str],
 ):
 
@@ -124,11 +124,11 @@ def main(
     SAVE_PATH = os.path.join(os.path.dirname(__file__), "explanations", pipeline.name)
 
     # Get the pipeline type
-    if isinstance(pipeline, LocalModelPipeline):
+    if isinstance(pipeline, FeatureModelPipeline):
         # Explain base lstm
         explain_lstm(pipeline=pipeline, save_path=SAVE_PATH, states=states)
 
-    elif isinstance(pipeline, GlobalModelPipeline):
+    elif isinstance(pipeline, TargetModelPipeline):
         # Explain XGB -> tree model explainer
         explain_tree(pipeline=pipeline, save_path=SAVE_PATH, states=states)
 
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     # Get pipeline
     # TODO: maybe do some arguments in here?
     # PIPELINE_NAME = "lstm_features_only"
-    # pipeline = LocalModelPipeline.get_pipeline(name=PIPELINE_NAME)
+    # pipeline = FeatureModelPipeline.get_pipeline(name=PIPELINE_NAME)
 
     PIPELINE_NAME = "test_predictor"
     pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)

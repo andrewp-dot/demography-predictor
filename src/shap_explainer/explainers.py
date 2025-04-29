@@ -15,9 +15,9 @@ import warnings
 
 # Custom imports
 from src.utils.save_model import get_model
-from src.pipeline import LocalModelPipeline, GlobalModelPipeline
+from src.pipeline import FeatureModelPipeline, TargetModelPipeline
 
-from src.local_model.model import BaseRNN
+from src.feature_model.model import BaseRNN
 
 from src.preprocessors.multiple_states_preprocessing import StateDataLoader
 from src.preprocessors.data_transformer import DataTransformer
@@ -44,8 +44,8 @@ class LSTMExplainer:
             out = self.model(x)
             return out[:, self.predicted_timestep_index, :]
 
-    def __init__(self, pipeline: LocalModelPipeline):
-        self.pipeline: LocalModelPipeline = pipeline
+    def __init__(self, pipeline: FeatureModelPipeline):
+        self.pipeline: FeatureModelPipeline = pipeline
         # Get the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -324,7 +324,7 @@ class LSTMExplainer:
             plt.savefig(save_path, format="png", dpi=300, bbox_inches="tight")
 
 
-class GlobalModelExplainer:
+class TargetModelExplainer:
 
     class MultiOutputWrapper:
         def __init__(self, model):
@@ -343,8 +343,8 @@ class GlobalModelExplainer:
 
             return predictions, base_values
 
-    def __init__(self, pipeline: GlobalModelPipeline):
-        self.pipeline: GlobalModelPipeline = pipeline
+    def __init__(self, pipeline: TargetModelPipeline):
+        self.pipeline: TargetModelPipeline = pipeline
         self.FEATURE_NAMES: List[str] = (
             self.pipeline.model.FEATURES + self.pipeline.model.HISTORY_TARGET_FEATURES
         )
@@ -534,7 +534,7 @@ def main():
     setup_logging()
 
     # Get pipeline
-    pipeline = LocalModelPipeline(
+    pipeline = FeatureModelPipeline(
         # model=get_model("core_pipeline/local_model.pkl"),
         # transformer=get_model("core_pipeline/local_transformer.pkl"),
         model=get_model("put your model name here"),

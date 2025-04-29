@@ -19,8 +19,8 @@ from src.utils.constants import (
     gender_distribution_targets,
 )
 
-from src.pipeline import LocalModelPipeline
-from src.train_scripts.train_local_models import (
+from src.pipeline import FeatureModelPipeline
+from train_scripts.train_feature_models import (
     train_base_rnn,
     train_ensemble_model,
     train_arima_ensemble_all_states,
@@ -47,7 +47,6 @@ class FirstModelExperiment(BaseExperiment):
 
     MODEL_NAMES: List[str] = [
         "ensemble-arima",
-        # "ensemble-arimax",
         "feature_RNN",
         "feature_GRU",
         "feature_LSTM",
@@ -83,19 +82,19 @@ class FirstModelExperiment(BaseExperiment):
 
         self.rnn_training_stats: Dict[str, TrainingStats] = {}
 
-    def __get_models(self, model_names: List[str]) -> Dict[str, LocalModelPipeline]:
+    def __get_models(self, model_names: List[str]) -> Dict[str, FeatureModelPipeline]:
 
         # Try to get model
-        pipelines: Dict[str, LocalModelPipeline] = {}
+        pipelines: Dict[str, FeatureModelPipeline] = {}
         for name in model_names:
-            pipelines[name] = LocalModelPipeline.get_pipeline(
+            pipelines[name] = FeatureModelPipeline.get_pipeline(
                 name=name, custom_dir=self.SAVE_MODEL_DIR
             )
 
         return pipelines
 
     def __plot_rnn_model_losses(
-        self, TO_COMPARE_PIPELINES: Dict[str, LocalModelPipeline]
+        self, TO_COMPARE_PIPELINES: Dict[str, FeatureModelPipeline]
     ):
         fig, ax = plt.subplots(
             nrows=len(self.RNN_NAMES), ncols=1, figsize=(10, 5 * len(self.RNN_NAMES))
@@ -141,8 +140,8 @@ class FirstModelExperiment(BaseExperiment):
         split_rate: float = 0.8,
         display_nth_epoch: int = 1,
         force_retrain: bool = False,
-    ) -> Dict[str, LocalModelPipeline]:
-        TO_COMPARE_PIPELINES: Dict[str, LocalModelPipeline] = {}
+    ) -> Dict[str, FeatureModelPipeline]:
+        TO_COMPARE_PIPELINES: Dict[str, FeatureModelPipeline] = {}
 
         if not force_retrain:
             try:

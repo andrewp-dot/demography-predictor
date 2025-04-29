@@ -18,12 +18,12 @@ from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
-from src.local_model.model import RNNHyperparameters, BaseRNN
-from src.local_model.finetunable_model import FineTunableLSTM
-from src.local_model.ensemble_model import PureEnsembleModel
+from src.feature_model.model import RNNHyperparameters, BaseRNN
+from src.feature_model.finetunable_model import FineTunableLSTM
+from src.feature_model.ensemble_model import PureEnsembleModel
 from src.statistical_models.arima import CustomARIMA
 
-from src.pipeline import LocalModelPipeline
+from src.pipeline import FeatureModelPipeline
 
 
 from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
@@ -89,7 +89,7 @@ def train_base_rnn(
     display_nth_epoch: int = 10,
     rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
     additional_bpnn: Optional[List[int]] = None,
-) -> LocalModelPipeline:
+) -> FeatureModelPipeline:
 
     # Preprocess data
     transformer = DataTransformer()
@@ -123,7 +123,7 @@ def train_base_rnn(
     )
 
     # Create pipeline
-    return LocalModelPipeline(
+    return FeatureModelPipeline(
         name=name,
         model=rnn,
         transformer=transformer,
@@ -133,14 +133,14 @@ def train_base_rnn(
 
 def train_finetunable_model(
     name: str,
-    base_model_pipeline: LocalModelPipeline,
+    base_model_pipeline: FeatureModelPipeline,
     finetunable_model_hyperparameters: RNNHyperparameters,
     finetunable_model_data: Dict[str, pd.DataFrame],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
     # rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
     # additional_bpnn: Optional[List[int]] = None,
-) -> LocalModelPipeline:
+) -> FeatureModelPipeline:
 
     # Preprocess data
     batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
@@ -170,7 +170,7 @@ def train_finetunable_model(
         display_nth_epoch=display_nth_epoch,
     )
 
-    return LocalModelPipeline(
+    return FeatureModelPipeline(
         name=name,
         model=finetuneable_lstm,
         transformer=base_model_pipeline.transformer,
@@ -188,7 +188,7 @@ def train_finetunable_model_from_scratch(
     features: List[str],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
-) -> LocalModelPipeline:
+) -> FeatureModelPipeline:
 
     # Train base lstm
     base_model_pipeline = train_base_rnn(
@@ -218,7 +218,7 @@ def train_ensemble_model(
     features: List[str],
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
-) -> LocalModelPipeline:
+) -> FeatureModelPipeline:
 
     # Ensure the input / output size will be 1
     ADJUSTED_PARAMS = copy.deepcopy(hyperparameters)
@@ -271,7 +271,7 @@ def train_ensemble_model(
         trained_models[feature] = base_lstm
 
     # Create pipeline
-    return LocalModelPipeline(
+    return FeatureModelPipeline(
         name=name,
         transformer=transformer,
         model=PureEnsembleModel(feature_models=trained_models),
@@ -280,7 +280,7 @@ def train_ensemble_model(
 
 def train_arima_ensemble_model(
     name: str, targets: List[str], state: str, split_rate: float = 0.8
-) -> LocalModelPipeline:
+) -> FeatureModelPipeline:
 
     # Load state data
     state_loader = StateDataLoader(state=state)
@@ -303,7 +303,7 @@ def train_arima_ensemble_model(
         trained_models[target] = arima
 
     # Create pipeline
-    return LocalModelPipeline(
+    return FeatureModelPipeline(
         name=name,
         transformer=DataTransformer(),
         model=PureEnsembleModel(feature_models=trained_models),
@@ -318,7 +318,7 @@ def train_arima_ensemble_all_states(
     p: int = 1,
     d: int = 1,
     q: int = 1,
-) -> LocalModelPipeline:
+) -> FeatureModelPipeline:
     """
     Trains CustomARima model
 
@@ -331,7 +331,7 @@ def train_arima_ensemble_all_states(
         split_rate (float, optional): The size of the training data. Defaults to 0.8.
 
     Returns:
-        out: GlobalModelPipeline: Pipeline with arima ensemble model. Note: transformer in this pipeline is not fitted -> pipeline is created in order to be compatible with comparators etc.
+        out: TargetModelPipeline: Pipeline with arima ensemble model. Note: transformer in this pipeline is not fitted -> pipeline is created in order to be compatible with comparators etc.
     """
 
     # Need this loader just to split the state data
@@ -408,8 +408,8 @@ def train_arima_ensemble_all_states(
     )
 
     # Create pipeline -> put here datatransformer just to in order to create pipeline (for comparators etc)
-    return LocalModelPipeline(
+    return FeatureModelPipeline(
         name=name,
-        transformer=DataTransformer(),
+        transformer=None,
         model=model,
     )

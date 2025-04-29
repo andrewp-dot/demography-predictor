@@ -28,7 +28,7 @@ from model_experiments.experiments.model_experiments import (
 
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.local_model.model import RNNHyperparameters, BaseRNN, EvaluateModel
+from src.feature_model.model import RNNHyperparameters, BaseRNN, EvaluateModel
 
 from model_experiments.base_experiment import Experiment
 

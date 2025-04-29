@@ -17,13 +17,13 @@ from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 from src.base import RNNHyperparameters
-from src.pipeline import GlobalModelPipeline
-from src.global_model.model import GlobalModelTree, XGBoostTuneParams
-from src.global_model.global_rnn import GlobalModelRNN
+from src.pipeline import TargetModelPipeline
+from src.target_model.model import TargetModelTree, XGBoostTuneParams
+from src.target_model.global_rnn import TargetModelRNN
 
 # Import this just for ARIMA
 from src.statistical_models.arima import CustomARIMA
-from src.local_model.ensemble_model import PureEnsembleModel
+from src.feature_model.ensemble_model import PureEnsembleModel
 from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
 
 logger = logging.getLogger("training")
@@ -39,9 +39,9 @@ def train_global_model_tree(
     xgb_tune_parameters: Optional[XGBoostTuneParams] = None,
     transformer: Optional[DataTransformer] = None,
     split_size: float = 0.8,
-) -> GlobalModelPipeline:
+) -> TargetModelPipeline:
 
-    global_model = GlobalModelTree(
+    global_model = TargetModelTree(
         model=tree_model,
         features=features,
         targets=targets,
@@ -77,7 +77,7 @@ def train_global_model_tree(
     )
 
     # Create Pipeline
-    pipeline = GlobalModelPipeline(
+    pipeline = TargetModelPipeline(
         name=name, model=global_model, transformer=transformer
     )
     return pipeline
@@ -153,9 +153,9 @@ def train_global_rnn(
     split_rate: float = 0.8,
     display_nth_epoch: int = 10,
     rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
-) -> GlobalModelPipeline:
+) -> TargetModelPipeline:
 
-    rnn = GlobalModelRNN(
+    rnn = TargetModelRNN(
         hyperparameters, features=features, targets=targets, rnn_type=rnn_type
     )
 
@@ -185,7 +185,7 @@ def train_global_rnn(
     )
 
     # Create Pipeline
-    pipeline = GlobalModelPipeline(name=name, model=rnn, transformer=transformer)
+    pipeline = TargetModelPipeline(name=name, model=rnn, transformer=transformer)
     return pipeline
 
 
@@ -198,7 +198,7 @@ def train_global_arima_ensemble(
     p: int = 1,
     d: int = 1,
     q: int = 1,
-) -> GlobalModelPipeline:
+) -> TargetModelPipeline:
     """
     Trains CustomARima model
 
@@ -211,7 +211,7 @@ def train_global_arima_ensemble(
         split_rate (float, optional): The size of the training data. Defaults to 0.8.
 
     Returns:
-        out: GlobalModelPipeline: Pipeline with arima ensemble model. Note: transformer in this pipeline is not fitted -> pipeline is created in order to be compatible with comparators etc.
+        out: TargetModelPipeline: Pipeline with arima ensemble model. Note: transformer in this pipeline is not fitted -> pipeline is created in order to be compatible with comparators etc.
     """
 
     # Need this loader just to split the state data
@@ -263,7 +263,7 @@ def train_global_arima_ensemble(
     )
 
     # Create pipeline -> put here datatransformer just to in order to create pipeline (for comparators etc)
-    return GlobalModelPipeline(
+    return TargetModelPipeline(
         name=name,
         transformer=DataTransformer(),
         model=model,

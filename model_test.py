@@ -7,10 +7,10 @@ from src.utils.save_model import get_model
 
 from src.evaluation import EvaluateModel
 
-from src.local_model.model import BaseRNN
+from src.feature_model.model import BaseRNN
 
 
-from src.pipeline import LocalModelPipeline
+from src.pipeline import FeatureModelPipeline
 
 
 from feature_explainer.explainers import LSTMExplainer
@@ -39,7 +39,7 @@ def main():
         states_dict=all_states_dict, sequence_len=model.hyperparameters.sequence_length
     )
 
-    pipeline = LocalModelPipeline(model=model, transformer=transformer)
+    pipeline = FeatureModelPipeline(model=model, transformer=transformer)
 
     # Explain
     explainer = LSTMExplainer(pipeline=pipeline)
