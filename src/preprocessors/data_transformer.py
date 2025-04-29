@@ -54,11 +54,6 @@ class DataTransformer:
         "population_male",
     ]
 
-    # WIDE_RANGE_COLUMNS: Dict[str, Callable] = {
-    #     "net_migration": "transform_net_migration",
-    #     "population_total": "transform_population_total",
-    #     "gdp": "transform_gdp",
-    # }
     WIDE_RANGE_COLUMNS: Dict[str, Callable] = {
         "net_migration": "transform_wide_range_data",
         "population_total": "transform_wide_range_data",

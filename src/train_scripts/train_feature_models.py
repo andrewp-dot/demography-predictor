@@ -9,10 +9,13 @@ import warnings
 from typing import List, Tuple, Union, Dict, Optional, Type
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
+import pprint
 
 # Custom imports
 from config import Config
 from src.base import TrainingStats
+
+from src.utils.constants import categorical_columns
 
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -318,15 +321,15 @@ def train_arima_ensemble_all_states(
     p: int = 1,
     d: int = 1,
     q: int = 1,
+    min_required_points: int = 10,
 ) -> FeatureModelPipeline:
     """
-    Trains CustomARima model
+    Trains CustomARIMA model
 
     Args:
         name (str): Name of the pipeline.
         data: (Dict[str, pd.DataFrame]): The training data for the model to train statistical models.
-        features (List[str]): Exogeneous features which can influence predictions (need to know their future values).
-        targets (List[str]): Targets to predict.
+        features (List[str]): The features you want to predict. Not the exogeneous variables, but in this case, the features are targets.
         state (str): State which is used for predictions.
         split_rate (float, optional): The size of the training data. Defaults to 0.8.
 
@@ -334,21 +337,42 @@ def train_arima_ensemble_all_states(
         out: TargetModelPipeline: Pipeline with arima ensemble model. Note: transformer in this pipeline is not fitted -> pipeline is created in order to be compatible with comparators etc.
     """
 
+    pprint.pprint(features)
     # Need this loader just to split the state data
     loader = StateDataLoader(state=list(data.keys())[0])
     state_data = loader.load_data()
 
+    skipped_states: List[str] = []
     states_models: Dict[str, PureEnsembleModel] = {}
+
+    # Need this to transform data
+    transformer = DataTransformer()
+
     for state, state_data in data.items():
 
-        # Create copy to prevent overwrite of the original list
-        arima_model_features = list(features)
+        # Set the exogeneous variables to None.
+        arima_model_features = []
 
-        if "year" in features:
-            arima_model_features.remove("year")
+        if not "year" in state_data.columns:
+            raise ValueError("The input data for ARIMA needs 'year' column!")
 
         # Split data
         train_df, _ = loader.split_data(data=state_data, split_rate=split_rate)
+
+        # Transform data
+        columns = list(train_df.columns)
+
+        # Remove categorical columns
+        for categorical_col in categorical_columns():
+            columns.remove(categorical_col)
+
+        transformed_train_df = transformer.transform_data(
+            data=train_df, columns=columns
+        )
+
+        if len(train_df) < min_required_points:  # e.g., 10
+            skipped_states.append(state)
+            continue
 
         # Train and save models
         trained_models: Dict[str, CustomARIMA] = {}
@@ -369,7 +393,7 @@ def train_arima_ensemble_all_states(
             try:
                 with warnings.catch_warnings():
                     warnings.filterwarnings("error", category=ConvergenceWarning)
-                    arima.train_model(data=train_df)
+                    arima.train_model(data=transformed_train_df)
 
             except ConvergenceWarning:
                 print(
@@ -385,20 +409,19 @@ def train_arima_ensemble_all_states(
                     index="year",
                     trend="n",
                 )
-                simpler_arima.train_model(data=train_df)
+                simpler_arima.train_model(data=transformed_train_df)
                 trained_models[target] = simpler_arima
             else:
                 trained_models[target] = arima
 
             # Train model
-            arima.train_model(data=train_df)
+            arima.train_model(data=transformed_train_df)
 
             # Save trained model
             trained_models[target] = arima
 
         # Save the pure ensemble for state
 
-        # logger.info(f"ARIMA model for state: '{state}' has been created!")
         states_models[state] = PureEnsembleModel(
             target_models=trained_models, features=arima_model_features
         )
@@ -410,6 +433,6 @@ def train_arima_ensemble_all_states(
     # Create pipeline -> put here datatransformer just to in order to create pipeline (for comparators etc)
     return FeatureModelPipeline(
         name=name,
-        transformer=None,
+        transformer=transformer,
         model=model,
     )

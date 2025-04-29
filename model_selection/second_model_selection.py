@@ -25,7 +25,7 @@ from src.utils.constants import (
 )
 
 from src.pipeline import TargetModelPipeline
-from train_scripts.train_target_models import (
+from src.train_scripts.train_target_models import (
     train_global_model_tree,
     train_global_rnn,
     train_global_arima_ensemble,
@@ -55,21 +55,21 @@ class SecondModelSelection(BaseExperiment):
     )
 
     MODEL_NAMES: List[str] = [
-        "ensemble-arima",
-        "ensemble-arimax",
+        "ARIMA",
+        "ARIMAX",
         "RNN",
         "LSTM",
         "GRU",
-        "xgboost",
-        "rf",
-        "lightgbm",
+        "XGBoost",
+        "random_forest",
+        "LightGBM",
     ]
 
     # Need to save this to save their training stats for plot
     RNN_NAMES = ["RNN", "GRU", "LSTM"]
 
     # Need this to save the parameters used for comparision
-    TREE_NAMES = ["xgboost", "rf", "lightgbm"]
+    TREE_NAMES = ["XGBoost", "random_forest", "LightGBM"]
 
     def __init__(
         self,
@@ -123,7 +123,8 @@ class SecondModelSelection(BaseExperiment):
         pipelines: Dict[str, TargetModelPipeline] = {}
         for name in model_names:
             pipelines[name] = TargetModelPipeline.get_pipeline(
-                name=name, custom_dir=self.SAVE_MODEL_DIR
+                name=f"{self.TARGET_GROUP_PREFIX}_{name}",
+                custom_dir=self.SAVE_MODEL_DIR,
             )
 
         return pipelines
@@ -187,16 +188,12 @@ class SecondModelSelection(BaseExperiment):
             )
 
             ax[index].legend()
+            ax[index].grid(True)
 
         fig.tight_layout()
-        fig.grid(True)
 
         # Save the figure
-
-        save_path = os.path.join(self.SAVE_MODEL_DIR, "imgs")
-
-        os.makedirs(save_path, exist_ok=True)
-        plt.savefig(os.path.join(save_path, f"{self.TARGET_GROUP_PREFIX}_rnn_loss.png"))
+        self.save_plot(fig_name=f"{self.TARGET_GROUP_PREFIX}_rnn_loss.png", figure=fig)
 
     def __train_models(
         self,
@@ -217,8 +214,9 @@ class SecondModelSelection(BaseExperiment):
                 logger.info(f"Models not found. Reatraining all models ({e}).")
 
         # Train ensemble ARIMAX model - ARIMAX model for each target for each state
-        TO_COMPARE_PIPELINES["ensemble-arimax"] = train_global_arima_ensemble(
-            name="ensemble-arimax",
+        name = f"{self.TARGET_GROUP_PREFIX}_ARIMAX"
+        TO_COMPARE_PIPELINES[name] = train_global_arima_ensemble(
+            name=name,
             data=data,
             features=self.FEATURES,
             targets=self.TARGETS,
@@ -227,12 +225,11 @@ class SecondModelSelection(BaseExperiment):
             d=1,  # ARMA model - no need to integrate percentual data.
             q=1,
         )
-        TO_COMPARE_PIPELINES["ensemble-arimax"].save_pipeline(
-            custom_dir=self.SAVE_MODEL_DIR
-        )
+        TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
-        TO_COMPARE_PIPELINES["ensemble-arima"] = train_global_arima_ensemble(
-            name="ensemble-arima",
+        name = f"{self.TARGET_GROUP_PREFIX}_ARIMA"
+        TO_COMPARE_PIPELINES[name] = train_global_arima_ensemble(
+            name=name,
             data=data,
             features=[],
             targets=self.TARGETS,
@@ -241,14 +238,13 @@ class SecondModelSelection(BaseExperiment):
             d=1,  # ARMA model - no need to integrate percentual data.
             q=1,
         )
-        TO_COMPARE_PIPELINES["ensemble-arima"].save_pipeline(
-            custom_dir=self.SAVE_MODEL_DIR
-        )
+        TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         # Train classic rnn
         logger.info("Training simple rnn...")
-        TO_COMPARE_PIPELINES["RNN"] = train_global_rnn(
-            name="RNN",
+        name = f"{self.TARGET_GROUP_PREFIX}_RNN"
+        TO_COMPARE_PIPELINES[name] = train_global_rnn(
+            name=name,
             hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
@@ -257,12 +253,13 @@ class SecondModelSelection(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.RNN,
         )
-        TO_COMPARE_PIPELINES["RNN"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+        TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         # Train lstm
         logger.info("Training base lstm...")
-        TO_COMPARE_PIPELINES["LSTM"] = train_global_rnn(
-            name="LSTM",
+        name = f"{self.TARGET_GROUP_PREFIX}_LSTM"
+        TO_COMPARE_PIPELINES[name] = train_global_rnn(
+            name=name,
             hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
@@ -271,12 +268,13 @@ class SecondModelSelection(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.LSTM,
         )
-        TO_COMPARE_PIPELINES["LSTM"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+        TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         # Train gru
         logger.info("Training base gru...")
-        TO_COMPARE_PIPELINES["GRU"] = train_global_rnn(
-            name="GRU",
+        name = f"{self.TARGET_GROUP_PREFIX}_GRU"
+        TO_COMPARE_PIPELINES[name] = train_global_rnn(
+            name=name,
             hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
@@ -285,15 +283,16 @@ class SecondModelSelection(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.GRU,
         )
-        TO_COMPARE_PIPELINES["GRU"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+        TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         # Save pipeline
         self.__plot_rnn_model_losses(TO_COMPARE_PIPELINES=TO_COMPARE_PIPELINES)
 
         # Train xgboost
         logger.info("Training xgboost...")
-        TO_COMPARE_PIPELINES["xgboost"] = train_global_model_tree(
-            name="xgboost",
+        name = f"{self.TARGET_GROUP_PREFIX}_XGBoost"
+        TO_COMPARE_PIPELINES[name] = train_global_model_tree(
+            name=name,
             tree_model=XGBRegressor(
                 n_estimators=100, objective="reg:squarederror", random_state=42
             ),
@@ -303,12 +302,13 @@ class SecondModelSelection(BaseExperiment):
             sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
             xgb_tune_parameters=None,  # Do not tune parameters
         )
-        TO_COMPARE_PIPELINES["xgboost"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+        TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         # Train randomforest
         logger.info("Training random forest...")
-        TO_COMPARE_PIPELINES["rf"] = train_global_model_tree(
-            name="rf",
+        name = f"{self.TARGET_GROUP_PREFIX}_random_forest"
+        TO_COMPARE_PIPELINES[name] = train_global_model_tree(
+            name=name,
             tree_model=RandomForestRegressor(
                 n_estimators=100,
                 random_state=42,
@@ -320,12 +320,12 @@ class SecondModelSelection(BaseExperiment):
             sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
             xgb_tune_parameters=None,  # Nothing to tune in here
         )
-        TO_COMPARE_PIPELINES["rf"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+        TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         logger.info("Training lightgbm...")
-
-        TO_COMPARE_PIPELINES["lightgbm"] = train_global_model_tree(
-            name="lightgbm",
+        name = f"{self.TARGET_GROUP_PREFIX}_LightGBM"
+        TO_COMPARE_PIPELINES[name] = train_global_model_tree(
+            name=name,
             tree_model=LGBMRegressor(
                 n_estimators=100, learning_rate=0.1, num_leaves=31, random_state=42
             ),
@@ -335,7 +335,7 @@ class SecondModelSelection(BaseExperiment):
             sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
             xgb_tune_parameters=None,  # Nothing to tune in here
         )
-        TO_COMPARE_PIPELINES["lightgbm"].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+        TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
 
         # Save tree params
         self.__get_tree_params(to_compare_pipelines=TO_COMPARE_PIPELINES)

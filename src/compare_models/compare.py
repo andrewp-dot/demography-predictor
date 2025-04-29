@@ -189,7 +189,7 @@ class ModelComparator:
             # Check if they have the same targets
             if model.TARGETS != first_model_targets:
                 raise ValueError(
-                    f"The model '{model_name}' has different features then the first model"
+                    f"The model '{model_name}' has different targets then the first model ({set(model.TARGETS).symmetric_difference(set(first_model_targets))})"
                 )
 
         # Get evaluation for all states
@@ -263,6 +263,7 @@ class ModelComparator:
                 states_evaluation_for_model: pd.DataFrame | None = None
                 for state in train_data_dict.keys():
 
+                    print(state)
                     # Get per target per state evaluation
                     model_evaluation.eval(
                         test_X=train_data_dict[state], test_y=test_data_dict[state]

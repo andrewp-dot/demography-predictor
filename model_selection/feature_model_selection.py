@@ -20,7 +20,7 @@ from src.utils.constants import (
 )
 
 from src.pipeline import FeatureModelPipeline
-from train_scripts.train_feature_models import (
+from src.train_scripts.train_feature_models import (
     train_base_rnn,
     train_ensemble_model,
     train_arima_ensemble_all_states,
@@ -46,34 +46,53 @@ class FirstModelExperiment(BaseExperiment):
     )
 
     MODEL_NAMES: List[str] = [
-        "ensemble-arima",
+        "feature_ARIMA",
         "feature_RNN",
         "feature_GRU",
         "feature_LSTM",
+        "feature_LSTM_NN",
+        # Maybe do this?
+        # "feature_univariate_RNN",
+        # "feature_univariate_GRU",
+        # "feature_univariate_LSTM",
         # "xgboost",
         # "rf",
         # "lightgbm",
     ]
 
     # Need to save this to save their training stats for plot
-    RNN_NAMES = ["feature_RNN", "feature_GRU", "feature_LSTM"]
+    RNN_NAMES = ["feature_RNN", "feature_GRU", "feature_LSTM", "feature_LSTM_NN"]
 
     def __init__(
         self,
         description: str,
     ):
         super().__init__(name=self.__class__.__name__, description=description)
-        self.FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
+        self.FEATURES: List[str] = basic_features(
+            exclude=[
+                *highly_correlated_features(),
+                "year",
+            ]  # Need to exlucde year because of ARIMA
+        )
 
         # Get targets by experiment
         self.TARGETS: List[str] = self.FEATURES
 
         self.BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
             input_size=len(self.FEATURES),
-            hidden_size=64,
+            hidden_size=256,
             batch_size=16,
             output_size=len(self.TARGETS),
             epochs=30,
+        )
+
+        self.RNN_NN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+            input_size=len(self.FEATURES),
+            hidden_size=256,
+            batch_size=16,
+            output_size=len(self.TARGETS),
+            epochs=30,
+            num_layers=2,
         )
 
         # EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
@@ -82,7 +101,7 @@ class FirstModelExperiment(BaseExperiment):
 
         self.rnn_training_stats: Dict[str, TrainingStats] = {}
 
-    def __get_models(self, model_names: List[str]) -> Dict[str, FeatureModelPipeline]:
+    def get_models(self, model_names: List[str]) -> Dict[str, FeatureModelPipeline]:
 
         # Try to get model
         pipelines: Dict[str, FeatureModelPipeline] = {}
@@ -129,10 +148,8 @@ class FirstModelExperiment(BaseExperiment):
 
         fig.tight_layout()
 
-        save_path = os.path.join(self.SAVE_MODEL_DIR, "feature_imgs")
-
-        os.makedirs(save_path, exist_ok=True)
-        plt.savefig(os.path.join(save_path, f"rnn_loss.png"))
+        # Save the figure
+        self.save_plot(fig_name=f"rnn_loss.png", figure=fig)
 
     def __train_models(
         self,
@@ -140,14 +157,34 @@ class FirstModelExperiment(BaseExperiment):
         split_rate: float = 0.8,
         display_nth_epoch: int = 1,
         force_retrain: bool = False,
+        evaluation_states: Optional[List[str]] = None,
     ) -> Dict[str, FeatureModelPipeline]:
         TO_COMPARE_PIPELINES: Dict[str, FeatureModelPipeline] = {}
 
         if not force_retrain:
             try:
-                return self.__get_models(model_names=self.MODEL_NAMES)
+                return self.get_models(model_names=self.MODEL_NAMES)
             except Exception as e:
                 logger.info(f"Models not found. Reatraining all models ({e}).")
+
+        logger.info("Training feature_ARIMA...")
+        if evaluation_states:
+            arima_data = {state: data[state] for state in evaluation_states}
+        else:
+            arima_data = data
+
+        TO_COMPARE_PIPELINES["feature_ARIMA"] = train_arima_ensemble_all_states(
+            name="feature_ARIMA",
+            data=arima_data,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            p=1,
+            d=1,
+            q=1,
+        )
+        TO_COMPARE_PIPELINES["feature_ARIMA"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
 
         # Create simple rnn
         logger.info("Training feature_RNN...")
@@ -160,7 +197,9 @@ class FirstModelExperiment(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.RNN,
         )
-        TO_COMPARE_PIPELINES["feature_RNN"].save_pipeline()
+        TO_COMPARE_PIPELINES["feature_RNN"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
 
         # Train lstm
         logger.info("Training feature_LSTM...")
@@ -173,7 +212,9 @@ class FirstModelExperiment(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.LSTM,
         )
-        TO_COMPARE_PIPELINES["feature_LSTM"].save_pipeline()
+        TO_COMPARE_PIPELINES["feature_LSTM"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
 
         # Train gru
         logger.info("Training feature_GRU...")
@@ -186,36 +227,28 @@ class FirstModelExperiment(BaseExperiment):
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.GRU,
         )
-        TO_COMPARE_PIPELINES["feature_GRU"].save_pipeline()
+        TO_COMPARE_PIPELINES["feature_GRU"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
 
         # Hybrid LSTM
         logger.info("Training LSTM + NN...")
         TO_COMPARE_PIPELINES["feature_LSTM_NN"] = train_base_rnn(
             name="feature_LSTM_NN",
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            hyperparameters=self.RNN_NN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.LSTM,
-            additional_bpnn=[32, 16],
+            additional_bpnn=[32],
         )
-        TO_COMPARE_PIPELINES["feature_LSTM_NN"].save_pipeline()
+        TO_COMPARE_PIPELINES["feature_LSTM_NN"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
 
         # Plot loss for all rnns or nns
         self.__plot_rnn_model_losses(TO_COMPARE_PIPELINES=TO_COMPARE_PIPELINES)
-
-        logger.info("Training feature_ARIMA...")
-        TO_COMPARE_PIPELINES["feature_ARIMA"] = train_arima_ensemble_all_states(
-            name="feature_ARIMA",
-            data=data,
-            features=self.FEATURES,
-            split_rate=split_rate,
-            p=1,
-            d=1,
-            q=1,
-        )
-        TO_COMPARE_PIPELINES["feature_ARIMA"].save_pipeline()
 
         return TO_COMPARE_PIPELINES
 
@@ -234,7 +267,10 @@ class FirstModelExperiment(BaseExperiment):
         states_data_dict = loader.load_all_states()
 
         TO_COMPARE_PIPELINES = self.__train_models(
-            data=states_data_dict, split_rate=split_rate, force_retrain=force_reatrain
+            data=states_data_dict,
+            split_rate=split_rate,
+            force_retrain=force_reatrain,
+            evaluation_states=evaluation_states,
         )
 
         comparator = ModelComparator()
@@ -321,4 +357,25 @@ if __name__ == "__main__":
         description="Compare models for predicting all features which are used for target predictions."
     )
 
-    exp.run(evaluation_states=["Czechia", "Honduras"], force_reatrain=False)
+    exp.run(force_reatrain=True)
+
+    # STATE = "Brunei Darussalam"
+    # exp.run(evaluation_states=["Brazil", "Qatar", STATE], force_reatrain=True)
+
+    # models = exp.get_models(model_names=["feature_ARIMA"])
+
+    # arima_model = models["feature_ARIMA"]
+
+    # states_loader = StatesDataLoader()
+    # quatar_dict = states_loader.load_states(states=[STATE])
+
+    # input_data = quatar_dict[STATE]
+
+    # prediction_df = arima_model.predict(
+    #     input_data=input_data.iloc[: int(len(input_data) * 0.2)],
+    #     last_year=2010,
+    #     target_year=2045,
+    #     state=STATE,
+    # )
+
+    # print(prediction_df)

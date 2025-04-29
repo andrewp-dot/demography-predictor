@@ -77,7 +77,7 @@ class CustomARIMA:
             endog=target_values,
             exog=exog_values,
             order=(self.p, self.d, self.q),
-            enforce_stationarity=False,
+            enforce_stationarity=True,
             enforce_invertibility=False,
             trend=self.trend,
         )
@@ -101,11 +101,11 @@ class CustomARIMA:
         end = start + steps - 1
 
         # To predict target values are set to None -> these rows also contains the known exogeneous variables
-        future_rows = data_copy[self.target].isna()
 
         # Extract corresponding future exogenous variables
         try:
             if self.features:
+                future_rows = data_copy[self.target].isna()
                 exog_values = data_copy.loc[future_rows, self.features]
                 if len(exog_values) != steps:
                     raise ValueError(
@@ -122,7 +122,10 @@ class CustomARIMA:
 
         # Create a DataFrame and align index to the future time steps
         prediction_df = predictions.to_frame(name=self.target)
-        prediction_df.index = data_copy.loc[future_rows].index
+
+        # If there is known features, use known index, otherwise keep the old index
+        if self.features:
+            prediction_df.index = data_copy.loc[future_rows].index
 
         # Rename the predicted mean to target name
         prediction_df.rename(columns={"predicted_mean": self.target}, inplace=True)

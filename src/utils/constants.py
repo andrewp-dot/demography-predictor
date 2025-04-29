@@ -86,3 +86,47 @@ def gender_distribution_targets() -> List[str]:
 
 def population_total_targets() -> List[str]:
     return ["population_total"]
+
+
+def categorical_columns() -> List[str]:
+    return ["country_name"]
+
+
+def absolute_columns() -> List[str]:
+    return [
+        # Features
+        "year",
+        "fertility_rate_total",
+        "birth_rate_crude",
+        "adolescent_fertility_rate",
+        "death_rate_crude",
+        "life_expectancy_at_birth_total",
+    ]
+
+
+def percentual_columns() -> List[str]:
+    return [
+        # Features
+        "population_growth",
+        "arable_land",
+        "gdp_growth",
+        "agricultural_land",
+        "rural_population",
+        "rural_population_growth",
+        "urban_population",
+        "age_dependency_ratio",
+        # Targets
+        "population_ages_15-64",
+        "population_ages_0-14",
+        "population_ages_65_and_above",
+        "population_female",
+        "population_male",
+    ]
+
+
+def wide_range_columns() -> List[str]:
+    return [
+        "net_migration",
+        "population_total",
+        "gdp",
+    ]

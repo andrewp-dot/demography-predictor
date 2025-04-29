@@ -61,6 +61,9 @@ class BaseEvaluation:
         # Initialize metric values
         overall_metric_df = None
 
+        # print(self.reference_values)
+        # print(self.predicted)
+
         # Average metric across all targets
         average_metric_value = metric(
             self.reference_values, self.predicted, multioutput="uniform_average"
@@ -370,7 +373,7 @@ class EvaluateModel(BaseEvaluation):
         )
 
         # Adjust features
-        X_test = test_X[FEATURES]
+        # X_test = test_X[FEATURES]
         y_test = test_y[TARGETS]
 
         # Get predicted years
@@ -382,8 +385,12 @@ class EvaluateModel(BaseEvaluation):
         # Get predictions
         if isinstance(self.pipeline, FeatureModelPipeline):
             input_data = test_X
+
             predictions_df = self.pipeline.predict(
-                input_data=input_data, last_year=last_year, target_year=target_year
+                input_data=input_data,
+                last_year=last_year,
+                target_year=target_year,
+                state=str(test_X["country_name"].iloc[0]),
             )
 
         elif isinstance(self.pipeline, TargetModelPipeline):
@@ -484,7 +491,6 @@ class EvaluateModel(BaseEvaluation):
             raise ValueError(
                 f"Not supported type of pipeline '{self.pipeline.__class__.__name__}'."
             )
-
         return self.get_target_specific_metrics(targets=TARGETS)
 
     def eval_for_every_state(

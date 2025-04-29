@@ -25,10 +25,13 @@ class StatisticalMultistateWrapper:
         self, state: str, input_data: pd.DataFrame, last_year: int, target_year: int
     ) -> pd.DataFrame:
 
+        # print(input_data)
         # Get model by state
         model = self.model[state]
 
         prediction_df = model.predict(
             input_data=input_data, last_year=last_year, target_year=target_year
         )
+
+        # print(prediction_df)
         return prediction_df

@@ -67,8 +67,7 @@ class BasePipeline:
         save_to_pipeline_dir(model=self.model, name="model.pkl")
 
         # Save the data transformer if any
-        if self.transformer:
-            save_to_pipeline_dir(model=self.transformer, name="transformer.pkl")
+        save_to_pipeline_dir(model=self.transformer, name="transformer.pkl")
 
     @classmethod
     def get_pipeline(
@@ -109,10 +108,7 @@ class BasePipeline:
         model = get_from_pipeline_dir(name="model.pkl")
 
         # Get transformer if any
-        try:
-            transformer = get_from_pipeline_dir(name="transformer.pkl")
-        except:
-            pass
+        transformer = get_from_pipeline_dir(name="transformer.pkl")
 
         return cls(name=name, model=model, transformer=transformer)
 
@@ -120,14 +116,24 @@ class BasePipeline:
 class FeatureModelPipeline(BasePipeline):
 
     # Set the correct typehints
-    model: Union["BaseRNN", "FineTunableLSTM", "PureEnsembleModel"]
+    model: Union[
+        "BaseRNN",
+        "FineTunableLSTM",
+        "PureEnsembleModel",
+        "StatisticalMultistateWrapper",
+    ]
     training_stats: Optional["TrainingStats"]
 
     def __init__(
         self,
-        model: Union["BaseRNN", "FineTunableLSTM", "PureEnsembleModel"],
+        model: Union[
+            "BaseRNN",
+            "FineTunableLSTM",
+            "PureEnsembleModel",
+            "StatisticalMultistateWrapper",
+        ],
         transformer: DataTransformer,
-        name: str = "local_model_pipeline",
+        name: str = "feature_model_pipeline",
         training_stats: Optional["TrainingStats"] = None,
     ):
         super(FeatureModelPipeline, self).__init__(
@@ -136,35 +142,58 @@ class FeatureModelPipeline(BasePipeline):
         self.training_stats = training_stats
 
     def predict(
-        self, input_data: pd.DataFrame, last_year: int, target_year: int
+        self,
+        input_data: pd.DataFrame,
+        last_year: int,
+        target_year: int,
+        state: Optional[str] = None,
     ) -> pd.DataFrame:
         FEATURES: List[str] = self.model.FEATURES
         TARGETS: List[str] = self.model.TARGETS
 
         # Scale data if needed
-        SCALE_DATA: bool = not self.transformer is None
-        if SCALE_DATA:
-            scaled_data_df = input_data
+        SCALE_DATA: bool = not self.transformer.SCALER is None
 
-        if FEATURES == TARGETS:
+        if FEATURES == TARGETS and SCALE_DATA:
             scaled_data_df = self.transformer.scale_data(
                 data=input_data,
                 features=FEATURES,
             )
-        else:
+        elif SCALE_DATA:
             scaled_data_df = self.transformer.scale_data(
                 data=input_data, features=FEATURES, targets=TARGETS
             )
+        else:
+            scaled_data_df = input_data
 
         # Predict by the model
-        future_feature_values_scaled = self.model.predict(
-            input_data=scaled_data_df[FEATURES],
-            last_year=last_year,
-            target_year=target_year,
-        )
+        if isinstance(self.model, StatisticalMultistateWrapper):
+            # Transform data using transformer
+            scaled_data_df = self.transformer.transform_data(
+                data=scaled_data_df, columns=TARGETS
+            )
+
+            future_feature_values_scaled = self.model.predict(
+                input_data=scaled_data_df,
+                last_year=last_year,
+                target_year=target_year,
+                state=state,
+            )
+
+            # Inverse transform
+            future_feature_values_scaled = self.transformer.transform_data(
+                data=future_feature_values_scaled, columns=TARGETS, inverse=True
+            )
+
+        else:
+            future_feature_values_scaled = self.model.predict(
+                input_data=scaled_data_df[FEATURES],
+                last_year=last_year,
+                target_year=target_year,
+            )
 
         future_feature_values_scaled_df = pd.DataFrame(
-            future_feature_values_scaled, columns=FEATURES
+            future_feature_values_scaled, columns=TARGETS
         )
 
         # Unscale targets if needed
@@ -229,12 +258,25 @@ class TargetModelPipeline(BasePipeline):
         self, state: str, input_data: pd.DataFrame, last_year: int, target_year: int
     ) -> pd.DataFrame:
 
-        return self.model.predict(
+        #  Transform data using transformer
+        COLUMNS = self.model.FEATURES + self.model.TARGETS
+        transformed_input_data = self.transformer.transform_data(
+            data=input_data, columns=COLUMNS
+        )
+
+        prediction_df = self.model.predict(
             state=state,
-            input_data=input_data,
+            input_data=transformed_input_data,
             last_year=last_year,
             target_year=target_year,
         )
+
+        # Inverse transform
+        inverse_transformed_pred_df = self.transformer.transform_data(
+            data=prediction_df, columns=COLUMNS, inverse=True
+        )
+
+        return inverse_transformed_pred_df
 
     def __ml_predict(
         self,
