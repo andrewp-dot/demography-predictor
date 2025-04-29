@@ -18,7 +18,7 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 from src.base import RNNHyperparameters
 from src.pipeline import GlobalModelPipeline
-from src.global_model.model import GlobalModel, XGBoostTuneParams
+from src.global_model.model import GlobalModelTree, XGBoostTuneParams
 from src.global_model.global_rnn import GlobalModelRNN
 
 # Import this just for ARIMA
@@ -41,7 +41,7 @@ def train_global_model_tree(
     split_size: float = 0.8,
 ) -> GlobalModelPipeline:
 
-    global_model = GlobalModel(
+    global_model = GlobalModelTree(
         model=tree_model,
         features=features,
         targets=targets,

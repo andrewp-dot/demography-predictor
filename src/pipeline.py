@@ -20,7 +20,7 @@ from src.local_model.model import RNNHyperparameters, BaseRNN
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 
-from src.global_model.model import GlobalModel
+from src.global_model.model import GlobalModelTree
 from src.global_model.global_rnn import GlobalModelRNN
 from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
 
@@ -174,12 +174,12 @@ class GlobalModelPipeline(BasePipeline):
 
     def __init__(
         self,
-        model: GlobalModel,
+        model: GlobalModelTree,
         transformer: DataTransformer,
         name: str = "global_model_pipeline",
     ):
         self.name: str = name
-        self.model: Union[GlobalModel, GlobalModelRNN] = model
+        self.model: Union[GlobalModelTree, GlobalModelRNN] = model
         self.transformer: DataTransformer = transformer
 
     def __tree_based_model_predict(
@@ -228,46 +228,26 @@ class GlobalModelPipeline(BasePipeline):
             target_year=target_year,
         )
 
-    def predict(
+    def __ml_predict(
         self,
         input_data: pd.DataFrame,
-        last_year: int,
-        target_year: int,
-        state: Optional[str] = None,
-    ) -> pd.DataFrame:
-        iterations_num = target_year - last_year
-
-        FEATURES = self.model.FEATURES
-        TARGETS = self.model.TARGETS
+        features: List[str],
+        targets: List[str],
+        iterations_num: int,
+    ):
+        # Predict with ML
+        FEATURES = features
+        TARGETS = targets
 
         # Scale features
         TO_SCALE_TARGETS = TARGETS
         # If there is tree based model -> do not scale the targets
-        if isinstance(self.model, GlobalModel):
+        if isinstance(self.model, GlobalModelTree):
             TO_SCALE_TARGETS = None
 
-        # Do not scale targets for statistial model
-        if isinstance(self.model, StatisticalMultistateWrapper):
-            scaled_data_df = input_data
-        else:
-            scaled_data_df = self.transformer.scale_data(
-                data=input_data, features=FEATURES, targets=TO_SCALE_TARGETS
-            )
-
-        # If the model is statisical, model
-        if isinstance(self.model, StatisticalMultistateWrapper):
-
-            if state is None:
-                raise ValueError(
-                    "For the GlobalModelPipeline with model of type 'StatisticalMultistateWrapper' need state to be provided as argument!"
-                )
-
-            return self.__statistical_model_predict(
-                state=state,
-                input_data=scaled_data_df,
-                last_year=last_year,
-                target_year=target_year,
-            )
+        scaled_data_df = self.transformer.scale_data(
+            data=input_data, features=FEATURES, targets=TO_SCALE_TARGETS
+        )
 
         # Convert to numpy
         features_np = scaled_data_df[FEATURES].values  # shape (time, num_features)
@@ -293,7 +273,7 @@ class GlobalModelPipeline(BasePipeline):
             )
 
             # Predict next target
-            if isinstance(self.model, GlobalModel):
+            if isinstance(self.model, GlobalModelTree):
                 next_target_preds = self.__tree_based_model_predict(
                     input_data_batch=input_batch_df
                 )
@@ -323,8 +303,7 @@ class GlobalModelPipeline(BasePipeline):
 
         predictions_df = pd.DataFrame(final_predictions, columns=TARGETS)
 
-        # Unscale it here
-        # Unscale
+        # Unscale data if needed
         if TO_SCALE_TARGETS:
             unscaled_predictions = self.transformer.unscale_data(
                 data=pd.DataFrame(predictions_df, columns=TO_SCALE_TARGETS),
@@ -335,6 +314,58 @@ class GlobalModelPipeline(BasePipeline):
 
         # Return only last predictions
         return predictions_df.tail(iterations_num).reset_index(drop=True)
+
+    def predict(
+        self,
+        input_data: pd.DataFrame,
+        last_year: int,
+        target_year: int,
+        state: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """
+        Predicts the target variables to from the last + 1 to target year.
+
+        Args:
+            input_data (pd.DataFrame): Data with predicted input features. Targets for unknown years should be marked as NaN.
+            last_year (int): Last known target recorded prediction.
+            target_year (int): Predictions are generated to this year.
+            state (Optional[str], optional): Specifies the state. This parameter is need for selection of specific statistical models for the state. Defaults to None.
+
+        Raises:
+            ValueError: _description_
+            ValueError: _description_
+
+        Returns:
+            out: pd.DataFrame: Unscaled generated predictions.
+        """
+
+        # Compute number of iterations, set features and targets for model
+        iterations_num = target_year - last_year
+
+        # If the model is a set of statistical models
+        if isinstance(self.model, StatisticalMultistateWrapper):
+
+            scaled_data_df = input_data
+
+            if state is None:
+                raise ValueError(
+                    "For the GlobalModelPipeline with model of type 'StatisticalMultistateWrapper' need state to be provided as argument!"
+                )
+
+            return self.__statistical_model_predict(
+                state=state,
+                input_data=scaled_data_df,
+                last_year=last_year,
+                target_year=target_year,
+            )
+
+        # Else predict with the supported model architectures
+        return self.__ml_predict(
+            input_data=input_data,
+            features=self.model.FEATURES,
+            targets=self.model.TARGETS,
+            iterations_num=iterations_num,
+        )
 
 
 class PredictorPipeline:
@@ -384,7 +415,6 @@ class PredictorPipeline:
             )
 
         # Adjust the order of the features
-        # TODO: concat future_feature_values with previous target values
         future_feature_values_df = future_feature_values_df[
             self.global_model_pipeline.model.FEATURES
         ]

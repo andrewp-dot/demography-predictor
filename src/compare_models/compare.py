@@ -17,7 +17,7 @@ from src.evaluation import EvaluateModel
 from src.local_model.finetunable_model import FineTunableLSTM
 from src.local_model.ensemble_model import PureEnsembleModel
 
-from src.global_model.model import GlobalModel
+from src.global_model.model import GlobalModelTree
 from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -227,7 +227,7 @@ class ModelComparator:
                     input_size=1
                 ).sequence_length
 
-            elif isinstance(pipeline.model, GlobalModel):
+            elif isinstance(pipeline.model, GlobalModelTree):
                 model_sequence_len = pipeline.model.sequence_len
             else:
                 model_sequence_len = pipeline.model.hyperparameters.sequence_length

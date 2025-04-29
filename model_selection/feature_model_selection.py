@@ -322,4 +322,4 @@ if __name__ == "__main__":
         description="Compare models for predicting all features which are used for target predictions."
     )
 
-    exp.run(evaluation_states=["Czechia", "Honduras"])
+    exp.run(evaluation_states=["Czechia", "Honduras"], force_reatrain=False)
