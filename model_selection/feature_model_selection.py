@@ -39,7 +39,7 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 logger = logging.getLogger("benchmark")
 
 
-class FirstModelExperiment(BaseExperiment):
+class FeatureModelExperiment(BaseExperiment):
 
     SAVE_MODEL_DIR: str = os.path.abspath(
         os.path.join(".", "model_selection", "trained_models")
@@ -47,14 +47,35 @@ class FirstModelExperiment(BaseExperiment):
 
     MODEL_NAMES: List[str] = [
         "feature_ARIMA",
+        # Recurrent networks
         "feature_RNN",
         "feature_GRU",
         "feature_LSTM",
+        # Combined networks
         "feature_LSTM_NN",
+        "feature_GRU_NN",
+        "feature_RNN_NN",
+        # Univariate recurrent neural networks
+        "feature_univariate_LSTM",
+        "feature_univariate_RNN",
+        "feature_univariate_GRU",
     ]
 
     # Need to save this to save their training stats for plot
-    RNN_NAMES = ["feature_RNN", "feature_GRU", "feature_LSTM", "feature_LSTM_NN"]
+    RNN_NAMES = [
+        # Recurrent neural networks
+        "feature_RNN",
+        "feature_GRU",
+        "feature_LSTM",
+        # Combined nural networks
+        "feature_LSTM_NN",
+        "feature_GRU_NN",
+        "feature_RNN_NN",
+        # Univariate recurrent neural networks
+        # "feature_univariate_LSTM",
+        # "feature_univariate_RNN",
+        # "feature_univariate_GRU",
+    ]
 
     def __init__(
         self,
@@ -77,6 +98,16 @@ class FirstModelExperiment(BaseExperiment):
             batch_size=16,
             output_size=len(self.TARGETS),
             epochs=30,
+        )
+
+        self.UNIVARIATE_RNN_HYPERPARAMETERS: RNNHyperparameters = (
+            get_core_hyperparameters(
+                input_size=len(self.FEATURES),
+                hidden_size=64,
+                batch_size=16,
+                output_size=len(self.TARGETS),
+                epochs=30,
+            )
         )
 
         self.RNN_NN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
@@ -176,6 +207,7 @@ class FirstModelExperiment(BaseExperiment):
             custom_dir=self.SAVE_MODEL_DIR
         )
 
+        ## TRain recurrent neural networks
         # Create simple rnn
         logger.info("Training feature_RNN...")
         TO_COMPARE_PIPELINES["feature_RNN"] = train_base_rnn(
@@ -221,6 +253,7 @@ class FirstModelExperiment(BaseExperiment):
             custom_dir=self.SAVE_MODEL_DIR
         )
 
+        ## Combined neural networks
         # Hybrid LSTM
         logger.info("Training LSTM + NN...")
         TO_COMPARE_PIPELINES["feature_LSTM_NN"] = train_base_rnn(
@@ -231,7 +264,7 @@ class FirstModelExperiment(BaseExperiment):
             split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.LSTM,
-            additional_bpnn=[32],
+            additional_bpnn=[128],
         )
         TO_COMPARE_PIPELINES["feature_LSTM_NN"].save_pipeline(
             custom_dir=self.SAVE_MODEL_DIR
@@ -246,24 +279,61 @@ class FirstModelExperiment(BaseExperiment):
             split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.RNN,
-            additional_bpnn=[32],
+            additional_bpnn=[128],
         )
         TO_COMPARE_PIPELINES["feature_RNN_NN"].save_pipeline(
             custom_dir=self.SAVE_MODEL_DIR
         )
 
         logger.info("Training GRU + NN...")
-        TO_COMPARE_PIPELINES["feature_RNN_NN"] = train_base_rnn(
-            name="feature_RNN_NN",
+        TO_COMPARE_PIPELINES["feature_GRU_NN"] = train_base_rnn(
+            name="feature_GRU_NN",
             hyperparameters=self.RNN_NN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.GRU,
-            additional_bpnn=[32],
+            additional_bpnn=[128],
         )
         TO_COMPARE_PIPELINES["feature_GRU_NN"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
+
+        ## Univariate neural networks
+        TO_COMPARE_PIPELINES["feature_univariate_LSTM"] = train_ensemble_model(
+            name="feature_univariate_LSTM",
+            hyperparameters=self.UNIVARIATE_RNN_HYPERPARAMETERS,
+            data=data,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=display_nth_epoch,
+        )
+        TO_COMPARE_PIPELINES["feature_univariate_LSTM"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
+
+        TO_COMPARE_PIPELINES["feature_univariate_GRU"] = train_ensemble_model(
+            name="feature_univariate_GRU",
+            hyperparameters=self.UNIVARIATE_RNN_HYPERPARAMETERS,
+            data=data,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=display_nth_epoch,
+        )
+        TO_COMPARE_PIPELINES["feature_univariate_GRU"].save_pipeline(
+            custom_dir=self.SAVE_MODEL_DIR
+        )
+
+        TO_COMPARE_PIPELINES["feature_univariate_RNN"] = train_ensemble_model(
+            name="feature_univariate_RNN",
+            hyperparameters=self.UNIVARIATE_RNN_HYPERPARAMETERS,
+            data=data,
+            features=self.FEATURES,
+            split_rate=split_rate,
+            display_nth_epoch=display_nth_epoch,
+        )
+        TO_COMPARE_PIPELINES["feature_univariate_RNN"].save_pipeline(
             custom_dir=self.SAVE_MODEL_DIR
         )
 
@@ -356,6 +426,20 @@ class FirstModelExperiment(BaseExperiment):
             text=f"```\n{per_target_metrics_df_sorted}\n```\n\n",
         )
 
+        # Get the models for each target with the smallest mae
+        best_model_indexes = per_target_metrics_df_sorted.groupby("target")[
+            "mae"
+        ].idxmin()
+
+        best_models_for_targets_df = per_target_metrics_df_sorted.loc[
+            best_model_indexes
+        ].reset_index(drop=True)
+
+        self.readme_add_section(
+            title="## Best model for each target",
+            text=f"```\n{best_models_for_targets_df}\n```\n\n",
+        )
+
         # Overall model selection
         self.readme_add_section(
             title="## Overall metrics - model comparision",
@@ -363,38 +447,13 @@ class FirstModelExperiment(BaseExperiment):
         )
 
 
-class ARIMAvsUnivariateRNN(BaseExperiment):
-    pass
-
-
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
-    exp = FirstModelExperiment(
+    exp = FeatureModelExperiment(
         description="Compare models for predicting all features which are used for target predictions."
     )
 
     # Run for all
     exp.run(force_reatrain=True)
-
-    # STATE = "Brunei Darussalam"
-    # exp.run(evaluation_states=["Brazil", "Qatar", STATE], force_reatrain=True)
-
-    # models = exp.get_models(model_names=["feature_ARIMA"])
-
-    # arima_model = models["feature_ARIMA"]
-
-    # states_loader = StatesDataLoader()
-    # quatar_dict = states_loader.load_states(states=[STATE])
-
-    # input_data = quatar_dict[STATE]
-
-    # prediction_df = arima_model.predict(
-    #     input_data=input_data.iloc[: int(len(input_data) * 0.2)],
-    #     last_year=2010,
-    #     target_year=2045,
-    #     state=STATE,
-    # )
-
-    # print(prediction_df)

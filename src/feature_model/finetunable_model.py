@@ -55,11 +55,8 @@ class FineTunableLSTM(CustomModelBase):
             features=base_model.FEATURES,
             targets=base_model.TARGETS,
             hyperparameters=hyperparameters,
-            scaler=base_model.SCALER,
+            device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         )
-
-        # Get the device
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Load pretrained LSTM layers
         self.base_model = base_model

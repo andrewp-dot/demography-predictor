@@ -381,7 +381,9 @@ class DataTransformer:
         if not targets:
             TARGETS = []
 
-        FEATURES = [f for f in features if not f in TARGETS]
+        # Check if features are equal to targets. This is just for ensure the compatibility with univariate neural network models.
+        if FEATURES != TARGETS:
+            FEATURES = [f for f in features if not f in TARGETS]
 
         to_scale_feature_data = to_scale_data[FEATURES]
 
@@ -389,6 +391,7 @@ class DataTransformer:
         transformed_feature_data_df = self.transform_data(
             data=to_scale_feature_data, columns=FEATURES
         )
+
         scaled_feature_data = self.SCALER.transform(transformed_feature_data_df)
         scaled_feature_data_df = pd.DataFrame(
             scaled_feature_data, columns=transformed_feature_data_df.columns
@@ -403,11 +406,6 @@ class DataTransformer:
             transformed_target_data_df = self.transform_data(
                 data=to_scale_target_data, columns=TARGETS
             )
-
-            # print("Expected order:", list(self.TARGET_SCALER.feature_names_in_))
-            # print("Actual order:  ", list(transformed_target_data_df.columns))
-
-            # print(TARGETS == self.TARGET_SCALER.feature_names_in_)
 
             scaled_target_data = self.TARGET_SCALER.transform(
                 transformed_target_data_df

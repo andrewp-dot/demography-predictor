@@ -259,6 +259,18 @@ class TargetModelPipeline(BasePipeline):
     def __statistical_model_predict(
         self, state: str, input_data: pd.DataFrame, last_year: int, target_year: int
     ) -> pd.DataFrame:
+        """
+        Prediction for models of statistical types.
+
+        Args:
+            input_data (pd.DataFrame): Scaled input data.
+            state (str): The state for specifying the state model.
+            last_year (int): Last known data year.
+            target_year (int): To this year are generated predictions.
+
+        Returns:
+            out: pd.DataFrame: Generated predictions.
+        """
 
         #  Transform data using transformer
         COLUMNS = self.model.FEATURES + self.model.TARGETS
@@ -286,7 +298,22 @@ class TargetModelPipeline(BasePipeline):
         features: List[str],
         targets: List[str],
         iterations_num: int,
-    ):
+    ) -> pd.DataFrame:
+        """
+        Prediction for models of machine learning types.
+
+        Args:
+            input_data (pd.DataFrame): Scaled input data.
+            features (List[str]): List of features which is accepted by model.
+            targets (List[str]): List of targets which he model predicts.
+            iterations_num (int): Number of iterations (number of predicted years) for model prediction.
+
+        Raises:
+            ValueError: Unsupported type of the target model.
+
+        Returns:
+            out: pd.DataFrame: Generated predictions.
+        """
         # Predict with ML
         FEATURES = features
         TARGETS = targets
@@ -340,7 +367,7 @@ class TargetModelPipeline(BasePipeline):
 
             else:
                 raise ValueError(
-                    f"Global model pipeline predict does not support predict of model type: {type(self.model).__name__}"
+                    f"Target model pipeline predict does not support predict of model type: {type(self.model).__name__}"
                 )
 
             # Stack predicted next steps
@@ -384,8 +411,7 @@ class TargetModelPipeline(BasePipeline):
             state (Optional[str], optional): Specifies the state. This parameter is need for selection of specific statistical models for the state. Defaults to None.
 
         Raises:
-            ValueError: _description_
-            ValueError: _description_
+            ValueError: If there is no state specified for model of type 'StatisticalMultistateWrapper'.
 
         Returns:
             out: pd.DataFrame: Unscaled generated predictions.

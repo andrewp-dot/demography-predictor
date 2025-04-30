@@ -275,7 +275,7 @@ def train_ensemble_model(
     return FeatureModelPipeline(
         name=name,
         transformer=transformer,
-        model=PureEnsembleModel(feature_models=trained_models),
+        model=PureEnsembleModel(target_models=trained_models, features=features),
     )
 
 
@@ -307,7 +307,7 @@ def train_arima_ensemble_model(
     return FeatureModelPipeline(
         name=name,
         transformer=DataTransformer(),
-        model=PureEnsembleModel(feature_models=trained_models),
+        model=PureEnsembleModel(target_models=trained_models),
     )
 
 
