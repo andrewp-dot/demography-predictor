@@ -215,7 +215,7 @@ class BaseRNN(CustomModelBase):
 
         # Early stopping
         if enable_early_stopping:
-            early_stopping = EarlyStopping(patience=5, delta=0.001)
+            early_stopping = EarlyStopping(patience=3, delta=0.0005)
 
         # Training loop
         for epoch in range(num_epochs):

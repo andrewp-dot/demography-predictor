@@ -1,9 +1,17 @@
 # Standard library imports
 import pandas as pd
-from typing import List, Tuple, Dict
+from typing import List, Dict
+from xgboost import XGBRegressor
 
 # Custom library imports
 from src.utils.log import setup_logging
+from src.utils.constants import (
+    basic_features,
+    highly_correlated_features,
+    aging_targets,
+    gender_distribution_targets,
+    population_total_targets,
+)
 from src.utils.constants import get_core_hyperparameters
 from src.base import RNNHyperparameters
 from src.evaluation import EvaluateModel
@@ -13,35 +21,40 @@ from src.target_model.model import XGBoostTuneParams
 
 from src.state_groups import StatesByWealth
 
+
 from src.pipeline import PredictorPipeline
 
-from train_scripts.train_feature_models import train_base_rnn
-from train_scripts.train_target_models import train_global_model_tree
+from src.train_scripts.train_feature_models import (
+    train_base_rnn,
+    train_arima_ensemble_all_states,
+)
+from src.train_scripts.train_target_models import train_global_model_tree
 
-from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 
 def train_basic_pipeline(
     name: str,
-    global_model_data_dict: Dict[str, pd.DataFrame],
-    local_model_data_dict: Dict[str, pd.DataFrame],
+    target_model_data_dict: Dict[str, pd.DataFrame],
+    feature_model_data_dict: Dict[str, pd.DataFrame],
     hyperparameters: RNNHyperparameters,
-    local_model_features: List[str],
-    global_model_targets: List[str],
-    additional_global_model_features: List[str] = None,
+    feature_model_features: List[str],
+    target_model_targets: List[str],
+    additional_target_model_targets: List[str] = None,
     split_rate: float = 0.8,
     display_nth_epoch=10,
+    enable_early_stopping: bool = True,
 ) -> PredictorPipeline:
 
     # Train local model pipeline
-    local_model_pipeline = train_base_rnn(
+    feature_model_pipeline = train_base_rnn(
         name="base-lstm",
         hyperparameters=hyperparameters,
-        data=local_model_data_dict,
-        features=local_model_features,
+        data=feature_model_data_dict,
+        features=feature_model_features,
         split_rate=split_rate,
         display_nth_epoch=display_nth_epoch,
+        enable_early_stopping=enable_early_stopping,
     )
 
     # Train global model pieplien
@@ -53,20 +66,72 @@ def train_basic_pipeline(
         colsample_bytree=[0.5, 0.7, 0.9, 1.0],
     )
 
-    global_model_pipeline = train_global_model_tree(
+    target_model_pipeline = train_global_model_tree(
         name="xgb-gm",
-        states_data=global_model_data_dict,
-        features=list(set([*local_model_features, *additional_global_model_features])),
-        targets=global_model_targets,
+        states_data=target_model_data_dict,
+        tree_model=XGBRegressor(
+            n_estimators=100, objective="reg:squarederror", random_state=42
+        ),
+        features=list(set([*feature_model_features, *additional_target_model_targets])),
+        targets=target_model_targets,
         sequence_len=5,
-        tune_parameters=tune_parameters,
+        xgb_tune_parameters=tune_parameters,
     )
 
     # Create pipeline
     model_pipeline = PredictorPipeline(
         name=name,
-        local_model_pipeline=local_model_pipeline,
-        global_model_pipeline=global_model_pipeline,
+        local_model_pipeline=feature_model_pipeline,
+        global_model_pipeline=target_model_pipeline,
+    )
+
+    return model_pipeline
+
+
+def train_arima_xgboost_pipeline(
+    name: str,
+    target_model_data_dict: Dict[str, pd.DataFrame],
+    feature_model_data_dict: Dict[str, pd.DataFrame],
+    feature_model_features: List[str],
+    target_model_targets: List[str],
+    additional_target_model_targets: List[str] = None,
+    split_rate: float = 0.8,
+    display_nth_epoch=10,
+) -> PredictorPipeline:
+    # Train local model pipeline
+    feature_model_pipeline = train_arima_ensemble_all_states(
+        name="arima",
+        data=feature_model_data_dict,
+        features=feature_model_features,
+        split_rate=split_rate,
+    )
+
+    # Train global model pieplien
+    tune_parameters = XGBoostTuneParams(
+        n_estimators=[100, 400],
+        learning_rate=[0.001, 0.01, 0.05],
+        max_depth=[3, 5, 7],
+        subsample=[0.5, 0.7],
+        colsample_bytree=[0.5, 0.7, 0.9, 1.0],
+    )
+
+    target_model_pipeline = train_global_model_tree(
+        name="xgb-gm",
+        states_data=target_model_data_dict,
+        tree_model=XGBRegressor(
+            n_estimators=100, objective="reg:squarederror", random_state=42
+        ),
+        features=list(set([*feature_model_features, *additional_target_model_targets])),
+        targets=target_model_targets,
+        sequence_len=5,
+        xgb_tune_parameters=tune_parameters,
+    )
+
+    # Create pipeline
+    model_pipeline = PredictorPipeline(
+        name=name,
+        local_model_pipeline=feature_model_pipeline,
+        global_model_pipeline=target_model_pipeline,
     )
 
     return model_pipeline
@@ -74,57 +139,21 @@ def train_basic_pipeline(
 
 def main():
 
-    # # Get local model features
-    # LOCAL_MODEL_FEATURES: List[str] = [
-    #     col.lower()
-    #     for col in [
-    #         # "year",
-    #         "Fertility rate, total",
-    #         # "Population, total",
-    #         "Net migration",
-    #         "Arable land",
-    #         "Birth rate, crude",
-    #         "GDP growth",
-    #         "Death rate, crude",
-    #         "Agricultural land",
-    #         "Rural population",
-    #         "Rural population growth",
-    #         "Age dependency ratio",
-    #         "Urban population",
-    #         "Population growth",
-    #         "Adolescent fertility rate",
-    #         "Life expectancy at birth, total",
-    #     ]
-    # ]
-
-    LOCAL_MODEL_FEATURES: List[str] = [
-        "fertility rate, total",
-        "population, total",
-        "arable land",
-        "gdp growth",
-        "death rate, crude",
-        "agricultural land",
-        "rural population growth",
-        "urban population",
-        "population growth",
-    ]
+    # Local model features
+    FEATURE_MODEL_FEATURES: List[str] = basic_features(
+        exclude=highly_correlated_features()
+    )
 
     # Get global model settings
-    GLOBAL_MODEL_ADDITIONAL_FEATURES: List[str] = [
-        col.lower() for col in ["year", "country_name"]
-    ]
-    GLOBAL_MODEL_TARGETS: List[str] = [
-        # "population ages 15-64",
-        # "population ages 0-14",
-        # "population ages 65 and above",
-        "population, female",
-        "population, male",
-    ]
+    TARGET_MODEL_ADDITIONAL_FEATURES: List[str] = [col.lower() for col in ["year"]]
+    TARGET_MODEL_TARGETS: List[str] = aging_targets()
 
     hyperparameters = get_core_hyperparameters(
-        input_size=len(LOCAL_MODEL_FEATURES),
+        input_size=len(FEATURE_MODEL_FEATURES),
+        # batch_size=1,
         batch_size=32,
         epochs=50,
+        sequence_length=5,
     )
 
     # Load whole dataset
@@ -134,35 +163,51 @@ def main():
     STATE: str = "Czechia"
     single_state_data_dict = loader.load_states(states=[STATE])
 
-    # Get the corresponding group of states
-    GROUPS_BY_WEALTH = StatesByWealth()
+    # # Get the corresponding group of states
+    # GROUPS_BY_WEALTH = StatesByWealth()
 
-    SELECTED_GROUP: List[str] = GROUPS_BY_WEALTH.get_states_corresponding_group(
-        state=STATE
+    # SELECTED_GROUP: List[str] = GROUPS_BY_WEALTH.get_states_corresponding_group(
+    #     state=STATE
+    # )
+    GROUP_STATES = (
+        StatesByWealth().high_income
+        + StatesByWealth().upper_middle_income
+        + StatesByWealth().lower_middle_income
     )
-
-    group_state_data_dict = loader.load_states(states=SELECTED_GROUP)
+    group_state_data_dict = loader.load_states(states=GROUP_STATES)
     all_states_data_dict = loader.load_all_states()
 
-    # Global model taining data
-    merged_all_states_data = loader.merge_states(state_dfs=all_states_data_dict)
+    # all_states_data_dict = single_state_data_dict
 
-    PIPELINE_NAME: str = "gender_core_pipeline"
-    pipeline = train_basic_pipeline(
+    # Global model taining data
+    # merged_all_states_data = loader.merge_states(state_dfs=all_states_data_dict)
+
+    PIPELINE_NAME: str = "aging_core_pipeline"
+    pipeline = train_arima_xgboost_pipeline(
         name=PIPELINE_NAME,
-        local_model_data_dict=all_states_data_dict,
-        global_model_data=merged_all_states_data,
+        feature_model_data_dict=single_state_data_dict,
+        target_model_data_dict=all_states_data_dict,
+        feature_model_features=FEATURE_MODEL_FEATURES,
+        additional_target_model_targets=TARGET_MODEL_ADDITIONAL_FEATURES,
+        target_model_targets=TARGET_MODEL_TARGETS,
+    )
+
+    pipeline_2 = train_basic_pipeline(
+        name=PIPELINE_NAME,
+        feature_model_data_dict=group_state_data_dict,
+        target_model_data_dict=all_states_data_dict,
         hyperparameters=hyperparameters,
-        local_model_features=LOCAL_MODEL_FEATURES,
-        additional_global_model_features=GLOBAL_MODEL_ADDITIONAL_FEATURES,
-        global_model_targets=GLOBAL_MODEL_TARGETS,
+        feature_model_features=FEATURE_MODEL_FEATURES,
+        additional_target_model_targets=TARGET_MODEL_ADDITIONAL_FEATURES,
+        target_model_targets=TARGET_MODEL_TARGETS,
+        enable_early_stopping=True,
     )
 
     # Save pipeline
-    # pipeline.save_pipeline()
+    pipeline.save_pipeline()
 
     # Try to predict something, for example Czechia from loaded pipeline
-    # pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
+    pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
 
     states_loader = StatesDataLoader()
     czechia_data_dict = states_loader.load_states(states=["Czechia"])
@@ -170,11 +215,19 @@ def main():
     test_predicion_df = pipeline.predict(
         input_data=czechia_data_dict["Czechia"], target_year=2035
     )
-    print(test_predicion_df)
 
-    model_evaluation = EvaluateModel(
-        transformer=pipeline.local_model_pipeline.transformer, model=pipeline
+    test_predicion_df_2 = pipeline_2.predict(
+        input_data=czechia_data_dict["Czechia"], target_year=2035
     )
+
+    print("#" * 100)
+    print(test_predicion_df)
+    print()
+    print(test_predicion_df_2)
+    print("#" * 100)
+
+    model_evaluation = EvaluateModel(pipeline=pipeline)
+    model_evaluation_2 = EvaluateModel(pipeline=pipeline_2)
 
     czechia_data_dict = loader.load_states(states=["Czechia"])
     X_test_states, y_test_states = loader.split_data(
@@ -185,19 +238,30 @@ def main():
     test_y = y_test_states[STATE]
 
     evaluation_df = model_evaluation.eval(test_X=test_X, test_y=test_y)
+    evaluation_df_2 = model_evaluation_2.eval(test_X=test_X, test_y=test_y)
 
+    print("#" * 100)
     print(evaluation_df)
+    print()
+    print(evaluation_df_2)
+    print("#" * 100)
 
     per_target_df = model_evaluation.eval_per_target(test_X=test_X, test_y=test_y)
+    per_target_df_2 = model_evaluation_2.eval_per_target(test_X=test_X, test_y=test_y)
 
+    print("#" * 100)
     print(per_target_df)
+    print()
+    print(per_target_df_2)
+    print("#" * 100)
 
     print(model_evaluation.predicted)
 
     print(model_evaluation.reference_values)
 
-    pred_plot = model_evaluation.plot_predictions()
     import matplotlib.pyplot as plt
+
+    model_evaluation.plot_predictions()
 
     plt.savefig(
         "predictions.png",
@@ -205,17 +269,25 @@ def main():
         dpi=300,
     )
 
-    all_states_dict = states_loader.load_all_states()
-    # all_states_dict = loader.load_states(states=["Czechia", "United States"])
-    X_test_states, y_test_states = loader.split_data(
-        states_dict=all_states_dict, sequence_len=hyperparameters.sequence_length
+    model_evaluation_2.plot_predictions()
+
+    plt.savefig(
+        "predictions_2.png",
+        bbox_inches="tight",
+        dpi=300,
     )
 
-    overall_metrics = model_evaluation.eval_for_every_state_overall(
-        X_test_states=X_test_states, y_test_states=y_test_states
-    )
+    # all_states_dict = states_loader.load_all_states()
+    # # all_states_dict = loader.load_states(states=["Czechia", "United States"])
+    # X_test_states, y_test_states = loader.split_data(
+    #     states_dict=all_states_dict, sequence_len=hyperparameters.sequence_length
+    # )
 
-    print(overall_metrics)
+    # overall_metrics = model_evaluation.eval_for_every_state_overall(
+    #     X_test_states=X_test_states, y_test_states=y_test_states
+    # )
+
+    # print(overall_metrics)
 
 
 if __name__ == "__main__":

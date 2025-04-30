@@ -464,11 +464,25 @@ class PredictorPipeline:
     def predict(self, input_data: pd.DataFrame, target_year: int) -> pd.DataFrame:
 
         # Model predict
-        # Get last known year
+        # Get last known year and the state
+
         if input_data.empty or not "year" in input_data.columns:
             raise ValueError(
                 "Cannot find the last year of the data. Cannot find out the number of years to predict."
             )
+
+        if not "country_name" in input_data.columns and isinstance(
+            self.local_model_pipeline.model.model, StatisticalMultistateWrapper
+        ):
+            raise ValueError(
+                "Missing 'country_name' for the prediction generation. Cannoct select proprer statistical model."
+            )
+
+        # Try to get state name
+        try:
+            state = input_data["country_name"][0]
+        except:
+            state = None
 
         # Get last year
         last_year = int(
@@ -476,7 +490,10 @@ class PredictorPipeline:
         )
 
         future_feature_values_df = self.local_model_pipeline.predict(
-            input_data=input_data, last_year=last_year, target_year=target_year
+            state=state,
+            input_data=input_data,
+            last_year=last_year,
+            target_year=target_year,
         )
 
         # Adjust additional info for global model if needed
@@ -532,6 +549,7 @@ class PredictorPipeline:
         )
 
         predicted_data_df = self.global_model_pipeline.predict(
+            state=state,
             input_data=final_input,
             last_year=last_year,
             target_year=target_year,

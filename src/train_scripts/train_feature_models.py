@@ -90,6 +90,7 @@ def train_base_rnn(
     display_nth_epoch: int = 10,
     rnn_type: Optional[Type[Union[nn.LSTM, nn.GRU, nn.RNN]]] = nn.LSTM,
     additional_bpnn: Optional[List[int]] = None,
+    enable_early_stopping: bool = True,
 ) -> FeatureModelPipeline:
 
     # Preprocess data
@@ -121,6 +122,7 @@ def train_base_rnn(
         batch_validation_inputs=batch_validation_inputs,
         batch_validation_targets=batch_validation_targets,
         display_nth_epoch=display_nth_epoch,
+        enable_early_stopping=enable_early_stopping,
     )
 
     # Create pipeline

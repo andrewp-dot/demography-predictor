@@ -11,12 +11,10 @@ import matplotlib.pyplot as plt
 # Custom imports
 from src.utils.log import setup_logging
 from src.utils.constants import get_core_hyperparameters
+from src.state_groups import OnlyRealStates
 from src.utils.constants import (
     basic_features,
     highly_correlated_features,
-    aging_targets,
-    population_total_targets,
-    gender_distribution_targets,
 )
 
 from src.pipeline import FeatureModelPipeline
@@ -342,6 +340,19 @@ class FeatureModelExperiment(BaseExperiment):
 
         return TO_COMPARE_PIPELINES
 
+    def create_and_save_state_comparision_plots(
+        self,
+        comparator: ModelComparator,
+        states: List[str],
+        models: List[str],
+    ) -> None:
+
+        for state in states:
+            fig = comparator.create_state_comparison_plot(
+                state=state, model_names=models
+            )
+            self.save_plot(fig_name=f"{state}_predictions.png", figure=fig)
+
     def run(
         self,
         split_rate: float = 0.8,
@@ -350,7 +361,7 @@ class FeatureModelExperiment(BaseExperiment):
     ) -> None:
 
         # Setup readme
-        self.create_readme()
+        self.create_readme(readme_name="only_countries_README.md")
 
         # Load data
         loader = StatesDataLoader()
@@ -446,6 +457,23 @@ class FeatureModelExperiment(BaseExperiment):
             text=f"```\n{overall_metrics_df}\n```\n\n",
         )
 
+        # Get top N models
+        TOP_N: int = 3
+        TOP_N_MODELS: List[str] = list(overall_metrics_df.iloc[0:TOP_N]["model"])
+
+        # Plot top N models
+        self.create_and_save_state_comparision_plots(
+            comparator=comparator,
+            states=[
+                "Czechia",
+                "Slovak Republic",
+                " United States",
+                "Honduras",
+                "China",
+            ],
+            models=TOP_N_MODELS,
+        )
+
 
 if __name__ == "__main__":
     # Setup logging
@@ -456,4 +484,5 @@ if __name__ == "__main__":
     )
 
     # Run for all
-    exp.run(force_reatrain=True)
+    # exp.run(force_reatrain=True, evaluation_states=OnlyRealStates().states)
+    exp.run(force_reatrain=False)

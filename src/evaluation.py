@@ -23,7 +23,7 @@ from src.statistical_models.arima import CustomARIMA
 from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
 
 
-logger = logging.getLogger("evaluation")
+logger = logging.getLogger("model_compare")
 
 
 class BaseEvaluation:

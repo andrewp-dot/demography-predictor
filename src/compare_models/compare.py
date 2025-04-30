@@ -2,7 +2,7 @@
 import pandas as pd
 import logging
 
-from typing import List, Dict, Union, Literal, Tuple
+from typing import List, Dict, Union, Literal, Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -301,7 +301,9 @@ class ModelComparator:
 
         return df_ranked
 
-    def create_state_comparison_plot(self, state: str) -> Figure:
+    def create_state_comparison_plot(
+        self, state: str, model_names: Optional[List[str]] = None
+    ) -> Figure:
 
         # Plot refference data
         if not self.model_evaluations:
@@ -309,8 +311,13 @@ class ModelComparator:
                 f"No model evaluations to create state comparison plot. Compare some models first."
             )
 
+        if model_names:
+            plot_model_names = model_names
+        else:
+            plot_model_names = list(self.model_evaluations.keys())
+
         # Get the first model
-        first_model_name = list(self.model_evaluations.keys())[0]
+        first_model_name = plot_model_names[0]
 
         # Get the refference data for the state
         TARGETS = self.model_evaluations[first_model_name].pipeline.model.TARGETS
@@ -342,7 +349,10 @@ class ModelComparator:
             )
 
             # Fore every model evaluation
-            for model_name, evaluation in self.model_evaluations.items():
+            for model_name in plot_model_names:
+
+                # Get evaluation
+                evaluation = self.model_evaluations[model_name]
 
                 # Plot predicted values
                 axes[index].plot(
