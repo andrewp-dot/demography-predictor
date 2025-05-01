@@ -401,11 +401,14 @@ class SecondModelSelection(BaseExperiment):
         comparator: ModelComparator,
         states: List[str],
         models: List[str],
+        lang: Literal["en", "sk"] = "en",
     ) -> None:
 
         for state in states:
             fig = comparator.create_state_comparison_plot(
-                state=state, model_names=models
+                state=state,
+                model_names=models,
+                lang=lang,
             )
             self.save_plot(
                 fig_name=f"{self.TARGET_GROUP_PREFIX}_{state}_predictions.png",
@@ -524,6 +527,7 @@ class SecondModelSelection(BaseExperiment):
                 "Rwanda",
             ],
             models=TOP_N_MODELS,
+            lang="sk",
         )
 
 
