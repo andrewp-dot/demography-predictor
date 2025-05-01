@@ -423,7 +423,7 @@ class CompareWithStatisticalModels(BaseExperiment):
         )
 
 
-class DifferentHiddenLayers(BaseExperiment):
+class DifferentHiddenAndNumOfLayers(BaseExperiment):
 
     FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
 
@@ -434,6 +434,8 @@ class DifferentHiddenLayers(BaseExperiment):
         256,
         512,
     ]
+
+    NUMBER_OF_LAYERS: List[int] = [1, 2, 3]
 
     MODEL_TYPES: Dict[str, Type] = {
         "GRU": nn.GRU,
@@ -458,11 +460,11 @@ class DifferentHiddenLayers(BaseExperiment):
 
         # Train models with different
         TO_COMPARE_MODELS: Dict[str, FeatureModelPipeline] = {}
-        for (name, rnn_type), hidden_size in product(
-            self.MODEL_TYPES.items(), self.HIDDEN_SIZE_TO_TRY
+        for (name, rnn_type), num_layers, hidden_size in product(
+            self.MODEL_TYPES.items(), self.NUMBER_OF_LAYERS, self.HIDDEN_SIZE_TO_TRY
         ):
 
-            MODEL_NAME = f"{name}_{hidden_size}"
+            MODEL_NAME = f"{name}_{num_layers}_{hidden_size}"
             TO_COMPARE_MODELS[MODEL_NAME] = train_base_rnn(
                 name=MODEL_NAME,
                 features=self.FEATURES,
@@ -471,6 +473,7 @@ class DifferentHiddenLayers(BaseExperiment):
                     batch_size=16,
                     hidden_size=hidden_size,
                     epochs=30,
+                    num_layers=num_layers,
                 ),
                 data=all_states_dict,
                 split_rate=split_rate,
@@ -563,8 +566,8 @@ if __name__ == "__main__":
     # exp_3.run(state="Czechia", split_rate=0.8)
 
     # Runnable
-    exp_4 = DifferentHiddenLayers(
+    exp_4 = DifferentHiddenAndNumOfLayers(
         description="Try to train BaseRNN models with different layers.",
     )
-    # exp_4.run(split_rate=0.8)
-    exp_4.run(split_rate=0.8, evaluation_states=[STATE])
+    exp_4.run(split_rate=0.8)
+    # exp_4.run(split_rate=0.8, evaluation_states=[STATE])

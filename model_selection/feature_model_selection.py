@@ -82,17 +82,40 @@ class FeatureModelExperiment(BaseExperiment):
         # Get targets by experiment
         self.TARGETS: List[str] = self.FEATURES
 
-        self.BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+        self.RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
             input_size=len(self.FEATURES),
             batch_size=16,
             output_size=len(self.TARGETS),
             epochs=30,
+            # Based on DifferentHiddenAndNumOfLayers experiment
+            num_layers=1,
+            hidden_size=128,
+        )
+
+        self.GRU_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+            input_size=len(self.FEATURES),
+            batch_size=16,
+            output_size=len(self.TARGETS),
+            epochs=30,
+            # Based on DifferentHiddenAndNumOfLayers experiment
+            num_layers=2,
+            hidden_size=512,
+        )
+
+        self.LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+            input_size=len(self.FEATURES),
+            batch_size=16,
+            output_size=len(self.TARGETS),
+            epochs=30,
+            # Based on DifferentHiddenAndNumOfLayers experiment
+            num_layers=2,
+            hidden_size=256,
         )
 
         self.UNIVARIATE_RNN_HYPERPARAMETERS: RNNHyperparameters = (
             get_core_hyperparameters(
                 input_size=len(self.FEATURES),
-                hidden_size=28,
+                hidden_size=128,
                 batch_size=16,
                 output_size=len(self.TARGETS),
                 epochs=30,
@@ -221,7 +244,7 @@ class FeatureModelExperiment(BaseExperiment):
         logger.info("Training feature_RNN...")
         TO_COMPARE_PIPELINES["feature_RNN"] = train_base_rnn(
             name="feature_RNN",
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            hyperparameters=self.RNN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
@@ -236,7 +259,7 @@ class FeatureModelExperiment(BaseExperiment):
         logger.info("Training feature_LSTM...")
         TO_COMPARE_PIPELINES["feature_LSTM"] = train_base_rnn(
             name="feature_LSTM",
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            hyperparameters=self.LSTM_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
@@ -251,7 +274,7 @@ class FeatureModelExperiment(BaseExperiment):
         logger.info("Training feature_GRU...")
         TO_COMPARE_PIPELINES["feature_GRU"] = train_base_rnn(
             name="feature_GRU",
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            hyperparameters=self.GRU_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
@@ -267,13 +290,13 @@ class FeatureModelExperiment(BaseExperiment):
         logger.info("Training LSTM + NN...")
         TO_COMPARE_PIPELINES["feature_LSTM_NN"] = train_base_rnn(
             name="feature_LSTM_NN",
-            hyperparameters=self.RNN_NN_HYPERPARAMETERS,
+            hyperparameters=self.LSTM_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.LSTM,
-            additional_bpnn=[128],
+            additional_bpnn=[64],
         )
         TO_COMPARE_PIPELINES["feature_LSTM_NN"].save_pipeline(
             custom_dir=self.SAVE_MODEL_DIR
@@ -282,13 +305,13 @@ class FeatureModelExperiment(BaseExperiment):
         logger.info("Training RNN + NN...")
         TO_COMPARE_PIPELINES["feature_RNN_NN"] = train_base_rnn(
             name="feature_RNN_NN",
-            hyperparameters=self.RNN_NN_HYPERPARAMETERS,
+            hyperparameters=self.RNN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.RNN,
-            additional_bpnn=[128],
+            additional_bpnn=[64],
         )
         TO_COMPARE_PIPELINES["feature_RNN_NN"].save_pipeline(
             custom_dir=self.SAVE_MODEL_DIR
@@ -297,13 +320,13 @@ class FeatureModelExperiment(BaseExperiment):
         logger.info("Training GRU + NN...")
         TO_COMPARE_PIPELINES["feature_GRU_NN"] = train_base_rnn(
             name="feature_GRU_NN",
-            hyperparameters=self.RNN_NN_HYPERPARAMETERS,
+            hyperparameters=self.GRU_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
             display_nth_epoch=display_nth_epoch,
             rnn_type=nn.GRU,
-            additional_bpnn=[128],
+            additional_bpnn=[64],
         )
         TO_COMPARE_PIPELINES["feature_GRU_NN"].save_pipeline(
             custom_dir=self.SAVE_MODEL_DIR
@@ -373,7 +396,7 @@ class FeatureModelExperiment(BaseExperiment):
     ) -> None:
 
         # Setup readme
-        self.create_readme(readme_name="hidden_size_512_README.md")
+        self.create_readme(readme_name="experiment_based_params_README.md")
 
         # Load data
         loader = StatesDataLoader()
@@ -483,6 +506,7 @@ class FeatureModelExperiment(BaseExperiment):
                 "United States",
                 "Honduras",
                 "China",
+                "Rwanda",
             ],
             models=TOP_N_MODELS,
         )

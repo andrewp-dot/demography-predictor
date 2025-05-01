@@ -71,6 +71,8 @@ class SecondModelSelection(BaseExperiment):
     # Need this to save the parameters used for comparision
     TREE_NAMES = ["XGBoost", "random_forest", "LightGBM"]
 
+    STATS_MODEL_NAMES = ["ARIMA", "ARIMAX"]
+
     def __init__(
         self,
         description: str,
@@ -91,12 +93,34 @@ class SecondModelSelection(BaseExperiment):
         # Get targets by experiment
         self.TARGETS: List[str] = self.TARGETS_BY_PREFIX[self.TARGET_GROUP_PREFIX]()
 
-        self.BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+        self.RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
             input_size=len(self.FEATURES + self.TARGETS),
-            hidden_size=64,
             batch_size=16,
             output_size=len(self.TARGETS),
             epochs=30,
+            # Based on DifferentHiddenAndNumOfLayers experiment
+            num_layers=1,
+            hidden_size=128,
+        )
+
+        self.GRU_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+            input_size=len(self.FEATURES + self.TARGETS),
+            batch_size=16,
+            output_size=len(self.TARGETS),
+            epochs=30,
+            # Based on DifferentHiddenAndNumOfLayers experiment
+            num_layers=2,
+            hidden_size=512,
+        )
+
+        self.LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
+            input_size=len(self.FEATURES + self.TARGETS),
+            batch_size=16,
+            output_size=len(self.TARGETS),
+            epochs=30,
+            # Based on DifferentHiddenAndNumOfLayers experiment
+            num_layers=2,
+            hidden_size=256,
         )
 
         # This is used to tune x
@@ -118,7 +142,7 @@ class SecondModelSelection(BaseExperiment):
         # Parameters of compared trees
         self.tree_params: Dict[str, dict] = {}
 
-    def __get_models(self, model_names: List[str]) -> Dict[str, TargetModelPipeline]:
+    def get_models(self, model_names: List[str]) -> Dict[str, TargetModelPipeline]:
 
         # Try to get model
         pipelines: Dict[str, TargetModelPipeline] = {}
@@ -256,9 +280,9 @@ class SecondModelSelection(BaseExperiment):
         # Train ARIMA models for states
         TO_COMPARE_PIPELINES: Dict[str, TargetModelPipeline] = {}
 
-        if not force_retrain:
+        if not force_retrain and not only_rnn_retrain:
             try:
-                return self.__get_models(model_names=self.MODEL_NAMES)
+                return self.get_models(model_names=self.MODEL_NAMES)
             except Exception as e:
                 logger.info(f"Models not found. Reatraining all models ({e}).")
 
@@ -275,7 +299,7 @@ class SecondModelSelection(BaseExperiment):
         name = f"{self.TARGET_GROUP_PREFIX}_RNN"
         TO_COMPARE_PIPELINES[name] = train_global_rnn(
             name=name,
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            hyperparameters=self.RNN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             targets=self.TARGETS,
@@ -290,7 +314,7 @@ class SecondModelSelection(BaseExperiment):
         name = f"{self.TARGET_GROUP_PREFIX}_LSTM"
         TO_COMPARE_PIPELINES[name] = train_global_rnn(
             name=name,
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            hyperparameters=self.LSTM_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             targets=self.TARGETS,
@@ -305,7 +329,7 @@ class SecondModelSelection(BaseExperiment):
         name = f"{self.TARGET_GROUP_PREFIX}_GRU"
         TO_COMPARE_PIPELINES[name] = train_global_rnn(
             name=name,
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
+            hyperparameters=self.GRU_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             targets=self.TARGETS,
@@ -329,7 +353,7 @@ class SecondModelSelection(BaseExperiment):
             states_data=data,
             features=self.FEATURES,
             targets=self.TARGETS,
-            sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
+            sequence_len=self.RNN_HYPERPARAMETERS.sequence_length,
             xgb_tune_parameters=None,  # Do not tune parameters
         )
         TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
@@ -347,7 +371,7 @@ class SecondModelSelection(BaseExperiment):
             states_data=data,
             features=self.FEATURES,
             targets=self.TARGETS,
-            sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
+            sequence_len=self.RNN_HYPERPARAMETERS.sequence_length,
             xgb_tune_parameters=None,  # Nothing to tune in here
         )
         TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
@@ -362,7 +386,7 @@ class SecondModelSelection(BaseExperiment):
             states_data=data,
             features=self.FEATURES,
             targets=self.TARGETS,
-            sequence_len=self.BASE_RNN_HYPERPARAMETERS.sequence_length,
+            sequence_len=self.RNN_HYPERPARAMETERS.sequence_length,
             xgb_tune_parameters=None,  # Nothing to tune in here
         )
         TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
@@ -371,6 +395,22 @@ class SecondModelSelection(BaseExperiment):
         self.__get_tree_params(to_compare_pipelines=TO_COMPARE_PIPELINES)
 
         return TO_COMPARE_PIPELINES
+
+    def create_and_save_state_comparision_plots(
+        self,
+        comparator: ModelComparator,
+        states: List[str],
+        models: List[str],
+    ) -> None:
+
+        for state in states:
+            fig = comparator.create_state_comparison_plot(
+                state=state, model_names=models
+            )
+            self.save_plot(
+                fig_name=f"{self.TARGET_GROUP_PREFIX}_{state}_predictions.png",
+                figure=fig,
+            )
 
     def run(
         self,
@@ -395,6 +435,7 @@ class SecondModelSelection(BaseExperiment):
             split_rate=split_rate,
             display_nth_epoch=DISPLAY_NTH_EPOCH,
             evaluation_states=evaluation_states,
+            only_rnn_retrain=only_rnn_retrain,
         )
 
         comparator = ModelComparator()
@@ -423,9 +464,9 @@ class SecondModelSelection(BaseExperiment):
 
         # Print bast performing and worst performing states for each method
         for model in self.MODEL_NAMES:
-
             model_state_metrics_df = overall_metrics_per_state_df[
-                overall_metrics_per_state_df["model"] == model
+                overall_metrics_per_state_df["model"]
+                == f"{self.TARGET_GROUP_PREFIX}_{model}"
             ].sort_values(by=["r2", "mse"], ascending=[False, True])
 
             # Write section
@@ -467,6 +508,24 @@ class SecondModelSelection(BaseExperiment):
             text=f"```\n{overall_metrics_df}\n```\n\n",
         )
 
+        # Get top N models
+        TOP_N: int = 3
+        TOP_N_MODELS: List[str] = list(overall_metrics_df.iloc[0:TOP_N]["model"])
+
+        # Plot top N models
+        self.create_and_save_state_comparision_plots(
+            comparator=comparator,
+            states=[
+                "Czechia",
+                "Slovak Republic",
+                "United States",
+                "Honduras",
+                "China",
+                "Rwanda",
+            ],
+            models=TOP_N_MODELS,
+        )
+
 
 if __name__ == "__main__":
     # Setup logging
@@ -478,14 +537,14 @@ if __name__ == "__main__":
         target_group_prefix="aging",
     )
 
-    exp_aging.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=True)
+    exp_aging.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=False)
 
     # Experiment for population total
     exp_pop_total = SecondModelSelection(
         description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
         target_group_prefix="pop_total",
     )
-    exp_pop_total.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=True)
+    exp_pop_total.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=False)
 
     # Experiment for gender distribution
     exp_gender_dist = SecondModelSelection(
@@ -493,4 +552,4 @@ if __name__ == "__main__":
         target_group_prefix="gender_dist",
     )
 
-    exp_gender_dist.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=True)
+    exp_gender_dist.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=False)
