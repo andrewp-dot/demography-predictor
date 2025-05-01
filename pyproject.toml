@@ -5,7 +5,7 @@ description = ""
 authors = ["Andrew <ado.ponechal@gmail.com>"]
 readme = "README.md"
 packages = [{ include = "src" }, { include = "model_selection" }]
-package-mode = false
+
 
 [tool.poetry.scripts]
 dataset-create = "data_science.preprocessors.dataset_preprocessor:main"

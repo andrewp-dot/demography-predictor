@@ -1,7 +1,7 @@
 # Standard library imports
 import logging
 import pandas as pd
-from typing import List, Dict, Union, Type
+from typing import List, Dict, Union, Type, Optional
 
 from torch import nn
 from itertools import product
@@ -19,6 +19,7 @@ from model_experiments.config import (
 )
 
 from src.utils.constants import get_core_hyperparameters
+from src.utils.save_model import save_experiment_model, get_experiment_model
 
 # from src.utils.save_model import save_experiment_model, get_experiment_model
 from src.state_groups import StatesByGeolocation, StatesByWealth
@@ -27,7 +28,7 @@ from src.pipeline import FeatureModelPipeline
 from src.train_scripts.train_feature_models import (
     train_base_rnn,
     train_finetunable_model,
-    train_finetunable_model_from_scratch,
+    train_arima_ensemble_all_states,
     train_ensemble_model,
     train_arima_ensemble_model,
 )
@@ -39,8 +40,6 @@ from src.feature_model.model import RNNHyperparameters, BaseRNN
 
 from src.feature_model.ensemble_model import (
     PureEnsembleModel,
-    # train_models_for_ensemble_model,
-    # train_arima_models_for_ensemble_model,
 )
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -191,7 +190,15 @@ class CompareWithStatisticalModels(BaseExperiment):
     In this experiment the statistical models (ARIMA(1,1,1) and GM(1,1) models) are compared with BaseRNN model.
     """
 
-    FEATURES: List[str] = [""]
+    FEATURES: List[str] = [
+        "fertility_rate_total",
+        "arable_land",
+        "gdp",
+        "death_rate_crude",
+        "agricultural_land",
+        "urban_population",
+        "population_growth",
+    ]
 
     BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
@@ -203,11 +210,17 @@ class CompareWithStatisticalModels(BaseExperiment):
 
     FINETUNE_MODELS_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
-        hidden_size=124,
+        hidden_size=64,
         batch_size=1,
         num_layers=1,
         epochs=BASE_LSTM_HYPERPARAMETERS.epochs * 3,
     )
+
+    MODEL_NAMES: List[str] = [
+        "LSTM",
+        "ensemble_LSTM",
+        "ARIMA",
+    ]
 
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
@@ -254,51 +267,87 @@ class CompareWithStatisticalModels(BaseExperiment):
         return pipeline
 
     def __train_arima_ensemble_model(
-        self, name: str, split_rate: float, state: str
-    ) -> PureEnsembleModel:
-        ensemble_model = train_arima_ensemble_model(
+        self,
+        name: str,
+        data: Dict[str, pd.DataFrame],
+        split_rate: float,
+    ) -> FeatureModelPipeline:
+        ensemble_model = train_arima_ensemble_all_states(
             name=name,
+            data=data,
             features=self.FEATURES,
-            state=state,
             split_rate=split_rate,
         )
 
         return ensemble_model
 
-    def run(self, state: str, split_rate: float = 0.8):
-        # Create readme
-        self.create_readme()
+    def __get_models(self) -> Dict[str, FeatureModelPipeline]:
 
-        TO_COMPARE_MODELS: Dict[str, Union[FeatureModelPipeline, PureEnsembleModel]] = (
-            {}
-        )
+        TO_COMPARE_PIPELINES: Dict[str, FeatureModelPipeline] = {}
+        try:
+            for name in self.MODEL_NAMES:
+                TO_COMPARE_PIPELINES[name] = FeatureModelPipeline.get_pipeline(
+                    name=name, experimental=True
+                )
+        except Exception as e:
+            logger.info(f"Exception occured: {e}. Training all models from scratch")
+            return {}
+
+        return TO_COMPARE_PIPELINES
+
+    def __train_models(self, split_rate: float) -> Dict[str, FeatureModelPipeline]:
+
+        # Load
+        TO_COMPARE_MODELS: Dict[str, FeatureModelPipeline] = self.__get_models()
+
+        # If loaded return
+        if TO_COMPARE_MODELS:
+            return TO_COMPARE_MODELS
 
         # Get data loader
         states_loader: StatesDataLoader = StatesDataLoader()
 
+        data = states_loader.load_all_states()
+
+        # Else retrain models
         # Train base lstm
-        TO_COMPARE_MODELS["base-lstm"] = self.__train_base_rnn_model(
-            name="base-lstm",
+        TO_COMPARE_MODELS["LSTM"] = self.__train_base_rnn_model(
+            name="LSTM",
             states_loader=states_loader,
             split_rate=split_rate,
             display_nth_epoch=1,
         )
+        TO_COMPARE_MODELS["LSTM"].save_pipeline(experimental=True)
 
-        TO_COMPARE_MODELS["ensemble-lstm"] = self.__train_ensemble_model(
+        TO_COMPARE_MODELS["ensemble-LSTM"] = self.__train_ensemble_model(
             split_rate=split_rate, display_nth_epoch=1
         )
+        TO_COMPARE_MODELS["ensemble-LSTM"].save_pipeline(experimental=True)
 
-        TO_COMPARE_MODELS["ensemble-arima"] = self.__train_arima_ensemble_model(
-            name="ensemble-arima", split_rate=split_rate, state=state
+        TO_COMPARE_MODELS["ARIMA"] = self.__train_arima_ensemble_model(
+            name="ARIMA",
+            data=data,
+            split_rate=split_rate,
+        )
+        TO_COMPARE_MODELS["ARIMA"].save_pipeline(experimental=True)
+
+    def run(
+        self, split_rate: float = 0.8, evaluation_states: Optional[List[str]] = None
+    ):
+        # Create readme
+        self.create_readme()
+
+        TO_COMPARE_MODELS: Dict[str, FeatureModelPipeline] = self.__train_models(
+            split_rate=split_rate
         )
 
         # Evaluate models - per-target-performance
         comparator = ModelComparator()
         per_target_metrics_df = comparator.compare_models_by_states(
-            pipelines=TO_COMPARE_MODELS, states=[state], by="per-features"
+            pipelines=TO_COMPARE_MODELS, states=evaluation_states, by="per-features"
         )
         overall_metrics_df = comparator.compare_models_by_states(
-            pipelines=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
+            pipelines=TO_COMPARE_MODELS, states=evaluation_states, by="overall-metrics"
         )
 
         # Print results to the readme
@@ -450,14 +499,14 @@ if __name__ == "__main__":
     # exp_2.run(state="Czechia", state_group=SELECTED_GROUP, split_rate=0.8)
 
     # 3 are nto runnable due to broken (incompatibile) PureEnsembleModel with pipeline creation.
-    # exp_3 = CompareWithStatisticalModels(
-    #     description="Compares BaseRNN with statistical models and BaseRNN for single feature prediction."
-    # )
-    # exp_3.run(state="Czechia", split_rate=0.8)
+    exp_3 = CompareWithStatisticalModels(
+        description="Compares BaseRNN with statistical models and BaseRNN for single feature prediction."
+    )
+    exp_3.run(split_rate=0.8)
 
     # Runnable
-    exp_4 = DifferentHiddenAndNumOfLayers(
-        description="Try to train BaseRNN models with different layers.",
-    )
-    exp_4.run(split_rate=0.8)
+    # exp_4 = DifferentHiddenAndNumOfLayers(
+    #     description="Try to train BaseRNN models with different layers.",
+    # )
+    # exp_4.run(split_rate=0.8)
     # exp_4.run(split_rate=0.8, evaluation_states=[STATE])

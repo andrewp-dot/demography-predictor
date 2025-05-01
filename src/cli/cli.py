@@ -19,7 +19,7 @@ def cli():
 
 
 @cli.group()
-def lbenchmark():
+def model_experiments():
     """
     Defines the main cli group
     """
@@ -28,12 +28,12 @@ def lbenchmark():
 
 
 # Subgroup for the experiment group
-# poetry run cli lbenchmark --all
-# poetry run cli lbenchmark --experiments "name 1"  "name 2"
-# poetry run cli lbenchmark --list
+# poetry run cli model_experiments --all
+# poetry run cli model_experiments --experiments "name 1"  "name 2"
+# poetry run cli model_experiments --list
 
 
-@lbenchmark.command()
+@model_experiments.command()
 @click.option(
     "--detailed",
     is_flag=True,
@@ -47,7 +47,7 @@ def list(detailed):
     print_available_experiments(with_description=detailed)
 
 
-@lbenchmark.command()
+@model_experiments.command()
 @click.option(
     "--all",
     is_flag=True,

@@ -9,7 +9,12 @@ from typing import Union, Optional, List, Any
 # Custom imports
 from config import Config
 from src.utils.log import setup_logging
-from src.utils.save_model import save_model, get_model
+from src.utils.save_model import (
+    save_model,
+    save_experiment_model,
+    get_model,
+    get_experiment_model,
+)
 from src.preprocessors.data_transformer import DataTransformer
 
 
@@ -41,7 +46,9 @@ class BasePipeline:
         self.model: Any = model
         self.transformer: Optional[DataTransformer] = transformer
 
-    def save_pipeline(self, custom_dir: Optional[str] = None):
+    def save_pipeline(
+        self, custom_dir: Optional[str] = None, experimental: bool = False
+    ):
         """
         Saves the model pipeline to default or custom_dir.
 
@@ -51,6 +58,7 @@ class BasePipeline:
         # Create a new pipeline directory if does not exist
         if custom_dir:
             trained_models_dir = custom_dir
+
         else:
             trained_models_dir = os.path.abspath(settings.trained_models_dir)
 
@@ -61,6 +69,11 @@ class BasePipeline:
             os.makedirs(pipeline_dir)
 
         def save_to_pipeline_dir(model: Any, name: str):
+            if experimental:
+                save_experiment_model(
+                    model=model, name=os.path.join(pipeline_dir, name)
+                )
+                return
             save_model(model=model, name=os.path.join(pipeline_dir, name))
 
         # Save local model and its transformer
@@ -71,7 +84,7 @@ class BasePipeline:
 
     @classmethod
     def get_pipeline(
-        cls, name: str, custom_dir: Optional[str] = None
+        cls, name: str, custom_dir: Optional[str] = None, experimental: bool = False
     ) -> "BasePipeline":
         # Gets the pipeline by name
 
@@ -102,6 +115,8 @@ class BasePipeline:
             )
 
         def get_from_pipeline_dir(name: str) -> Any:
+            if experimental:
+                return get_experiment_model(name=os.path.join(pipeline_dir, name))
             return get_model(name=os.path.join(pipeline_dir, name))
 
         # Save local model and its transformer

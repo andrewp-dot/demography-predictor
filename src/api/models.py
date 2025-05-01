@@ -5,7 +5,8 @@ from pydantic import BaseModel
 # TODO:
 # Make info endpoint to gather data about endpoints and interfaces
 class Info(BaseModel):
-    avialable_models: List[str]
+    models: List[str]
+    available_populations: List[str]
     # endpoints: List[str] = [
     #     "/predict",
     #     "/lakmoos-predict",
