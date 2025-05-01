@@ -221,18 +221,6 @@ class DataUsedForTraining(BaseExperiment):
         )
 
 
-class FeatureSelectionExperiment(BaseExperiment):
-    """
-    Feature selection experiment.
-    """
-
-    def __init__(self, description: str):
-        super().__init__(name=self.__class__.__name__, description=description)
-
-    def run(self):
-        pass
-
-
 # TODO:
 # 1. Create expeirment for the groups (or to find the best subset of data)
 # 2. Subset of data validaion:
@@ -435,7 +423,10 @@ class FeatureSelectionExperiment(BaseExperiment):
     FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
 
     BASE_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
-        len(FEATURES), batch_size=32
+        len(FEATURES),
+        batch_size=32,
+        hidden_size=256,
+        num_layers=2,
     )
 
     def __init__(self, description: str):

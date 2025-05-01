@@ -112,16 +112,6 @@ class FeatureModelExperiment(BaseExperiment):
             hidden_size=256,
         )
 
-        self.UNIVARIATE_RNN_HYPERPARAMETERS: RNNHyperparameters = (
-            get_core_hyperparameters(
-                input_size=len(self.FEATURES),
-                hidden_size=128,
-                batch_size=16,
-                output_size=len(self.TARGETS),
-                epochs=30,
-            )
-        )
-
         self.RNN_NN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
             input_size=len(self.FEATURES),
             # hidden_size=256,
@@ -335,7 +325,7 @@ class FeatureModelExperiment(BaseExperiment):
         ## Univariate neural networks
         TO_COMPARE_PIPELINES["feature_univariate_LSTM"] = train_ensemble_model(
             name="feature_univariate_LSTM",
-            hyperparameters=self.UNIVARIATE_RNN_HYPERPARAMETERS,
+            hyperparameters=self.LSTM_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
@@ -347,7 +337,7 @@ class FeatureModelExperiment(BaseExperiment):
 
         TO_COMPARE_PIPELINES["feature_univariate_GRU"] = train_ensemble_model(
             name="feature_univariate_GRU",
-            hyperparameters=self.UNIVARIATE_RNN_HYPERPARAMETERS,
+            hyperparameters=self.GRU_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
@@ -359,7 +349,7 @@ class FeatureModelExperiment(BaseExperiment):
 
         TO_COMPARE_PIPELINES["feature_univariate_RNN"] = train_ensemble_model(
             name="feature_univariate_RNN",
-            hyperparameters=self.UNIVARIATE_RNN_HYPERPARAMETERS,
+            hyperparameters=self.RNN_HYPERPARAMETERS,
             data=data,
             features=self.FEATURES,
             split_rate=split_rate,
@@ -478,7 +468,7 @@ class FeatureModelExperiment(BaseExperiment):
 
         # Get the models for each target with the smallest mae
         best_model_indexes = per_target_metrics_df_sorted.groupby("target")[
-            "mae"
+            "mse"
         ].idxmin()
 
         best_models_for_targets_df = per_target_metrics_df_sorted.loc[

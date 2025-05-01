@@ -50,117 +50,6 @@ settings = FeatureModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
 
 
-# TODO: set the features using constants in src.utils.constatns
-class FeaturePredictionSeparatelyVSAtOnce(BaseExperiment):
-    """
-    Compares performance of 2 models:
-    - BaseRNN (input_size=N_FEATURES)
-    - Multiple BaseRNN (input_size=1, number of models=N_FEATURES)
-
-    Models are compared by evaluation on the specific (chosen) states data.
-    """
-
-    FEATURES: List[str] = basic_features()
-
-    BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
-        input_size=len(FEATURES),
-        batch_size=16,
-        hidden_size=256,
-    )
-
-    ENSEMBLE_MODELS_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
-        input_size=1,
-        batch_size=16,
-        hidden_size=64,
-    )
-
-    def __init__(self, description: str):
-        super().__init__(name=self.__class__.__name__, description=description)
-
-    def __train_base_rnn_model(
-        self,
-        name: str,
-        states_loader: StatesDataLoader,
-        split_rate: float,
-        display_nth_epoch: int = 10,
-    ) -> FeatureModelPipeline:
-
-        # Preprocess data
-        states_data_dict = states_loader.load_all_states()
-
-        # The train_base_rnn function splits the data automatically
-        lstm_pipeline = train_base_rnn(
-            name=name,
-            hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
-            features=self.FEATURES,
-            data=states_data_dict,
-            display_nth_epoch=display_nth_epoch,
-            split_rate=split_rate,
-        )
-
-        return lstm_pipeline
-
-    def __train_ensemble_model(
-        self, split_rate: float, display_nth_epoch=10
-    ) -> FeatureModelPipeline:
-
-        loader = StatesDataLoader()
-        all_states_dict = loader.load_all_states()
-
-        pipeline = train_ensemble_model(
-            name="ensemble-model",
-            hyperparameters=self.ENSEMBLE_MODELS_HYPERPARAMETERS,
-            data=all_states_dict,
-            features=self.FEATURES,
-            split_rate=split_rate,
-            display_nth_epoch=display_nth_epoch,
-        )
-
-        return pipeline
-
-    def run(self, state: str, split_rate: float = 0.8):
-        # Create readme
-        self.create_readme()
-
-        TO_COMPARE_MODELS: Dict[str, Union[FeatureModelPipeline]] = {}
-
-        # Get data loader
-        states_loader: StatesDataLoader = StatesDataLoader()
-
-        # Train base lstm
-        TO_COMPARE_MODELS["base-lstm"] = self.__train_base_rnn_model(
-            name="base-lstm",
-            states_loader=states_loader,
-            split_rate=split_rate,
-            display_nth_epoch=1,
-        )
-
-        # Train ensemble model
-        TO_COMPARE_MODELS["ensemble-model"] = self.__train_ensemble_model(
-            split_rate=split_rate, display_nth_epoch=1
-        )
-
-        # Evaluate models - per-target-performance
-        comparator = ModelComparator()
-        per_target_metrics_df = comparator.compare_models_by_states(
-            pipelines=TO_COMPARE_MODELS, states=[state], by="per-features"
-        )
-        overall_metrics_df = comparator.compare_models_by_states(
-            pipelines=TO_COMPARE_MODELS, states=[state], by="overall-metrics"
-        )
-
-        # Print results to the readme
-        self.readme_add_section(
-            title="## Per target metrics - model comparision",
-            text=f"```\n{per_target_metrics_df}\n```\n\n",
-        )
-
-        self.readme_add_section(
-            title="## Overall metrics - model comparision",
-            text=f"```\n{overall_metrics_df}\n```\n\n",
-        )
-
-
 # TODO: Fix ensemble model
 class FineTunedModels(BaseExperiment):
     """
@@ -302,13 +191,14 @@ class CompareWithStatisticalModels(BaseExperiment):
     In this experiment the statistical models (ARIMA(1,1,1) and GM(1,1) models) are compared with BaseRNN model.
     """
 
-    FEATURES: List[str] = basic_features()
+    FEATURES: List[str] = [""]
 
     BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES),
         batch_size=16,
         hidden_size=256,
-        epochs=1,
+        epochs=30,
+        num_layers=2,
     )
 
     FINETUNE_MODELS_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
