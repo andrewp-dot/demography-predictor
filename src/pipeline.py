@@ -154,14 +154,28 @@ class FeatureModelPipeline(BasePipeline):
         # Scale data if needed
         SCALE_DATA: bool = not self.transformer.SCALER is None
 
+        # Transform data
         if FEATURES == TARGETS and SCALE_DATA:
+
+            transformed_input_data = self.transformer.transform_data(
+                state=state, data=input_data, columns=FEATURES
+            )
+
             scaled_data_df = self.transformer.scale_data(
-                data=input_data,
+                data=transformed_input_data,
                 features=FEATURES,
             )
+
         elif SCALE_DATA:
+
+            COLUMNS = FEATURES + (TARGETS if TARGETS else [])
+
+            transformed_input_data = self.transformer.transform_data(
+                state=state, data=input_data, columns=COLUMNS
+            )
+
             scaled_data_df = self.transformer.scale_data(
-                data=input_data, features=FEATURES, targets=TARGETS
+                data=transformed_input_data, features=FEATURES, targets=TARGETS
             )
         else:
             scaled_data_df = input_data
@@ -170,7 +184,7 @@ class FeatureModelPipeline(BasePipeline):
         if isinstance(self.model, StatisticalMultistateWrapper):
             # Transform data using transformer
             scaled_data_df = self.transformer.transform_data(
-                data=scaled_data_df, columns=TARGETS
+                state=state, data=scaled_data_df, columns=TARGETS
             )
 
             future_feature_values_scaled = self.model.predict(
@@ -182,6 +196,8 @@ class FeatureModelPipeline(BasePipeline):
 
             # Inverse transform
             future_feature_values_scaled = self.transformer.transform_data(
+                state=state,
+                # last_known_values=LAST_KNOWN_TARGET_VALUES,
                 data=future_feature_values_scaled,
                 columns=TARGETS,
                 inverse=True,
@@ -197,12 +213,22 @@ class FeatureModelPipeline(BasePipeline):
         future_feature_values_scaled_df = pd.DataFrame(
             future_feature_values_scaled, columns=TARGETS
         )
-
         # Unscale targets if needed
         if SCALE_DATA:
+
+            # Unscale
             future_feature_values_df = self.transformer.unscale_data(
-                data=future_feature_values_scaled_df, targets=TARGETS
+                data=future_feature_values_scaled_df, features=TARGETS
             )
+
+            # Inverse transform
+            # future_feature_values_df = self.transformer.transform_data(
+            #     state=state,
+            #     data=future_feature_values_df,
+            #     columns=TARGETS,
+            #     inverse=True,
+            # )
+
         else:
             future_feature_values_df = future_feature_values_scaled_df
 

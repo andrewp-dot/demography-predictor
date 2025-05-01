@@ -177,20 +177,22 @@ def main():
     group_state_data_dict = loader.load_states(states=GROUP_STATES)
     all_states_data_dict = loader.load_all_states()
 
+    all_states_data_dict = loader.load_states(states=["Czechia"])
+
     # all_states_data_dict = single_state_data_dict
 
     # Global model taining data
     # merged_all_states_data = loader.merge_states(state_dfs=all_states_data_dict)
 
     PIPELINE_NAME: str = "aging_core_pipeline"
-    pipeline = train_arima_xgboost_pipeline(
-        name=PIPELINE_NAME,
-        feature_model_data_dict=single_state_data_dict,
-        target_model_data_dict=all_states_data_dict,
-        feature_model_features=FEATURE_MODEL_FEATURES,
-        additional_target_model_targets=TARGET_MODEL_ADDITIONAL_FEATURES,
-        target_model_targets=TARGET_MODEL_TARGETS,
-    )
+    # pipeline = train_arima_xgboost_pipeline(
+    #     name=PIPELINE_NAME,
+    #     feature_model_data_dict=single_state_data_dict,
+    #     target_model_data_dict=all_states_data_dict,
+    #     feature_model_features=FEATURE_MODEL_FEATURES,
+    #     additional_target_model_targets=TARGET_MODEL_ADDITIONAL_FEATURES,
+    #     target_model_targets=TARGET_MODEL_TARGETS,
+    # )
 
     pipeline_2 = train_basic_pipeline(
         name=PIPELINE_NAME,
@@ -201,32 +203,33 @@ def main():
         additional_target_model_targets=TARGET_MODEL_ADDITIONAL_FEATURES,
         target_model_targets=TARGET_MODEL_TARGETS,
         enable_early_stopping=True,
+        display_nth_epoch=1,
     )
 
     # Save pipeline
-    pipeline.save_pipeline()
+    # pipeline.save_pipeline()
 
     # Try to predict something, for example Czechia from loaded pipeline
-    pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
+    # pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
 
     states_loader = StatesDataLoader()
     czechia_data_dict = states_loader.load_states(states=["Czechia"])
 
-    test_predicion_df = pipeline.predict(
-        input_data=czechia_data_dict["Czechia"], target_year=2035
-    )
+    # test_predicion_df = pipeline.predict(
+    #     input_data=czechia_data_dict["Czechia"], target_year=2035
+    # )
 
     test_predicion_df_2 = pipeline_2.predict(
         input_data=czechia_data_dict["Czechia"], target_year=2035
     )
 
     print("#" * 100)
-    print(test_predicion_df)
+    # print(test_predicion_df)
     print()
     print(test_predicion_df_2)
     print("#" * 100)
 
-    model_evaluation = EvaluateModel(pipeline=pipeline)
+    # model_evaluation = EvaluateModel(pipeline=pipeline)
     model_evaluation_2 = EvaluateModel(pipeline=pipeline_2)
 
     czechia_data_dict = loader.load_states(states=["Czechia"])
@@ -237,37 +240,33 @@ def main():
     test_X = X_test_states[STATE]
     test_y = y_test_states[STATE]
 
-    evaluation_df = model_evaluation.eval(test_X=test_X, test_y=test_y)
+    # evaluation_df = model_evaluation.eval(test_X=test_X, test_y=test_y)
     evaluation_df_2 = model_evaluation_2.eval(test_X=test_X, test_y=test_y)
 
     print("#" * 100)
-    print(evaluation_df)
+    # print(evaluation_df)
     print()
     print(evaluation_df_2)
     print("#" * 100)
 
-    per_target_df = model_evaluation.eval_per_target(test_X=test_X, test_y=test_y)
+    # per_target_df = model_evalusation.eval_per_target(test_X=test_X, test_y=test_y)
     per_target_df_2 = model_evaluation_2.eval_per_target(test_X=test_X, test_y=test_y)
 
     print("#" * 100)
-    print(per_target_df)
+    # print(per_target_df)
     print()
     print(per_target_df_2)
     print("#" * 100)
 
-    print(model_evaluation.predicted)
+    # print(model_evaluation.predicted)
 
-    print(model_evaluation.reference_values)
+    # print(model_evaluation.reference_values)
 
     import matplotlib.pyplot as plt
 
-    model_evaluation.plot_predictions()
+    # model_evaluation.plot_predictions()
 
-    plt.savefig(
-        "predictions.png",
-        bbox_inches="tight",
-        dpi=300,
-    )
+    # plt.savefig(s
 
     model_evaluation_2.plot_predictions()
 

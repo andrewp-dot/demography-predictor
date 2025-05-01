@@ -1,23 +1,27 @@
 # Standard library imports
 import pandas as pd
 import numpy as np
-from typing import List, Tuple, Dict, Callable, Optional
+from typing import List, Tuple, Dict, Callable, Union, Optional
 from sklearn.preprocessing import MinMaxScaler
-
+import warnings
 
 import torch
 from sklearn.preprocessing import LabelEncoder
+from statsmodels.tsa.stattools import adfuller
 
 # Custom imports
 from src.preprocessors.state_preprocessing import StateDataLoader
-from src.base import RNNHyperparameters
-from src.utils.constants import get_core_hyperparameters
+from src.utils.constants import (
+    get_core_hyperparameters,
+    aging_targets,
+    basic_features,
+    highly_correlated_features,
+)
 
 
 # TODO:
-# 1. Save this as preprocessor for data
-# 2. Preprocess categorical data
-# 3. Understand the data -> plot the dataset etc.
+# 1. transform data first
+# 2. split and scale them afterwards
 
 
 class DataTransformer:
@@ -61,13 +65,17 @@ class DataTransformer:
     }
 
     def __init__(self):
+
+        # Save scalers for features and targets separately
         self.SCALER: MinMaxScaler | None = None
         self.TARGET_SCALER: MinMaxScaler | None = None
-        self.__unused_states: List[str] = []
+
+        # Get fitted label encoders per columns
         self.LABEL_ENCODERS: Dict[str, LabelEncoder] | None = None
 
-    def get_unused_states(self) -> List[str]:
-        return self.__unused_states
+        # Initial values for states used for differentiaion
+        # Format {"Uganda": {"gdp": 1200425, "population_total": 1234925}, "Czechia": ...}
+        self.state_initial_values: Dict[str, Dict[str, Union[int, float]]] = {}
 
     def transform_categorical_columns(
         self,
@@ -128,6 +136,7 @@ class DataTransformer:
     def transform_wide_range_data(
         self, data: pd.DataFrame, inverse: bool = False, C: float = 1.0
     ) -> pd.DataFrame:
+
         to_scale_data = data.copy()
 
         # Decode
@@ -142,46 +151,132 @@ class DataTransformer:
             lambda col: np.sign(col) * (np.log10(1 + np.abs(col) / C))
         )
 
-    def transform_net_migration(
-        self, net_migration_data: pd.DataFrame, inverse: bool = False
+    def is_stationary_adf_test(
+        self, series: pd.Series, col: str, alpha: float = 0.05
+    ) -> bool:
+        """
+        Perform the Augmented Dickey-Fuller test to determine stationarity.
+
+        Args:
+            series (pd.Series): The time series.
+            alpha (float): Significance level (default: 0.05).
+
+        Returns:
+            bool: True if the series is stationary, False otherwise.
+        """
+
+        # Check for constant series - if the series is contant, automatically detected as non-stationary
+        # Check for constant or too short series
+
+        series = series.dropna()
+        if series.nunique() <= 1:
+            return False
+        if len(series) < 10:
+            return False
+
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                result = adfuller(series)
+            p_value = result[1]
+
+            # If SSR is zero, adfuller may still return a p-value of 0.0 — we can catch this:
+            if np.isinf(result[0]) or np.isnan(p_value):
+                return False
+
+            return p_value < alpha
+        except Exception as e:
+            print(f"ADF test failed on series: {e}")
+            return False
+
+    def identify_non_stationary_columns(
+        self, state_df: pd.DataFrame
+    ) -> Dict[str, float]:
+        """
+        Identify non-stationary columns in a given state's DataFrame.
+
+        Args:
+            state_df (pd.DataFrame): Time series data for one state.
+
+        Returns:
+            Dict[str, float]: Columns that are non-stationary with their initial values.
+        """
+        non_stationary = {}
+        for column in state_df.columns:
+            if not self.is_stationary_adf_test(state_df[column], col=column):
+                non_stationary[column] = state_df[column].iloc[0]
+
+        return non_stationary
+
+    def differentiate(self, state: str, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Transforms the input data by differencing non-stationary columns.
+
+        Args:
+            state (str): Identifier for the data group (e.g., state name).
+            data (pd.DataFrame): Input data.
+
+        Returns:
+            pd.DataFrame: Transformed data with non-stationary columns differenced.
+        """
+        self.state_initial_values[state] = self.identify_non_stationary_columns(data)
+        transformed = data.copy()
+
+        for col in self.state_initial_values[state]:
+            transformed[col] = transformed[col].diff()
+
+        return transformed.dropna()
+
+    def inverse_differentiate(
+        self,
+        state: str,
+        transformed_data: pd.DataFrame,
     ) -> pd.DataFrame:
-        to_scale_data = net_migration_data.copy()
+        """
+        Inverts the differencing transformation to recover the original data.
 
-        # Decode
-        if inverse:
-            return to_scale_data.apply(lambda col: np.sign(col) * np.expm1(np.abs(col)))
-        # Encode
-        return to_scale_data.apply(lambda col: np.sign(col) * np.log1p(np.abs(col)))
+        Args:
+            state (str): Identifier for the data group.
+            transformed_data (pd.DataFrame): Differenced data.
 
-    def transform_population_total(
-        self, population_total_data: pd.DataFrame, inverse: bool = False
-    ):
-        to_scale_data = population_total_data.copy()
+        Returns:
+            pd.DataFrame: Reconstructed data.
+        """
+        if state not in self.state_initial_values:
+            raise ValueError(f"No initial values stored for state '{state}'")
 
-        # Decode
-        if inverse:
-            return to_scale_data.apply(lambda col: np.sign(col) * np.expm1(np.abs(col)))
-        # Encode
-        return to_scale_data.apply(lambda col: np.sign(col) * np.log1p(np.abs(col)))
+        reconstructed = transformed_data.copy()
+        for col, init_val in self.state_initial_values[state].items():
 
-    def transform_gdp(self, gdp_data: pd.DataFrame, inverse: bool = False):
-        to_scale_data = gdp_data.copy()
+            reconstructed[col] = reconstructed[col].cumsum() + init_val
 
-        # Decode
-        if inverse:
-            return to_scale_data.apply(lambda col: np.sign(col) * np.expm1(np.abs(col)))
-        # Encode
-        return to_scale_data.apply(lambda col: np.sign(col) * np.log1p(np.abs(col)))
+        return reconstructed
 
+    # I can use this per state and then merge it to one big dataset
     def transform_data(
-        self, data: pd.DataFrame, columns: List[str], inverse: bool = False
+        self,
+        state: str,
+        data: pd.DataFrame,
+        columns: List[str],
+        inverse: bool = False,
     ) -> pd.DataFrame:
+
+        # If series is too short for ADF test
+        if len(data) < 10 and state not in self.state_initial_values.keys():
+            print(f"Series too short for ADF test (length={len(data)}). Skipping.")
+            return pd.DataFrame()
 
         # Transforms data using specified transformation
         to_transform_data = data.copy()
 
-        # Maintain the original column order
-        FEATURES = columns
+        ORIGINAL_DATA = data.copy()
+        ORIGINAL_COLUMNS = data.columns
+
+        # if inverse:
+        #     to_transform_data = self.inverse_differentiate(
+        #         state=state,
+        #         transformed_data=to_transform_data,
+        #     )
 
         # Process categorical columns
         categorical_df = self.transform_categorical_columns(
@@ -197,7 +292,13 @@ class DataTransformer:
         absolute_columns = list(set(self.ABSOLUTE_COLUMNS) & set(columns))
         absolute_columns_df = to_transform_data[absolute_columns]
 
-        # Process special columns
+        # # Process special columns
+        # wide_range_columns = list(set(self.WIDE_RANGE_COLUMNS) & set(columns))
+        # wide_range_columns_df = self.transform_wide_range_data(
+        #     data=to_transform_data[wide_range_columns]
+        # )
+
+        # TODO: Maybe get rid of this
         WIDE_RANGE_COLUMNS_dfs: List[pd.DataFrame] = []
         for col, func_name in self.WIDE_RANGE_COLUMNS.items():
             if col in columns:
@@ -219,61 +320,57 @@ class DataTransformer:
             axis=1,
         )
 
-        # Maintain the column order
-        transformed_data_df = transformed_data_df[FEATURES]
+        # Ensure stationarity
+        if not inverse:
+            transformed_data_df = self.differentiate(
+                state=state, data=transformed_data_df
+            )
 
-        return transformed_data_df
+        # Reconstruct the original dataframes
+        non_transformed_features = [f for f in ORIGINAL_COLUMNS if not f in columns]
+
+        # Get the t
+        transformed_original_data = pd.concat(
+            [
+                ORIGINAL_DATA[non_transformed_features].reset_index(drop=True),
+                transformed_data_df.reset_index(drop=True),
+            ],
+            axis=1,
+        )
+
+        # print(transformed_original_data[FEATURES])
+        return transformed_original_data[ORIGINAL_COLUMNS].dropna()
 
     def __scale_and_fit(
         self,
         training_data: pd.DataFrame,
-        validation_data: pd.DataFrame,
         columns: List[str],
         scaler: MinMaxScaler,
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, MinMaxScaler]:
+    ) -> Tuple[pd.DataFrame, MinMaxScaler]:
         """
         This method is scaling for the model training. Fit specified scaler on the training data.
 
         Args:
-            training_data (pd.DataFrame): Training dataframe (X values).
-            validation_data (pd.DataFrame): Validation dataframe (y values).
+            training_data (Dict[str, pd.DataFrame]): Training data dict. The key is the state name.
             columns (List[str]): The columns for scaling.
             scaler (MinMaxScaler): Scaler to be fitted on training data.
 
         Returns:
-            Tuple[pd.DataFrame, pd.DataFrame, MinMaxScaler]: scaled_training_data, scaled_validation_data, fitted_scaler
+            Tuple[pd.DataFrame, MinMaxScaler]: scaled_data, fitted_scaler
         """
         # Transforms raw data, fits the given scaler
         # Should be used on training_data
-
+        # Get the original columns of the first state, should be all the same
         ORIGINAL_COLUMNS = training_data.columns
-        # ORIGINAL_DATA = pd.concat([training_data, validation_data], axis=0)
+
+        # scaled_states_data_dict: Dict[str, pd.DataFrame] = {}
+        # for state, df in training_data.items():
         ORIGINAL_DATA_TRAINING_DATA = training_data.copy()
-        ORIGINAL_DATA_VALIDATION_DATA = validation_data.copy()
 
-        # Transform data
-        transformed_training_df = self.transform_data(
-            data=training_data, columns=columns, inverse=False
-        )
-        transformed_validation_df = self.transform_data(
-            data=validation_data, columns=columns
-        )
+        # Scale and fit data
+        scaled_data = scaler.fit_transform(training_data[columns])
 
-        # Fit data on the training data
-        scaler.fit(transformed_training_df)
-
-        # Scale data
-        scaled_training_data = scaler.transform(transformed_training_df)
-        scaled_validation_data = scaler.transform(transformed_validation_df)
-
-        scaled_training_data_df = pd.DataFrame(
-            scaled_training_data, columns=transformed_training_df.columns
-        )
-        scaled_validation_data_df = pd.DataFrame(
-            scaled_validation_data, columns=transformed_validation_df.columns
-        )
-
-        # scaled_data_df = pd.DataFrame(scaled_data, columns=merged_data.columns)
+        scaled_training_data_df = pd.DataFrame(scaled_data, columns=columns)
 
         # Reconstruct the original dataframes
         non_transformed_features = [f for f in ORIGINAL_COLUMNS if not f in columns]
@@ -289,40 +386,29 @@ class DataTransformer:
             axis=1,
         )
 
-        scaled_validation_data_df = pd.concat(
-            [
-                ORIGINAL_DATA_VALIDATION_DATA[non_transformed_features].reset_index(
-                    drop=True
-                ),
-                scaled_validation_data_df.reset_index(drop=True),
-            ],
-            axis=1,
-        )
+        # scaled_states_data_dict[state] = scaled_training_data_df
 
         return (
             scaled_training_data_df[ORIGINAL_COLUMNS],
-            scaled_validation_data_df[ORIGINAL_COLUMNS],
             scaler,
         )
 
     def scale_and_fit(
         self,
         training_data: pd.DataFrame,
-        validation_data: pd.DataFrame,
         features: List[str],
         targets: List[str] | None = None,
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> pd.DataFrame:
         """
         This method is scaling for the model training. Fit specified scaler on the training data.
 
         Args:
-            training_data (pd.DataFrame): Training dataframe (X values).
-            validation_data (pd.DataFrame): Validation dataframe (y values).
+            training_data (pd.DataFrame): Training data.
             columns (List[str]): The columns for scaling.
             scaler (MinMaxScaler): Scaler to be fitted on training data.
 
         Returns:
-            Tuple[pd.DataFrame, pd.DataFrame]: scaled_training_data, scaled_validation_data
+            Tuple[pd.DataFrame, pd.DataFrame]: scaled_feature_data, scaled_target_data
         """
 
         FEATURES: List[str] = features
@@ -331,39 +417,35 @@ class DataTransformer:
             TARGETS: List[str] = targets
 
         # Scale and fit feature data
-        training_feature_data, validation_feature_data, feature_scaler = (
-            self.__scale_and_fit(
-                training_data=training_data,
-                validation_data=validation_data,
-                columns=FEATURES,
-                scaler=MinMaxScaler(),
-            )
+
+        scaled_training_feature_data, feature_scaler = self.__scale_and_fit(
+            training_data=training_data,
+            columns=FEATURES,
+            scaler=MinMaxScaler(),
         )
-        # print(training_feature_data.columns)
-        # print(training_feature_data)
 
         # Scale and fit targets
         if targets:
-            scaled_training_data, scaled_validation_data, target_scaler = (
-                self.__scale_and_fit(
-                    training_data=training_feature_data,
-                    validation_data=validation_feature_data,
-                    columns=TARGETS,
-                    scaler=MinMaxScaler(),
-                )
+
+            scaled_training_data, target_scaler = self.__scale_and_fit(
+                training_data=scaled_training_feature_data,
+                columns=TARGETS,
+                scaler=MinMaxScaler(),
             )
             self.TARGET_SCALER = target_scaler
         else:
-            scaled_training_data = training_feature_data
-            scaled_validation_data = validation_feature_data
+            scaled_training_data = scaled_training_feature_data
 
         # Save scalers
         self.SCALER = feature_scaler
 
-        return scaled_training_data, scaled_validation_data
+        return scaled_training_data
 
     def scale_data(
-        self, data: pd.DataFrame, features: List[str], targets: List[str] | None = None
+        self,
+        data: pd.DataFrame,
+        features: List[str],
+        targets: List[str] | None = None,
     ) -> pd.DataFrame:
 
         if self.SCALER is None:
@@ -387,15 +469,8 @@ class DataTransformer:
 
         to_scale_feature_data = to_scale_data[FEATURES]
 
-        # Transform feature data
-        transformed_feature_data_df = self.transform_data(
-            data=to_scale_feature_data, columns=FEATURES
-        )
-
-        scaled_feature_data = self.SCALER.transform(transformed_feature_data_df)
-        scaled_feature_data_df = pd.DataFrame(
-            scaled_feature_data, columns=transformed_feature_data_df.columns
-        )
+        scaled_feature_data = self.SCALER.transform(to_scale_feature_data)
+        scaled_feature_data_df = pd.DataFrame(scaled_feature_data, columns=FEATURES)
 
         scaled_data_df = scaled_feature_data_df
 
@@ -403,16 +478,8 @@ class DataTransformer:
 
             to_scale_target_data = to_scale_data[TARGETS]
 
-            transformed_target_data_df = self.transform_data(
-                data=to_scale_target_data, columns=TARGETS
-            )
-
-            scaled_target_data = self.TARGET_SCALER.transform(
-                transformed_target_data_df
-            )
-            scaled_target_data_df = pd.DataFrame(
-                scaled_target_data, columns=transformed_target_data_df.columns
-            )
+            scaled_target_data = self.TARGET_SCALER.transform(to_scale_target_data)
+            scaled_target_data_df = pd.DataFrame(scaled_target_data, columns=TARGETS)
 
             # Update scaled data if there is also a target scaling
             scaled_data_df = pd.concat([scaled_data_df, scaled_target_data_df], axis=1)
@@ -435,7 +502,8 @@ class DataTransformer:
     def unscale_data(
         self,
         data: pd.DataFrame,
-        targets: List[str],
+        features: Optional[List[str]] = None,
+        targets: Optional[List[str]] = None,
     ) -> pd.DataFrame:
 
         if self.TARGET_SCALER is None and self.SCALER is None:
@@ -447,423 +515,77 @@ class DataTransformer:
         ORIGINAL_COLUMNS = data.columns
 
         # Maintain the original column order
-        FEATURES = targets
-        to_unscale_data = to_unscale_data[FEATURES]
+        FEATURES = features
+        TARGETS = targets
 
-        # Unsale data
-        if not self.TARGET_SCALER is None:
-            unscaled_data = self.TARGET_SCALER.inverse_transform(to_unscale_data)
+        # Init unsacled dfs
+        unscaled_feature_data_df = None
+        unscaled_target_data_df = None
+
+        # Unscale features
+        if FEATURES:
+            unscaled_feature_data = self.SCALER.inverse_transform(
+                to_unscale_data[FEATURES]
+            )
+            unscaled_feature_data_df = pd.DataFrame(
+                unscaled_feature_data, columns=FEATURES
+            )
+
+        # Unscale targets
+        if TARGETS:
+
+            if self.TARGET_SCALER:
+                unscaled_target_data = self.TARGET_SCALER.inverse_transform(
+                    to_unscale_data[TARGETS]
+                )
+                unscaled_target_data_df = pd.DataFrame(
+                    unscaled_target_data, columns=TARGETS
+                )
+
+        # Merge unscaled data
+        if not unscaled_feature_data_df is None and not unscaled_target_data_df is None:
+            unscaled_data_df = pd.concat(
+                [unscaled_feature_data_df, unscaled_target_data_df], axis=1
+            )
+        elif not unscaled_target_data_df is None:
+            unscaled_data_df = unscaled_target_data_df
+
+        elif not unscaled_feature_data_df is None:
+            unscaled_data_df = unscaled_feature_data_df
         else:
-            unscaled_data = self.SCALER.inverse_transform(to_unscale_data)
-
-        unscaled_data_df = pd.DataFrame(unscaled_data, columns=targets)
-
-        # Inverse transform data
-        reverse_transformed_data_df = self.transform_data(
-            data=unscaled_data_df, columns=targets, inverse=True
-        )
+            raise ValueError("Features or targets not specified.")
 
         INTEGER_COLUMNS = ["year"]  # Add more if needed
 
         for col in INTEGER_COLUMNS:
-            if col in reverse_transformed_data_df.columns:
-                reverse_transformed_data_df[col] = (
-                    reverse_transformed_data_df[col].round().astype(int)
-                )
+            if col in unscaled_data_df.columns:
+                unscaled_data_df[col] = unscaled_data_df[col].round().astype(int)
 
         # Reconstruct the original dataframe
-        non_transformed_features = [f for f in ORIGINAL_COLUMNS if f not in FEATURES]
 
-        reverse_transformed_data_df = pd.concat(
+        TRANSFORMED_COLUMNS = (TARGETS if TARGETS else []) + (
+            FEATURES if FEATURES else []
+        )
+        non_transformed_features = [
+            f for f in ORIGINAL_COLUMNS if f not in TRANSFORMED_COLUMNS
+        ]
+
+        unscaled_data_df = pd.concat(
             [
                 data[non_transformed_features].reset_index(drop=True),
-                reverse_transformed_data_df.reset_index(drop=True),
+                unscaled_data_df.reset_index(drop=True),
             ],
             axis=1,
         )
 
-        return reverse_transformed_data_df[ORIGINAL_COLUMNS]
+        return unscaled_data_df[ORIGINAL_COLUMNS]
 
-    def create_sequences(
-        self, input_data: pd.DataFrame, columns: List[str], sequence_len: int
-    ) -> torch.Tensor:
-        # Creates sequences by rolling window from any input data
+    # TODO:
+    def scale_and_transform(self):
+        pass
 
-        # Copy data to avoid modifying the original data
-        current_data = input_data.copy()
-
-        # Select features
-        current_data = current_data[columns]
-
-        # Get data using rolling window
-        input_sequences = []
-
-        # + 1 in order to get also the last sample
-        number_of_samples = current_data.shape[0] - sequence_len + 1
-        for i in range(number_of_samples):
-
-            # Get the input sequence
-            input_sequences.append(
-                # Converting to a PyTorch tensor
-                torch.tensor(
-                    current_data.iloc[i : i + sequence_len].values, dtype=torch.float32
-                )
-            )
-
-        return torch.stack(input_sequences)
-
-    def create_input_batches(
-        self, input_sequences: torch.Tensor, batch_size: int
-    ) -> torch.Tensor:
-        # Reshapes input sequences to create batches from any input sequences
-
-        if len(input_sequences.shape) != 3:
-            raise ValueError(
-                "Input sequences must have shape (num_samples, sequence_len, feature_num)"
-            )
-
-        if batch_size <= 0:
-            raise ValueError("batch_size must be a positive integer")
-
-        num_samples, sequence_len, feature_num = input_sequences.shape
-
-        if batch_size > num_samples:
-            raise ValueError(
-                "batch_size cannot be larger than the number of available samples"
-            )
-
-        # Calculate the number of batches and use trimming for correct reshaping
-        num_batches = num_samples // batch_size
-        trimmed_size = num_batches * batch_size  # Only keep full batches
-
-        # Get only sequences which can craete full batch
-        trimmed_sequences = input_sequences[:trimmed_size]
-
-        # Reshape to (num_batches, batch_size, sequence_len, feature_num)
-        # Use view for effiecency
-        input_batches = trimmed_sequences.view(
-            num_batches, batch_size, sequence_len, feature_num
-        )
-
-        return input_batches
-
-    def create_target_batches(
-        self, target_sequences: torch.Tensor, batch_size: int, future_steps: int = 1
-    ) -> torch.Tensor:
-        # if len(target_sequences.shape) != 2:
-        #     raise ValueError(
-        #         "Target sequences must have shape (num_samples, num_features)"
-        #     )
-        if len(target_sequences.shape) != 3:
-            raise ValueError(
-                "Target sequences must have shape (num_samples, timesteps, num_features)"
-            )
-
-        if batch_size <= 0:
-            raise ValueError("batch_size must be a positive integer")
-
-        num_samples, timesteps, num_features = (
-            target_sequences.shape
-        )  # In shape (num_samples, timesteps, num_features)
-
-        if batch_size > num_samples:
-            raise ValueError(
-                "batch_size cannot be larger than the number of available samples"
-            )
-
-        if timesteps < future_steps:
-            raise ValueError(
-                "The number of timesteps must be greater than or equal to future_steps"
-            )
-
-        # Calculate how many windows we can extract from each sequence
-        usable_timesteps = timesteps - future_steps + 1
-
-        # Prepare target windows
-        target_windows = []
-        for i in range(usable_timesteps):
-            future_window = target_sequences[
-                :, i : i + future_steps, :
-            ]  # (num_samples, future_steps, num_features)
-            target_windows.append(
-                future_window.unsqueeze(1)
-            )  # (num_samples, 1, future_steps, num_features)
-
-        target_windows = torch.cat(
-            target_windows, dim=1
-        )  # (num_samples, usable_timesteps, future_steps, num_features)
-
-        # Now flatten num_samples and usable_timesteps into one dimension
-        all_samples = target_windows.reshape(
-            -1, future_steps, num_features
-        )  # (num_samples * usable_timesteps, future_steps, num_features)
-
-        # Trim to have full batches
-        total_samples = all_samples.shape[0]
-        num_batches = total_samples // batch_size
-        trimmed_size = num_batches * batch_size
-
-        all_samples = all_samples[:trimmed_size]
-
-        # Reshape into batches
-        target_batches = all_samples.reshape(
-            num_batches, batch_size, future_steps, num_features
-        )
-
-        return target_batches
-
-    def create_train_test_sequences(
-        self,
-        data: pd.DataFrame,
-        sequence_len: int,
-        future_steps: int,
-        features: List[str],
-        targets: List[str] | None = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        From the states data creates the input sequences and the desired output of the sequnce.
-
-        Args:
-            data (pd.DataFrame): _description_
-            sequence_len (int): _description_
-            future_steps (int): _description_
-            features (List[str]): _description_
-
-        Returns:
-            out: Tuple[torch.Tensor, torch.Tensor]: Input sequence, expected output of the sequence
-        """
-
-        # Copy data to avoid modifying the original data
-        current_data = data.copy()
-
-        # Select features
-        current_input_data = current_data[features]
-        current_target_data = current_data[features]
-
-        if not targets is None:
-            current_target_data = current_data[targets]
-
-        # Get data using rolling window
-        input_sequences = []
-        sequence_output = []
-
-        # + 1 in order to get also the last sample
-        number_of_samples = current_data.shape[0] - sequence_len - future_steps + 1
-        for i in range(number_of_samples):
-
-            # Get the input sequence
-            input_sequences.append(
-                # Converting to a PyTorch tensor
-                torch.tensor(
-                    current_input_data.iloc[i : i + sequence_len].values,
-                    dtype=torch.float32,
-                )
-            )
-
-            # Get the expected output of the sequence
-            next_value_idx = i + sequence_len
-
-            # Shape (timesteps, features)
-            output = torch.tensor(
-                current_target_data.iloc[
-                    next_value_idx : next_value_idx + future_steps
-                ].values,
-                dtype=torch.float32,
-            )
-
-            # Reshape to match multiple timestep predictions - shape (timesteps * features vector)
-            # output = output.reshape(-1)
-
-            sequence_output.append(output)
-
-        return torch.stack(input_sequences), torch.stack(sequence_output)
-
-    def create_train_test_data_batches(
-        self,
-        data: pd.DataFrame,
-        hyperparameters: RNNHyperparameters,
-        features: List[str],
-        targets: Optional[List[str]] = None,
-        split_rate: float = 0.8,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Transform the data to training set and validation set.
-
-        Args:
-            data (pd.DataFrame): Pre-scaled data for training and validation.
-            hyperparameters (RNNHyperparameters): Hyperparameters of the model.
-            features (List[str]): Selected features from the data.
-
-        Returns:
-            out: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]: train_inputs, train_targets, val_inputs, val_targets
-        """
-        # Adjust the data
-        df = data.copy()
-        FEATURES = features
-
-        TARGETS = targets
-
-        # Create sequences and batches from the full training data
-        input_sequences, sequences_outputs = self.create_train_test_sequences(
-            data=df,
-            sequence_len=hyperparameters.sequence_length,
-            future_steps=hyperparameters.future_step_predict,
-            features=FEATURES,
-            targets=TARGETS,
-        )
-
-        # Convert to numpy
-        input_sequences = np.array(input_sequences)
-        sequences_outputs = np.array(sequences_outputs)
-
-        # Compute split index
-        total_samples = len(input_sequences)
-        split_idx = int(split_rate * total_samples)
-
-        # Split into training and validation
-        train_inputs = input_sequences[:split_idx]
-        train_targets = sequences_outputs[:split_idx]
-        val_inputs = input_sequences[split_idx:]
-        val_targets = sequences_outputs[split_idx:]
-
-        # Convert to torch tensors
-        train_inputs_tensor = torch.tensor(train_inputs, dtype=torch.float32)
-        train_targets_tensor = torch.tensor(train_targets, dtype=torch.float32)
-        val_inputs_tensor = torch.tensor(val_inputs, dtype=torch.float32)
-        val_targets_tensor = torch.tensor(val_targets, dtype=torch.float32)
-
-        # Batch inputs
-        train_inputs_tensor = self.create_input_batches(
-            batch_size=hyperparameters.batch_size,
-            input_sequences=train_inputs_tensor,
-        )
-
-        val_inputs_tensor = self.create_input_batches(
-            batch_size=hyperparameters.batch_size,
-            input_sequences=val_inputs_tensor,
-        )
-
-        train_targets_tensor = self.create_target_batches(
-            batch_size=hyperparameters.batch_size,
-            target_sequences=train_targets_tensor,
-            future_steps=hyperparameters.future_step_predict,
-        )
-
-        val_targets_tensor = self.create_target_batches(
-            batch_size=hyperparameters.batch_size,
-            target_sequences=val_targets_tensor,
-            future_steps=hyperparameters.future_step_predict,
-        )
-
-        return (
-            train_inputs_tensor,
-            train_targets_tensor,
-            val_inputs_tensor,
-            val_targets_tensor,
-        )
-
-    # Create train test data from the states dict
-    def create_train_test_multiple_states_batches(
-        self,
-        data: Dict[str, pd.DataFrame],
-        hyperparameters: RNNHyperparameters,
-        features: List[str],
-        split_rate: float = 0.8,
-        targets: List[str] | None = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-
-        SEQUENCE_LEN: int = hyperparameters.sequence_length
-
-        # Training data
-        train_inputs_all = []
-        train_targets_all = []
-
-        # Validation data
-        test_inputs_all = []
-        test_targets_all = []
-
-        # Split each state
-        for state_name, state_data in data.items():
-
-            # Check if training data have enough records
-            if int(len(state_data) * split_rate) <= SEQUENCE_LEN:
-                self.__unused_states.append(state_name)
-                continue
-
-            input_sequences, sequences_outputs = self.create_train_test_sequences(
-                data=state_data,
-                sequence_len=SEQUENCE_LEN,
-                features=features,
-                targets=targets,
-                future_steps=hyperparameters.future_step_predict,
-            )
-
-            # Parse them to test and validation
-            # Convert to numpy
-            input_sequences = np.array(input_sequences)
-            sequences_outputs = np.array(sequences_outputs)
-
-            # Compute split index
-            total_samples = len(input_sequences)
-            split_idx = int(split_rate * total_samples)
-
-            # Split into training and validation
-            train_inputs = input_sequences[:split_idx]
-            train_targets = sequences_outputs[:split_idx]
-            val_inputs = input_sequences[split_idx:]
-            val_targets = sequences_outputs[split_idx:]
-
-            # Convert to torch tensors
-            train_inputs_tensor = torch.tensor(train_inputs, dtype=torch.float32)
-            train_targets_tensor = torch.tensor(train_targets, dtype=torch.float32)
-            val_inputs_tensor = torch.tensor(val_inputs, dtype=torch.float32)
-            val_targets_tensor = torch.tensor(val_targets, dtype=torch.float32)
-
-            # Save all train inputs and targets
-            train_inputs_all.append(train_inputs_tensor)
-            train_targets_all.append(train_targets_tensor)
-
-            # Save all test inputs and targets
-            test_inputs_all.append(val_inputs_tensor)
-            test_targets_all.append(val_targets_tensor)
-
-        # Convert inputs to tensors
-        train_inputs_all = torch.cat(train_inputs_all)
-        train_targets_all = torch.cat(train_targets_all)
-
-        test_inputs_all = torch.cat(test_inputs_all)
-        test_targets_all = torch.cat(test_targets_all)
-
-        # Batch train and validation inputs
-        train_inputs_tensor = self.create_input_batches(
-            batch_size=hyperparameters.batch_size,
-            input_sequences=train_inputs_all,
-        )
-
-        val_inputs_tensor = self.create_input_batches(
-            batch_size=hyperparameters.batch_size,
-            input_sequences=test_inputs_all,
-        )
-
-        # Batch train and validation targets
-        train_targets_tensor = self.create_target_batches(
-            batch_size=hyperparameters.batch_size,
-            target_sequences=train_targets_all,
-            future_steps=hyperparameters.future_step_predict,
-        )
-
-        val_targets_tensor = self.create_target_batches(
-            batch_size=hyperparameters.batch_size,
-            target_sequences=test_targets_all,
-            future_steps=hyperparameters.future_step_predict,
-        )
-
-        return (
-            train_inputs_tensor,
-            train_targets_tensor,
-            val_inputs_tensor,
-            val_targets_tensor,
-        )
+    def unscale_and_inverse_transform(self):
+        pass
 
 
 def main():
@@ -875,54 +597,67 @@ def main():
 
     data = loader.load_data()
 
-    EXCLUDE_COLUMNS = ["country_name", "year"]
-    COLUMNS = [col for col in data.columns if col not in EXCLUDE_COLUMNS]
-    TARGETS = [
-        "population ages 15-64",
-        "population ages 0-14",
-        "population ages 65 and above",
-    ]
+    # EXCLUDE_COLUMNS = ["country_name", "year"]
+    FEATURES = basic_features(exclude=highly_correlated_features())
+    TARGETS = aging_targets()
 
     # Split data
     train_df, test_df = loader.split_data(data=data)
 
     print("Original train data:")
-    print(train_df.head())
+    print(train_df.iloc[1:][FEATURES].head())
+    print()
+
+    transformed_training_data = transformer.transform_data(
+        state=STATE, data=train_df, columns=FEATURES
+    )
+
+    print("Transformed training data:")
+    print(transformed_training_data.head()[FEATURES])
     print()
 
     # Scale training data
-    scaled_trainig_data, scaled_test_data = transformer.scale_and_fit(
-        training_data=train_df,
-        validation_data=test_df,
-        features=COLUMNS,
+    scaled_trainig_data = transformer.scale_and_fit(
+        training_data=transformed_training_data,
+        features=FEATURES,
         targets=TARGETS,
     )
 
     print("Scaled train data:")
-    print(scaled_trainig_data.head())
+    print(scaled_trainig_data.head()[FEATURES])
     print()
 
     # Unscale data
-    unsacled_training_data = transformer.unscale_data(
+    unscaled_training_data = transformer.unscale_data(
         data=scaled_trainig_data,
-        targets=TARGETS,
+        features=FEATURES,
     )
 
     print("Unscaled train data:")
-    print(unsacled_training_data.head())
+    print(unscaled_training_data.head()[FEATURES])
+    print()
+
+    reverse_transformed_training_data = transformer.transform_data(
+        state=STATE, data=unscaled_training_data, columns=FEATURES, inverse=True
+    )
+
+    print("Reverse transformed training data:")
+    print(reverse_transformed_training_data.head()[FEATURES])
     print()
 
     print()
     print("-" * 100)
     print()
 
+    exit()
+
     # Scale test data using fitted scaler
     print("Original test data:")
-    print(test_df.head())
+    print(test_df.head()[TARGETS])
     print()
 
     scaled_test_data = transformer.scale_data(
-        data=test_df, features=COLUMNS, targets=TARGETS
+        data=test_df, features=FEATURES, targets=TARGETS
     )
     print("Scaled test data:")
     print(scaled_test_data.head()[TARGETS])
@@ -933,30 +668,6 @@ def main():
     )
     print("Unscaled test data:")
     print(unscaled_test_data.head()[TARGETS])
-    print()
-
-    # Test hyperparameters
-    test_hyperparams = get_core_hyperparameters(
-        input_size=len(COLUMNS),
-        future_step_predict=4,
-        batch_size=2,
-    )
-
-    batch_train_inputs, batch_train_targets, batch_val_inputs, batch_val_targets = (
-        transformer.create_train_test_data_batches(
-            data=train_df,
-            hyperparameters=test_hyperparams,
-            features=COLUMNS,
-            targets=TARGETS,
-        )
-    )
-
-    print("Train test input / output batches:")
-    print(batch_train_inputs.shape)
-    print(batch_train_targets.shape)
-    print(batch_val_inputs.shape)
-    print(batch_val_targets.shape)
-
     print()
 
 

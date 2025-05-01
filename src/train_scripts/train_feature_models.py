@@ -16,6 +16,7 @@ from src.base import TrainingStats
 from src.utils.constants import categorical_columns
 
 from src.preprocessors.data_transformer import DataTransformer
+from src.preprocessors.training_data_transformer import RNNTrainingDataPreprocessor
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
@@ -47,33 +48,64 @@ def preprocess_data(
     # States loader for preprocessing
     states_loader = StatesDataLoader()
 
+    rnn_preprocessor = RNNTrainingDataPreprocessor()
+
+    # 1. Transform data
+    # Transform data for all states
+    COLUMNS = features + (targets if targets else [])
+    transformed_states_data: Dict[str, pd.DataFrame] = {}
+    for state, df in data.items():
+        transformed_df = transformer.transform_data(
+            state=state, data=df, columns=COLUMNS
+        )
+
+        # Check if the data are empty
+        if not transformed_df.empty:
+            transformed_states_data[state] = transformed_df
+
     # If the scaler is not fitted, scale and fit data
     if not is_fitted:
-        # Get training data and validation data
+
+        # 2. Split data data
+        # Get training data and val idation data
         train_data_dict, test_data_dict = states_loader.split_data(
-            states_dict=data,
+            states_dict=transformed_states_data,
             sequence_len=hyperparameters.sequence_length,
             split_rate=split_rate,
         )
-        train_states_df = states_loader.merge_states(train_data_dict)
-        test_states_df = states_loader.merge_states(test_data_dict)
 
-        scaled_train_data, scaled_validation_data = transformer.scale_and_fit(
-            training_data=train_states_df,
-            validation_data=test_states_df,
+        # 3a. Scale and fit using training data
+        scaled_train_data = transformer.scale_and_fit(
+            training_data=states_loader.merge_states(train_data_dict),
             features=features,
             targets=targets,
         )
 
-        # Create a dictionary from the scaled data
+        # 3b. Scale validation data
+        scaled_validation_data_dict: Dict[str, pd.DataFrame] = {}
+        for state, df in test_data_dict.items():
+
+            scaled_validation_data_dict[state] = transformer.scale_data(
+                data=df, features=features, targets=targets
+            )
+
+        scaled_validation_data = states_loader.merge_states(
+            state_dfs=scaled_validation_data_dict
+        )
+
+        # Merge the data to one scaled dataframe
         scaled_data = pd.concat([scaled_train_data, scaled_validation_data], axis=0)
+
+        scaled_states_dict = states_loader.parse_states(scaled_data)
     else:
-        original_data = states_loader.merge_states(original_data)
-        scaled_data = transformer.scale_data(data=original_data, features=features)
 
-    scaled_states_dict = states_loader.parse_states(scaled_data)
+        original_data = states_loader.merge_states(transformed_states_data)
 
-    return transformer.create_train_test_multiple_states_batches(
+        scaled_data_dict: Dict[str, pd.DataFrame] = {}
+        for state, df in original_data.items():
+            scaled_data_dict[state] = transformer.scale_data(data=df, features=features)
+
+    return rnn_preprocessor.create_train_test_multiple_states_batches(
         data=scaled_states_dict,
         hyperparameters=hyperparameters,
         features=features,
@@ -106,6 +138,9 @@ def train_base_rnn(
             is_fitted=False,
         )
     )
+
+    print(batch_inputs[0][0])
+    print(batch_targets[0][0])
 
     # Create model
     rnn = BaseRNN(

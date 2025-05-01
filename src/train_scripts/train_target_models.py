@@ -16,7 +16,7 @@ from src.utils.constants import categorical_columns
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-
+from src.preprocessors.training_data_transformer import RNNTrainingDataPreprocessor
 
 from src.base import RNNHyperparameters
 from src.pipeline import TargetModelPipeline
@@ -63,9 +63,8 @@ def train_global_model_tree(
     # Scale the training data
     if transformer is None:
         transformer = DataTransformer()
-        scaled_training_data, _ = transformer.scale_and_fit(
+        scaled_training_data = transformer.scale_and_fit(
             training_data=X_train,
-            validation_data=X_test,
             features=features,
             # targets=targets, # Here are targets useless for tree based model due to transformation of history columns
         )
@@ -129,8 +128,9 @@ def preprocess_data_for_rnn(
     # Create a dictionary from it
     scaled_states_dict = states_loader.parse_states(scaled_training_data)
 
+    training_transformer = RNNTrainingDataPreprocessor()
     batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
-        transformer.create_train_test_multiple_states_batches(
+        training_transformer.create_train_test_multiple_states_batches(
             data=scaled_states_dict,
             hyperparameters=hyperparameters,
             features=features + targets,

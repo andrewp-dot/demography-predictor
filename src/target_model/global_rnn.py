@@ -25,6 +25,7 @@ from src.state_groups import StatesByWealth
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
+from src.preprocessors.training_data_transformer import RNNTrainingDataPreprocessor
 
 
 logger = logging.getLogger("local_model")
@@ -409,8 +410,9 @@ def main(save_plots: bool = True, to_save_model: bool = False, epochs: int = 50)
     # Create a dictionary from it
     scaled_states_dict = states_loader.parse_states(scaled_training_data)
 
+    training_transformer = RNNTrainingDataPreprocessor()
     batch_inputs, batch_targets, batch_validation_inputs, batch_validation_targets = (
-        transformer.create_train_test_multiple_states_batches(
+        training_transformer.create_train_test_multiple_states_batches(
             data=scaled_states_dict,
             hyperparameters=hyperparameters,
             features=WHOLE_MODEL_FEATURES,

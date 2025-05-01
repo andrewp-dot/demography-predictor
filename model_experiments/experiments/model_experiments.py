@@ -425,7 +425,9 @@ class CompareWithStatisticalModels(BaseExperiment):
 
 class DifferentHiddenLayers(BaseExperiment):
 
-    FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
+    FEATURES: List[str] = basic_features(
+        exclude=[*highly_correlated_features(), "year"]
+    )
 
     HIDDEN_SIZE_TO_TRY: List[int] = [
         32,
@@ -566,5 +568,5 @@ if __name__ == "__main__":
     exp_4 = DifferentHiddenLayers(
         description="Try to train BaseRNN models with different layers.",
     )
-    # exp_4.run(split_rate=0.8)
-    exp_4.run(split_rate=0.8, evaluation_states=[STATE])
+    exp_4.run(split_rate=0.8)
+    # exp_4.run(split_rate=0.8, evaluation_states=[STATE])
