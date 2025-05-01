@@ -15,7 +15,7 @@ from src.utils.constants import (
 from src.state_groups import StatesByWealth
 from src.utils.log import setup_logging
 from src.pipeline import FeatureModelPipeline
-from train_scripts.train_feature_models import train_base_rnn
+from src.train_scripts.train_feature_models import train_base_rnn
 
 
 from src.preprocessors.data_transformer import DataTransformer

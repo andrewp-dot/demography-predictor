@@ -1,11 +1,10 @@
 # Standard library imports
 import logging
 import pandas as pd
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Type
 
 from torch import nn
-
-from sklearn.preprocessing import MinMaxScaler
+from itertools import product
 
 # Custom imports
 from src.utils.log import setup_logging
@@ -25,7 +24,7 @@ from src.utils.constants import get_core_hyperparameters
 from src.state_groups import StatesByGeolocation, StatesByWealth
 
 from src.pipeline import FeatureModelPipeline
-from train_scripts.train_feature_models import (
+from src.train_scripts.train_feature_models import (
     train_base_rnn,
     train_finetunable_model,
     train_finetunable_model_from_scratch,
@@ -403,8 +402,6 @@ class CompareWithStatisticalModels(BaseExperiment):
             name="ensemble-arima", split_rate=split_rate, state=state
         )
 
-        # TODO: train GM model
-
         # Evaluate models - per-target-performance
         comparator = ModelComparator()
         per_target_metrics_df = comparator.compare_models_by_states(
@@ -428,9 +425,21 @@ class CompareWithStatisticalModels(BaseExperiment):
 
 class DifferentHiddenLayers(BaseExperiment):
 
-    FEATURES: List[str] = basic_features()
+    FEATURES: List[str] = basic_features(exclude=highly_correlated_features())
 
-    HIDDEN_SIZE_TO_TRY: List[int] = [32, 64, 128, 256, 512]
+    HIDDEN_SIZE_TO_TRY: List[int] = [
+        32,
+        64,
+        128,
+        256,
+        512,
+    ]
+
+    MODEL_TYPES: Dict[str, Type] = {
+        "GRU": nn.GRU,
+        "RNN": nn.RNN,
+        "LSTM": nn.LSTM,
+    }
 
     BASE_LSTM_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
         input_size=len(FEATURES), batch_size=16
@@ -439,11 +448,9 @@ class DifferentHiddenLayers(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def run(self, split_rate: float = 0.8):
+    def run(self, split_rate: float = 0.8, evaluation_states: List[str] = None):
         # Create readme
         self.create_readme()
-
-        EVALUATION_STATES: List[str] = ["Czechia", "United States", "Honduras"]
 
         # Load data
         loader = StatesDataLoader()
@@ -451,9 +458,11 @@ class DifferentHiddenLayers(BaseExperiment):
 
         # Train models with different
         TO_COMPARE_MODELS: Dict[str, FeatureModelPipeline] = {}
-        for hidden_size in self.HIDDEN_SIZE_TO_TRY:
+        for (name, rnn_type), hidden_size in product(
+            self.MODEL_TYPES.items(), self.HIDDEN_SIZE_TO_TRY
+        ):
 
-            MODEL_NAME = f"lstm-{hidden_size}"
+            MODEL_NAME = f"{name}_{hidden_size}"
             TO_COMPARE_MODELS[MODEL_NAME] = train_base_rnn(
                 name=MODEL_NAME,
                 features=self.FEATURES,
@@ -461,225 +470,59 @@ class DifferentHiddenLayers(BaseExperiment):
                     input_size=len(self.FEATURES),
                     batch_size=16,
                     hidden_size=hidden_size,
+                    epochs=30,
                 ),
                 data=all_states_dict,
                 split_rate=split_rate,
-                display_nth_epoch=10,
+                display_nth_epoch=5,
+                rnn_type=rnn_type,
             )
 
         comparator = ModelComparator()
 
+        EVALUATION_STATES = evaluation_states
         per_target_metrics_df = comparator.compare_models_by_states(
-            pipelines=TO_COMPARE_MODELS, states=EVALUATION_STATES, by="per-features"
+            pipelines=TO_COMPARE_MODELS, states=EVALUATION_STATES, by="per-targets"
         )
         overall_metrics_df = comparator.compare_models_by_states(
-            pipelines=TO_COMPARE_MODELS, states=EVALUATION_STATES, by="overall-metrics"
-        )
-
-        # Print results to the readme
-        # Add per metric rankings
-        # Print all dataframe
-        pd.set_option("display.max_rows", None)
-        self.readme_add_section(
-            title="## Per target metrics - model comparision",
-            text=f"```\n{per_target_metrics_df.sort_values(by=['state', 'target'])}\n```\n\n",
-        )
-
-        pd.reset_option("display.max_rows")
-
-        self.readme_add_section(
-            title="## Overall metrics - model comparision",
-            text=f"```\n{overall_metrics_df.sort_values(by=['state'])}\n```\n\n",
-        )
-
-        # Print honduras plot
-        fig = comparator.create_state_comparison_plot(state="Honduras")
-
-        self.save_plot(fig_name="honduras_predictions.png", figure=fig)
-        self.readme_add_plot(
-            plot_name="Honduras predictions",
-            plot_description="Honduras feature predictions.",
-            fig_name="honduras_predictions.png",
-        )
-
-
-# Exp Ideas
-
-# From simple to more complex models
-# Different Features -> target experiments
-
-
-# TODO: use this on whole dataset
-class DifferentArchitecturesComparision(BaseExperiment):
-
-    FEATURES: List[str] = basic_features(exclude=highly_correlated_features)
-
-    # Base LSTM
-    BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
-        input_size=len(FEATURES),
-        hidden_size=256,
-        batch_size=16,
-    )
-
-    # Base LSTM with more then 1 future prediction
-    FUTURE_BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
-        input_size=len(FEATURES),
-        hidden_size=256,
-        batch_size=16,
-        future_step_predict=3,
-    )
-
-    # Funnel architecture
-    WIDE_LAYERS_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
-        input_size=len(FEATURES),
-        hidden_size=256,
-        batch_size=16,
-        num_layers=1,
-    )
-
-    NARROW_LAYERS_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
-        input_size=len(FEATURES),
-        batch_size=16,
-        hidden_size=128,
-        num_layers=1,
-    )
-
-    EVALUATION_STATES: List[str] = ["Czechia", "Honduras", "United States"]
-
-    # TODO:
-    # 1. LSTM
-    # 2. GRU
-    # 3. RNN
-    # 4. XGBOOST (random forest, lightgbm)...
-    # 5. BPNN
-    # 6. ARIMA (Ensemble model)
-    # 7. (bonus) Seq2seq - encoder decoder model
-
-    # TODO:
-    # 2 types of experiments:
-    # -> target based (second model first)
-    # -> predicting feature development for the second model (first model)
-
-    # 1. experiment models: (Excluded trees and classic BPNN)
-    # 1. LSTM
-    # 2. GRU
-    # 3. RNN
-    # 6. ARIMA (Ensemble model)
-    # 7. (bonus) Seq2seq - encoder decoder model
-
-    def __init__(self, description: str):
-        super().__init__(name=self.__class__.__name__, description=description)
-
-    def __train_arima_models_for_states(
-        self, states: List[str]
-    ) -> Dict[str, FeatureModelPipeline]:
-
-        state_arimas: Dict[str, FeatureModelPipeline] = {}
-        for state in states:
-            state_arimas[state] = train_arima_ensemble_model(
-                name=f"ensemble-arima-{state}", state=str
-            )
-
-        return state_arimas
-
-    def run(self, split_rate: float = 0.8):
-
-        # Setup readme
-        self.create_readme()
-
-        # Load data
-        loader = StatesDataLoader()
-        states_data_dict = loader.load_all_states()
-
-        TO_COMPARE_PIPELINES: Dict[str, FeatureModelPipeline] = {}
-
-        DISPLAY_NTH_EPOCH = 1
-
-        # Create simple rnn
-        TO_COMPARE_PIPELINES["simple-rnn"] = train_base_rnn(
-            name="simple-rnn",
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
-            data=states_data_dict,
-            features=self.FEATURES,
-            split_rate=split_rate,
-            display_nth_epoch=DISPLAY_NTH_EPOCH,
-            rnn_type=nn.RNN,
-        )
-
-        # Train lstm
-        TO_COMPARE_PIPELINES["base-lstm"] = train_base_rnn(
-            name="base-lstm",
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
-            data=states_data_dict,
-            features=self.FEATURES,
-            split_rate=split_rate,
-            display_nth_epoch=DISPLAY_NTH_EPOCH,
-            rnn_type=nn.LSTM,
-        )
-
-        # Train gru
-        TO_COMPARE_PIPELINES["base-gru"] = train_base_rnn(
-            name="base-gru",
-            hyperparameters=self.BASE_RNN_HYPERPARAMETERS,
-            data=states_data_dict,
-            features=self.FEATURES,
-            split_rate=split_rate,
-            display_nth_epoch=DISPLAY_NTH_EPOCH,
-            rnn_type=nn.GRU,
-        )
-
-        # # Create same LSTM but with prediction to future
-        # TO_COMPARE_PIPELINES["future-base-lstm"] = train_base_rnn(
-        #     name="future-base-lstm",
-        #     hyperparameters=self.FUTURE_BASE_RNN_HYPERPARAMETERS,
-        #     data=states_data_dict,
-        #     features=self.FEATURES,
-        #     split_rate=split_rate,
-        #     display_nth_epoch=DISPLAY_NTH_EPOCH,
-        # )
-
-        # # Create simple base LSTM - 1 layer with 256 hidden size + 1 layer with 128 hidden size
-        # TO_COMPARE_PIPELINES["simple-funnel-lstm"] = (
-        #     train_finetunable_model_from_scratch(
-        #         name="simple-funnel-lstm",
-        #         base_model_hyperparameters=self.WIDE_LAYERS_RNN_HYPERPARAMETERS,
-        #         finetunable_model_hyperparameters=self.NARROW_LAYERS_RNN_HYPERPARAMETERS,
-        #         base_model_data=states_data_dict,
-        #         finetunable_model_data=states_data_dict,
-        #         features=self.FEATURES,
-        #         split_rate=split_rate,
-        #         display_nth_epoch=DISPLAY_NTH_EPOCH,
-        #     )
-        # )
-
-        comparator = ModelComparator()
-
-        EVALUATION_STATES = self.EVALUATION_STATES
-
-        per_target_metrics_df = comparator.compare_models_by_states(
-            pipelines=TO_COMPARE_PIPELINES, states=EVALUATION_STATES, by="per-features"
-        )
-        overall_metrics_df = comparator.compare_models_by_states(
-            pipelines=TO_COMPARE_PIPELINES,
+            pipelines=TO_COMPARE_MODELS,
             states=EVALUATION_STATES,
-            by="overall-metrics",
+            by="overall-one-metric",
         )
 
         # Print results to the readme
         # Add per metric rankings
         # Print all dataframe
-        pd.set_option("display.max_rows", None)
         self.readme_add_section(
             title="## Per target metrics - model comparision",
-            text=f"```\n{per_target_metrics_df.sort_values(by=['state', 'target'])}\n```\n\n",
+            text=f"```\n{per_target_metrics_df.sort_values(by=['model', 'state', 'target'])}\n```\n\n",
         )
 
-        pd.reset_option("display.max_rows")
+        # Extract the model type first
+        overall_metrics_df["model_type"] = overall_metrics_df["model"].str.extract(
+            r"^([A-Z]+)", expand=False
+        )
+
+        # Sort the df by the model type
+        overall_metrics_df_sorted = overall_metrics_df.sort_values(
+            by=["model_type", "mse"], ascending=[True, True]
+        ).reset_index(drop=True)
+
+        # Drop the model type
+        overall_metrics_df_sorted.drop(columns=["model_type"], inplace=True)
 
         self.readme_add_section(
             title="## Overall metrics - model comparision",
-            text=f"```\n{overall_metrics_df.sort_values(by=['state'])}\n```\n\n",
+            text=f"```\n{overall_metrics_df_sorted}\n```\n\n",
         )
+
+        # Print best model hidden size:
+
+        #
+        # self.readme_add_section(
+        #     title="## Best model hidden size for each type",
+        #     text=f"```\n{overall_metrics_df.loc[overall_metrics_df.groupby('model')[BEST_BY_METRIC].idxmin()].reset_index(drop=True)}\n```\n\n",
+        # )
 
         # Print honduras plot
         # fig = comparator.create_state_comparison_plot(state="Honduras")
@@ -720,12 +563,8 @@ if __name__ == "__main__":
     # exp_3.run(state="Czechia", split_rate=0.8)
 
     # Runnable
-    # exp_4 = DifferentHiddenLayers(
-    #     description="Try to train BaseRNN models with different layers."
-    # )
-    # exp_4.run(split_rate=0.8)
-
-    exp_5 = DifferentArchitecturesComparision(
-        description="Compares performance of different architecture models."
+    exp_4 = DifferentHiddenLayers(
+        description="Try to train BaseRNN models with different layers.",
     )
-    exp_5.run(split_rate=0.8)
+    # exp_4.run(split_rate=0.8)
+    exp_4.run(split_rate=0.8, evaluation_states=[STATE])

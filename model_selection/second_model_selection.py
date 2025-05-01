@@ -199,32 +199,21 @@ class SecondModelSelection(BaseExperiment):
         # Save the figure
         self.save_plot(fig_name=f"{self.TARGET_GROUP_PREFIX}_rnn_loss.png", figure=fig)
 
-    def __train_models(
+    def __train_stats_models(
         self,
         data: Dict[str, pd.DataFrame],
-        split_rate: float = 0.8,
-        display_nth_epoch: int = 1,
-        force_retrain: bool = False,
-        evaluation_states: Optional[List[str]] = None,
+        evaluation_states: List[str],
+        split_rate: float,
     ) -> Dict[str, TargetModelPipeline]:
 
-        # Try to get the models
-        # Train ARIMA models for states
         TO_COMPARE_PIPELINES: Dict[str, TargetModelPipeline] = {}
-
-        if not force_retrain:
-            try:
-                return self.__get_models(model_names=self.MODEL_NAMES)
-            except Exception as e:
-                logger.info(f"Models not found. Reatraining all models ({e}).")
-
-        # Train ensemble ARIMAX model - ARIMAX model for each target for each state
 
         if evaluation_states:
             arima_data = {state: data[state] for state in evaluation_states}
         else:
             arima_data = data
 
+        # Train ensemble ARIMAX model - ARIMAX model for each target for each state
         name = f"{self.TARGET_GROUP_PREFIX}_ARIMAX"
         TO_COMPARE_PIPELINES[name] = train_global_arima_ensemble(
             name=name,
@@ -250,6 +239,36 @@ class SecondModelSelection(BaseExperiment):
             q=1,
         )
         TO_COMPARE_PIPELINES[name].save_pipeline(custom_dir=self.SAVE_MODEL_DIR)
+
+        return TO_COMPARE_PIPELINES
+
+    def __train_models(
+        self,
+        data: Dict[str, pd.DataFrame],
+        split_rate: float = 0.8,
+        display_nth_epoch: int = 1,
+        force_retrain: bool = False,
+        only_rnn_retrain: bool = False,
+        evaluation_states: Optional[List[str]] = None,
+    ) -> Dict[str, TargetModelPipeline]:
+
+        # Try to get the models
+        # Train ARIMA models for states
+        TO_COMPARE_PIPELINES: Dict[str, TargetModelPipeline] = {}
+
+        if not force_retrain:
+            try:
+                return self.__get_models(model_names=self.MODEL_NAMES)
+            except Exception as e:
+                logger.info(f"Models not found. Reatraining all models ({e}).")
+
+        # If I need to train only RNNs, because re-training all ARIMA models takes too long
+        if only_rnn_retrain:
+            TO_COMPARE_PIPELINES = self.get_models(model_names=self.STATS_MODEL_NAMES)
+        else:
+            TO_COMPARE_PIPELINES = self.__train_stats_models(
+                data=data, evaluation_states=evaluation_states, split_rate=split_rate
+            )
 
         # Train classic rnn
         logger.info("Training simple rnn...")
@@ -357,6 +376,7 @@ class SecondModelSelection(BaseExperiment):
         self,
         split_rate: float = 0.8,
         force_retrain: bool = False,
+        only_rnn_retrain: bool = False,
         evaluation_states: Optional[List[str]] = None,
     ) -> None:
 
@@ -458,14 +478,14 @@ if __name__ == "__main__":
         target_group_prefix="aging",
     )
 
-    exp_aging.run(split_rate=0.8, force_retrain=False)
+    exp_aging.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=True)
 
     # Experiment for population total
     exp_pop_total = SecondModelSelection(
         description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
         target_group_prefix="pop_total",
     )
-    exp_pop_total.run(split_rate=0.8, force_retrain=False)
+    exp_pop_total.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=True)
 
     # Experiment for gender distribution
     exp_gender_dist = SecondModelSelection(
@@ -473,4 +493,4 @@ if __name__ == "__main__":
         target_group_prefix="gender_dist",
     )
 
-    exp_gender_dist.run(split_rate=0.8, force_retrain=False)
+    exp_gender_dist.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=True)

@@ -44,6 +44,11 @@ def highly_correlated_features() -> List[str]:
 
 
 def basic_features(exclude: List[str] | None = None) -> List[str]:
+
+    # Get rid of the annoying error if not specified
+    if not exclude:
+        exclude = []
+
     return [
         col.lower()
         for col in [

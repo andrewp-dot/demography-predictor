@@ -28,14 +28,13 @@ from src.compare_models.compare import ModelComparator
 from src.state_groups import StatesGroups, StatesByGeolocation, StatesByWealth
 
 from model_experiments.base_experiment import BaseExperiment
-from train_scripts.train_feature_models import (
+from src.train_scripts.train_feature_models import (
     train_base_rnn,
     train_finetunable_model,
     train_finetunable_model_from_scratch,
 )
 from src.pipeline import FeatureModelPipeline
 from src.feature_model.model import RNNHyperparameters, BaseRNN
-from src.evaluation import EvaluateModel
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
@@ -688,9 +687,9 @@ def main():
     #     split_rate=0.8,
     # )
 
-    # exp_feature_selection.run()
+    exp_feature_selection.run()
 
-    exp_states_subset.run()
+    # exp_states_subset.run()
 
 
 if __name__ == "__main__":

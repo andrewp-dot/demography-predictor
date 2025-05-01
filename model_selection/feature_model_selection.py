@@ -43,21 +43,7 @@ class FeatureModelExperiment(BaseExperiment):
         os.path.join(".", "model_selection", "trained_models")
     )
 
-    MODEL_NAMES: List[str] = [
-        "feature_ARIMA",
-        # Recurrent networks
-        "feature_RNN",
-        "feature_GRU",
-        "feature_LSTM",
-        # Combined networks
-        "feature_LSTM_NN",
-        "feature_GRU_NN",
-        "feature_RNN_NN",
-        # Univariate recurrent neural networks
-        "feature_univariate_LSTM",
-        "feature_univariate_RNN",
-        "feature_univariate_GRU",
-    ]
+    STATS_MODEL_NAMES: List[str] = ["feature_ARIMA"]
 
     # Need to save this to save their training stats for plot
     RNN_NAMES = [
@@ -69,10 +55,16 @@ class FeatureModelExperiment(BaseExperiment):
         "feature_LSTM_NN",
         "feature_GRU_NN",
         "feature_RNN_NN",
+    ]
+
+    MODEL_NAMES: List[str] = [
+        *STATS_MODEL_NAMES,
+        # Recurrent networks
+        *RNN_NAMES,
         # Univariate recurrent neural networks
-        # "feature_univariate_LSTM",
-        # "feature_univariate_RNN",
-        # "feature_univariate_GRU",
+        "feature_univariate_LSTM",
+        "feature_univariate_RNN",
+        "feature_univariate_GRU",
     ]
 
     def __init__(
@@ -92,7 +84,6 @@ class FeatureModelExperiment(BaseExperiment):
 
         self.BASE_RNN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
             input_size=len(self.FEATURES),
-            hidden_size=256,
             batch_size=16,
             output_size=len(self.TARGETS),
             epochs=30,
@@ -101,7 +92,7 @@ class FeatureModelExperiment(BaseExperiment):
         self.UNIVARIATE_RNN_HYPERPARAMETERS: RNNHyperparameters = (
             get_core_hyperparameters(
                 input_size=len(self.FEATURES),
-                hidden_size=64,
+                hidden_size=28,
                 batch_size=16,
                 output_size=len(self.TARGETS),
                 epochs=30,
@@ -110,7 +101,7 @@ class FeatureModelExperiment(BaseExperiment):
 
         self.RNN_NN_HYPERPARAMETERS: RNNHyperparameters = get_core_hyperparameters(
             input_size=len(self.FEATURES),
-            hidden_size=256,
+            # hidden_size=256,
             batch_size=16,
             output_size=len(self.TARGETS),
             epochs=30,
@@ -173,21 +164,14 @@ class FeatureModelExperiment(BaseExperiment):
         # Save the figure
         self.save_plot(fig_name=f"rnn_loss.png", figure=fig)
 
-    def __train_models(
+    def __train_stats_models(
         self,
         data: Dict[str, pd.DataFrame],
-        split_rate: float = 0.8,
-        display_nth_epoch: int = 1,
-        force_retrain: bool = False,
-        evaluation_states: Optional[List[str]] = None,
+        evaluation_states: List[str],
+        split_rate: float,
     ) -> Dict[str, FeatureModelPipeline]:
-        TO_COMPARE_PIPELINES: Dict[str, FeatureModelPipeline] = {}
 
-        if not force_retrain:
-            try:
-                return self.get_models(model_names=self.MODEL_NAMES)
-            except Exception as e:
-                logger.info(f"Models not found. Reatraining all models ({e}).")
+        TO_COMPARE_PIPELINES: Dict[str, FeatureModelPipeline] = {}
 
         logger.info("Training feature_ARIMA...")
         if evaluation_states:
@@ -204,6 +188,33 @@ class FeatureModelExperiment(BaseExperiment):
         TO_COMPARE_PIPELINES["feature_ARIMA"].save_pipeline(
             custom_dir=self.SAVE_MODEL_DIR
         )
+
+        return TO_COMPARE_PIPELINES
+
+    def __train_models(
+        self,
+        data: Dict[str, pd.DataFrame],
+        split_rate: float = 0.8,
+        display_nth_epoch: int = 1,
+        force_retrain: bool = False,
+        only_rnn_retrain: bool = False,
+        evaluation_states: Optional[List[str]] = None,
+    ) -> Dict[str, FeatureModelPipeline]:
+        TO_COMPARE_PIPELINES: Dict[str, FeatureModelPipeline] = {}
+
+        if not force_retrain and not only_rnn_retrain:
+            try:
+                return self.get_models(model_names=self.MODEL_NAMES)
+            except Exception as e:
+                logger.info(f"Models not found. Reatraining all models ({e}).")
+
+        # If I need to train only RNNs, because re-training all ARIMA models takes too long
+        if only_rnn_retrain:
+            TO_COMPARE_PIPELINES = self.get_models(model_names=self.STATS_MODEL_NAMES)
+        else:
+            TO_COMPARE_PIPELINES = self.__train_stats_models(
+                data=data, evaluation_states=evaluation_states, split_rate=split_rate
+            )
 
         ## TRain recurrent neural networks
         # Create simple rnn
@@ -356,12 +367,13 @@ class FeatureModelExperiment(BaseExperiment):
     def run(
         self,
         split_rate: float = 0.8,
-        force_reatrain: bool = False,
+        force_retrain: bool = False,
+        only_rnn_retrain: bool = False,
         evaluation_states: Optional[List[str]] = None,
     ) -> None:
 
         # Setup readme
-        self.create_readme(readme_name="only_countries_README.md")
+        self.create_readme(readme_name="hidden_size_512_README.md")
 
         # Load data
         loader = StatesDataLoader()
@@ -370,7 +382,8 @@ class FeatureModelExperiment(BaseExperiment):
         TO_COMPARE_PIPELINES = self.__train_models(
             data=states_data_dict,
             split_rate=split_rate,
-            force_retrain=force_reatrain,
+            force_retrain=force_retrain,
+            only_rnn_retrain=only_rnn_retrain,
             evaluation_states=evaluation_states,
         )
 
@@ -467,7 +480,7 @@ class FeatureModelExperiment(BaseExperiment):
             states=[
                 "Czechia",
                 "Slovak Republic",
-                " United States",
+                "United States",
                 "Honduras",
                 "China",
             ],
@@ -485,4 +498,4 @@ if __name__ == "__main__":
 
     # Run for all
     # exp.run(force_reatrain=True, evaluation_states=OnlyRealStates().states)
-    exp.run(force_reatrain=False)
+    exp.run(force_retrain=False, only_rnn_retrain=True)

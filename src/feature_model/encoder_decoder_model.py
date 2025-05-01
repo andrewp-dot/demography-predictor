@@ -15,7 +15,7 @@ from src.evaluation import EvaluateModel
 
 from src.utils.constants import get_core_hyperparameters
 
-from train_scripts.train_feature_models import preprocess_data
+from src.train_scripts.train_feature_models import preprocess_data
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
