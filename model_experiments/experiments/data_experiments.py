@@ -4,16 +4,12 @@ import pandas as pd
 from typing import List, Dict, Tuple, Literal
 import random
 
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 
 import pprint
 
 # Custom imports
 from src.utils.log import setup_logging
-from model_experiments.config import (
-    FeatureModelBenchmarkSettings,
-)
 
 from src.utils.constants import (
     get_core_hyperparameters,
@@ -21,8 +17,6 @@ from src.utils.constants import (
     highly_correlated_features,
 )
 
-# from src.utils.save_model import save_experiment_model, get_experiment_model
-from src.base import CustomModelBase
 from src.compare_models.compare import ModelComparator
 
 from src.state_groups import StatesGroups, StatesByGeolocation, StatesByWealth
@@ -39,7 +33,7 @@ from src.feature_model.model import RNNHyperparameters, BaseRNN
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 from src.preprocessors.data_transformer import DataTransformer
 
-settings = FeatureModelBenchmarkSettings()
+# settings = FeatureModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
 
 
@@ -588,21 +582,6 @@ class StatesSubsetExperiment(BaseExperiment):
         overall_metrics_df = comparator.compare_models_by_states(
             pipelines=TO_COMPARE_MODELS, states=EVAL_STATES, by="overall-one-metric"
         )
-
-        # per_target_metrics_df = comparator.compare_models_by_states(
-        #     pipelines=TO_COMPARE_MODELS, states=EVAL_STATES, by="per-features"
-        # )
-
-        # Print results to the readme
-        # Add per metric rankings
-        # Print all dataframe
-        # pd.set_option("display.max_rows", None)
-        # self.readme_add_section(
-        #     title="## Per target metrics - model comparision",
-        #     text=f"```\n{per_target_metrics_df.sort_values(by=['state', 'target'])}\n```\n\n",
-        # )
-
-        # pd.reset_option("display.max_rows")
 
         self.readme_add_section(
             title=f"## Overall metrics for {group_name}  - model comparision",

@@ -14,13 +14,9 @@ from src.utils.constants import (
     aging_targets,
 )
 
-from model_experiments.config import (
-    FeatureModelBenchmarkSettings,
-)
 
 from src.utils.constants import get_core_hyperparameters
 
-# from src.utils.save_model import save_experiment_model, get_experiment_model
 from src.state_groups import StatesByGeolocation, StatesByWealth
 
 from src.pipeline import FeatureModelPipeline
@@ -44,7 +40,6 @@ from src.feature_model.ensemble_model import (
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 
-settings = FeatureModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
 
 
@@ -379,16 +374,31 @@ class CompareWithStatisticalModels(BaseExperiment):
             "target", as_index=False
         ).first()
 
+        model_avg_df = per_target_metrics_df.groupby("model")[
+            ["mae", "mse", "rmse", "mape", "r2"]
+        ].mean()
+
+        model_avg_df = model_avg_df.sort_values(by="mape")
+
+        # Optional: Reset index to include 'model' as a column
+        model_avg_df_reset = model_avg_df.reset_index()
+
+        # Print results to the readme
+
+        self.readme_add_section(
+            title="## Per target metrics - model comparison",
+            text=f"```\n{per_target_metrics_df_sorted}\n```\n\n",
+        )
+
+        self.readme_add_section(
+            title="## Average metrics per model across all targets",
+            text=f"```\n{model_avg_df_reset}\n```\n\n",
+        )
+
         overall_metrics_df = comparator.compare_models_by_states(
             pipelines=TO_COMPARE_MODELS,
             states=evaluation_states,
             by="overall-one-metric",
-        )
-
-        # Print results to the readme
-        self.readme_add_section(
-            title="## Per target metrics - model comparision",
-            text=f"```\n{per_target_metrics_df_sorted}\n```\n\n",
         )
 
         self.readme_add_section(
@@ -525,7 +535,7 @@ if __name__ == "__main__":
         description="Compares BaseRNN with statistical models and BaseRNN for single feature prediction."
     )
     # exp_3.run(split_rate=0.8, evaluation_states=["Czechia"])
-    exp_3.run(split_rate=0.8, force_retrain=True)
+    exp_3.run(split_rate=0.8, force_retrain=False)
 
     # Runnable
     # exp_4 = DifferentHiddenAndNumOfLayers(

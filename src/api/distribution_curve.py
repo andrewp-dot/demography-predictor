@@ -77,7 +77,7 @@ class AgeDistribution:
             + (p_65_above * (mid_65_above - mean_age) ** 2)
         )
 
-        # Estimate skewness (α)
+        # Estimate skewness
         median_age = self.estimate_median_age(
             max_age=max_age
         )  # Approximate median from the largest group
