@@ -14,7 +14,11 @@ from sklearn.metrics import (
     mean_squared_error,
     root_mean_squared_error,
     r2_score,
+    mean_absolute_percentage_error,
 )
+
+
+# TODO: add MAPE
 
 # Custom imports
 from src.utils.log import setup_logging
@@ -61,9 +65,6 @@ class BaseEvaluation:
         # Initialize metric values
         overall_metric_df = None
 
-        # print(self.reference_values)
-        # print(self.predicted)
-
         # Average metric across all targets
         average_metric_value = metric(
             self.reference_values, self.predicted, multioutput="uniform_average"
@@ -91,12 +92,23 @@ class BaseEvaluation:
         # Get RMSE
         overall_rmse_df = self.get_overall_metric(root_mean_squared_error, "rmse")
 
+        # Get MAPE
+        overall_mape_df = self.get_overall_metric(
+            mean_absolute_percentage_error, "mape"
+        )
+
         # Get R^2
         overall_r2_df = self.get_overall_metric(r2_score, "r2")
 
         # Get overall dataframe
         return pd.concat(
-            [overall_mae_df, overall_mse_df, overall_rmse_df, overall_r2_df],
+            [
+                overall_mae_df,
+                overall_mse_df,
+                overall_rmse_df,
+                overall_mape_df,
+                overall_r2_df,
+            ],
             axis=1,
         )
 
@@ -179,6 +191,11 @@ class BaseEvaluation:
             root_mean_squared_error, TARGETS, "rmse"
         )
 
+        # Get MAPE
+        mape_per_target_df = self.get_single_target_specific_metric(
+            mean_absolute_percentage_error, TARGETS, "mape"
+        )
+
         # Get R^2
         r2_per_target_df = self.get_single_target_specific_metric(
             r2_score, TARGETS, "r2"
@@ -189,6 +206,7 @@ class BaseEvaluation:
             mae_per_target_df,
             mse_per_target_df,
             rmse_per_target_df,
+            mape_per_target_df,
             r2_per_target_df,
         ]
 
@@ -567,7 +585,7 @@ class EvaluateModel(BaseEvaluation):
         }
 
         # Use weighted average for the overall metrics
-        metrics = ["mae", "mse", "rmse", "r2"]
+        metrics = ["mae", "mse", "rmse", "mape", "r2"]
         overall_metrics: Dict[str, float] = {metric: 0.0 for metric in metrics}
         for state in state_weights.keys():
             # Get the state metrics

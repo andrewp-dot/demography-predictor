@@ -38,8 +38,8 @@ class Config(BaseSettings):
     states_data_dir: str = os.path.join(dataset_dir, "states")
 
     # Local model benchmark settings
-    benchmark_results_dir: str = os.path.join(
-        ".", "local_model_benchmark", "experiment_results"
+    model_experiments_rsults_dir: str = os.path.join(
+        ".", "model_experiments", "experiment_results"
     )
 
     # Model save dir

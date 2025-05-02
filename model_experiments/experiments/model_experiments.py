@@ -19,7 +19,6 @@ from model_experiments.config import (
 )
 
 from src.utils.constants import get_core_hyperparameters
-from src.utils.save_model import save_experiment_model, get_experiment_model
 
 # from src.utils.save_model import save_experiment_model, get_experiment_model
 from src.state_groups import StatesByGeolocation, StatesByWealth
@@ -225,7 +224,7 @@ class CompareWithStatisticalModels(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def __train_base_rnn_model(
+    def __train_lstm_model(
         self,
         name: str,
         states_loader: StatesDataLoader,
@@ -248,7 +247,7 @@ class CompareWithStatisticalModels(BaseExperiment):
         return base_model_pipeline
 
     def __train_ensemble_model(
-        self, split_rate: float, display_nth_epoch=10
+        self, name: str, split_rate: float, display_nth_epoch=10
     ) -> FeatureModelPipeline:
 
         loader = StatesDataLoader()
@@ -256,7 +255,7 @@ class CompareWithStatisticalModels(BaseExperiment):
 
         # Train ARIMA instead
         pipeline = train_ensemble_model(
-            name="ensemble-model",
+            name=name,
             hyperparameters=self.BASE_LSTM_HYPERPARAMETERS,
             data=all_states_dict,
             features=self.FEATURES,
@@ -271,10 +270,17 @@ class CompareWithStatisticalModels(BaseExperiment):
         name: str,
         data: Dict[str, pd.DataFrame],
         split_rate: float,
+        evaluation_states: Optional[List[str]] = None,
     ) -> FeatureModelPipeline:
+
+        if evaluation_states:
+            states_data = {state: data[state] for state in evaluation_states}
+        else:
+            states_data = data
+
         ensemble_model = train_arima_ensemble_all_states(
             name=name,
-            data=data,
+            data=states_data,
             features=self.FEATURES,
             split_rate=split_rate,
         )
@@ -295,10 +301,18 @@ class CompareWithStatisticalModels(BaseExperiment):
 
         return TO_COMPARE_PIPELINES
 
-    def __train_models(self, split_rate: float) -> Dict[str, FeatureModelPipeline]:
+    def __train_models(
+        self,
+        split_rate: float,
+        evaluation_states: Optional[List[str]] = None,
+        force_retrain: bool = False,
+    ) -> Dict[str, FeatureModelPipeline]:
 
         # Load
-        TO_COMPARE_MODELS: Dict[str, FeatureModelPipeline] = self.__get_models()
+        TO_COMPARE_MODELS: Dict[str, FeatureModelPipeline] = {}
+
+        if not force_retrain:
+            TO_COMPARE_MODELS: Dict[str, FeatureModelPipeline] = self.__get_models()
 
         # If loaded return
         if TO_COMPARE_MODELS:
@@ -311,7 +325,7 @@ class CompareWithStatisticalModels(BaseExperiment):
 
         # Else retrain models
         # Train base lstm
-        TO_COMPARE_MODELS["LSTM"] = self.__train_base_rnn_model(
+        TO_COMPARE_MODELS["LSTM"] = self.__train_lstm_model(
             name="LSTM",
             states_loader=states_loader,
             split_rate=split_rate,
@@ -319,41 +333,67 @@ class CompareWithStatisticalModels(BaseExperiment):
         )
         TO_COMPARE_MODELS["LSTM"].save_pipeline(experimental=True)
 
-        TO_COMPARE_MODELS["ensemble-LSTM"] = self.__train_ensemble_model(
-            split_rate=split_rate, display_nth_epoch=1
+        TO_COMPARE_MODELS["univariate_LSTM"] = self.__train_ensemble_model(
+            name="univariate_LSTM", split_rate=split_rate, display_nth_epoch=1
         )
-        TO_COMPARE_MODELS["ensemble-LSTM"].save_pipeline(experimental=True)
+        TO_COMPARE_MODELS["univariate_LSTM"].save_pipeline(experimental=True)
 
         TO_COMPARE_MODELS["ARIMA"] = self.__train_arima_ensemble_model(
             name="ARIMA",
             data=data,
             split_rate=split_rate,
+            evaluation_states=evaluation_states,
         )
         TO_COMPARE_MODELS["ARIMA"].save_pipeline(experimental=True)
 
+        return TO_COMPARE_MODELS
+
     def run(
-        self, split_rate: float = 0.8, evaluation_states: Optional[List[str]] = None
+        self,
+        split_rate: float = 0.8,
+        evaluation_states: Optional[List[str]] = None,
+        force_retrain: bool = False,
     ):
         # Create readme
         self.create_readme()
 
         TO_COMPARE_MODELS: Dict[str, FeatureModelPipeline] = self.__train_models(
-            split_rate=split_rate
+            split_rate=split_rate,
+            evaluation_states=evaluation_states,
+            force_retrain=force_retrain,
         )
 
         # Evaluate models - per-target-performance
         comparator = ModelComparator()
         per_target_metrics_df = comparator.compare_models_by_states(
-            pipelines=TO_COMPARE_MODELS, states=evaluation_states, by="per-features"
+            pipelines=TO_COMPARE_MODELS, states=evaluation_states, by="per-targets"
         )
+
+        # Sort by target and then by mape
+        per_target_metrics_df_sorted = per_target_metrics_df.sort_values(
+            by=["target", "mape"], ascending=[True, True]
+        )
+
+        # Get the best model per target (lowest mape)
+        best_models_df = per_target_metrics_df_sorted.groupby(
+            "target", as_index=False
+        ).first()
+
         overall_metrics_df = comparator.compare_models_by_states(
-            pipelines=TO_COMPARE_MODELS, states=evaluation_states, by="overall-metrics"
+            pipelines=TO_COMPARE_MODELS,
+            states=evaluation_states,
+            by="overall-one-metric",
         )
 
         # Print results to the readme
         self.readme_add_section(
             title="## Per target metrics - model comparision",
-            text=f"```\n{per_target_metrics_df}\n```\n\n",
+            text=f"```\n{per_target_metrics_df_sorted}\n```\n\n",
+        )
+
+        self.readme_add_section(
+            title="## Best models for predicting each target:",
+            text=f"```\n{best_models_df}\n```\n\n",
         )
 
         self.readme_add_section(
@@ -458,24 +498,6 @@ class DifferentHiddenAndNumOfLayers(BaseExperiment):
             text=f"```\n{overall_metrics_df_sorted}\n```\n\n",
         )
 
-        # Print best model hidden size:
-
-        #
-        # self.readme_add_section(
-        #     title="## Best model hidden size for each type",
-        #     text=f"```\n{overall_metrics_df.loc[overall_metrics_df.groupby('model')[BEST_BY_METRIC].idxmin()].reset_index(drop=True)}\n```\n\n",
-        # )
-
-        # Print honduras plot
-        # fig = comparator.create_state_comparison_plot(state="Honduras")
-
-        # self.save_plot(fig_name="honduras_predictions.png", figure=fig)
-        # self.readme_add_plot(
-        #     plot_name="Honduras predictions",
-        #     plot_description="Honduras feature predictions.",
-        #     fig_name="honduras_predictions.png",
-        # )
-
 
 if __name__ == "__main__":
     # Setup logging
@@ -502,7 +524,8 @@ if __name__ == "__main__":
     exp_3 = CompareWithStatisticalModels(
         description="Compares BaseRNN with statistical models and BaseRNN for single feature prediction."
     )
-    exp_3.run(split_rate=0.8)
+    # exp_3.run(split_rate=0.8, evaluation_states=["Czechia"])
+    exp_3.run(split_rate=0.8, force_retrain=True)
 
     # Runnable
     # exp_4 = DifferentHiddenAndNumOfLayers(

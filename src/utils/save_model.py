@@ -97,6 +97,8 @@ def save_experiment_model(model, name: str) -> None:
         os.path.join(settings.trained_models_dir, "experimental_models")
     )
 
+    print(f"Saving to... {EXPERIMENTAL_MODELS_DIR}")
+
     MODEL_PATH = os.path.join(EXPERIMENTAL_MODELS_DIR, f"{name}")
 
     # If the experimental directory does not exist, create it
