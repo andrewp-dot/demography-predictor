@@ -11,7 +11,6 @@ from xgboost import XGBRegressor
 from sklearn.ensemble import RandomForestRegressor
 
 # Custom imports
-from src.utils.log import setup_logging
 from src.utils.constants import categorical_columns
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -283,25 +282,3 @@ def train_global_arima_ensemble(
         transformer=DataTransformer(),
         model=model,
     )
-
-
-def main():
-    # Load data
-    states_loader = StatesDataLoader()
-    state_dfs = states_loader.load_all_states()
-    state_df_merged = states_loader.merge_states(state_dfs=state_dfs)
-
-    FEATURES: List[str] = [col.lower() for col in [""]]
-    TARGETS: List[str] = [""]
-
-    global_model_pipeline = train_global_model_tree(
-        states_data=state_df_merged, features=FEATURES, targets=TARGETS
-    )
-
-
-if __name__ == "__main__":
-    # Setup logging
-    setup_logging()
-
-    # Run main
-    main()

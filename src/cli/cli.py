@@ -1,4 +1,5 @@
 import click
+from typing import Literal, Optional, List
 
 from src.utils.log import setup_logging
 from model_experiments.main import (
@@ -7,13 +8,14 @@ from model_experiments.main import (
     run_experiments,
 )
 
+from src.train_scripts.train_predictors import train_aging_predictor
+
 
 @click.group()
 def cli():
     """
     Defines the main cli group
     """
-    print("Executing CLI...")  # Print statement to check if cli() is executed
     setup_logging()
     pass
 
@@ -80,6 +82,87 @@ def run(all, experiments, state, split_rate):
 
     elif experiments:
         run_experiments(experiments=experiments, state=state, split_rate=split_rate)
+
+
+@cli.group()
+def train():
+    """
+    Defines the main cli group
+    """
+    setup_logging()
+    pass
+
+
+@train.command()
+@click.option("--name", type=str, help="Name of the predictor. It is also a model key.")
+@click.option(
+    "--type",
+    type=click.Choice(["LSTM", "ARIMA"], case_sensitive=False),
+    help="Type of the model. You can choose from options: LSTM, ARIMA",
+    default="ARIMA",
+)
+@click.option(
+    "--wealth-groups",
+    type=str,
+    help='List of comma separated wealth groups. as a comma separated strings string, e.g. --wealth-groups "high_income, lower_middle_income"',
+)
+@click.option(
+    "--geolocation-groups",
+    type=str,
+    help='List of comma separated geolocation groups. as a comma separated strings string, e.g. --states "europe, north america"',
+)
+@click.option(
+    "--states",
+    type=str,
+    help='List of included in training states as a comma separated strings string, e.g. --states "Czechia, United States"',
+)
+@click.option(
+    "--modify-for-target-model",
+    action="store_true",
+    type=bool,
+    help="If specified, modifed data will be used to train the target prediction model. By deafult, data are adjusted for feature target model",
+)
+def age_predictor(
+    name: str,
+    type: Literal["LSTM", "ARIMA"],
+    wealth_groups: Optional[str],
+    geolocation_groups: Optional[str],
+    states: Optional[str],
+    modify_for_target_model: bool,
+):
+
+    # Parse data arguments
+    if states:
+        states: List[str] = [s.strip() for s in states.split(",")]
+    if wealth_groups:
+        wealth_groups: List[str] = [s.strip() for s in wealth_groups.split(",")]
+    if geolocation_groups:
+        geolocation_groups: List[str] = [
+            s.strip() for s in geolocation_groups.split(",")
+        ]
+
+    train_aging_predictor(
+        name=name,
+        model_type=type,
+        states=states,
+        wealth_groups=wealth_groups,
+        geolocation_groups=geolocation_groups,
+        modify_for_target_model=modify_for_target_model,
+    )
+
+
+@train.command()
+@click.option(
+    "--type",
+    type=click.Choice(["LSTM", "ARIMA"], case_sensitive=False),
+    help="Type of the model. You can choose from options: LSTM, ARIMA",
+    default="ARIMA",
+)
+@click.option(
+    "--states", type=str, multiple=True, help="List of used states as a training data."
+)
+def dist_predictor(type: Literal["LSTM", "ARIMA"]):
+    print(type)
 
 
 if __name__ == "__main__":

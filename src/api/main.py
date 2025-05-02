@@ -18,7 +18,7 @@ from src.api.models import (
 from src.api.distribution_curve import AgeDistribution
 
 from src.utils.log import setup_logging
-from src.utils.save_model import get_model
+from src.utils.constants import aging_targets, gender_distribution_targets
 
 from src.pipeline import PredictorPipeline
 from src.preprocessors.state_preprocessing import StateDataLoader
@@ -33,16 +33,9 @@ logger = logging.getLogger("api")
 
 LOADED_MODELS: Dict[str, PredictorPipeline] = {}
 
-AGING_COLUMNS: List[str] = [
-    "population ages 0-14",
-    "population ages 15-64",
-    "population ages 65 and above",
-]
+AGING_COLUMNS: List[str] = gender_distribution_targets()
 
-GENDER_DIST_COLUMNS: List[str] = [
-    "population, female",
-    "population, male",
-]
+GENDER_DIST_COLUMNS: List[str] = aging_targets()
 
 
 def load_models() -> None:
@@ -57,7 +50,8 @@ def load_models() -> None:
 
 
 def get_dataframe_from_request(
-    state: str, input_data: pd.DataFrame | None
+    state: str,
+    # input_data: pd.DataFrame | None,
 ) -> pd.DataFrame:
     """
     Convert input data to pandas dataframe.
@@ -68,12 +62,12 @@ def get_dataframe_from_request(
     Returns:
         out: pd.DataFrame: Converted input data.
     """
-    if input_data is None:
-        # Load gathered data
-        state_loader = StateDataLoader(state=state)
-        input_df: pd.DataFrame = state_loader.load_data()
-    else:
-        input_df: pd.DataFrame = pd.DataFrame(input_data)
+    # if input_data is None:
+    # Load gathered data
+    state_loader = StateDataLoader(state=state)
+    input_df: pd.DataFrame = state_loader.load_data()
+    # else:
+    #     input_df: pd.DataFrame = pd.DataFrame(input_data)
 
     return input_df
 
@@ -159,12 +153,14 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 def read_root():
-    return {"message": "Hello, FastAPI!"}
+    return {"message": "Hello! If you want more info, just call '/info' endpoint."}
 
 
 @app.get("/info")
 def get_info():
-    return Info(avialable_models=LOADED_MODELS.keys()).model_dump()
+    return Info(
+        avialable_models=LOADED_MODELS.keys(), available_populations=[]
+    ).model_dump()
 
 
 @app.post("/predict")
@@ -192,10 +188,6 @@ def model_predict(request: PredictionRequest) -> PredictionResponse:
 
 @app.post("/lakmoos-predict")
 def model_lakmoos_predict(request: LakmoosPredictionRequest):
-
-    # TODO: implemenet this using specification
-    # From the prediction make probablity curve for the target year, the probability curve will serve as an inputs for generators
-    # Decide of how many prediction curves will be the output, for example: aging_curve, gender_distribution_curve
 
     # Generate predictions
     prediction_df = predict_from_request(request=request)

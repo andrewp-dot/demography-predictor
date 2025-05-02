@@ -1,5 +1,4 @@
 import os
-from model_experiments.config import FeatureModelBenchmarkSettings
 from abc import abstractmethod
 from matplotlib.figure import Figure
 from typing import List, Union
@@ -8,9 +7,6 @@ from src.feature_model.model import CustomModelBase
 from src.feature_model.model import BaseRNN
 from src.feature_model.finetunable_model import FineTunableLSTM
 from src.base import RNNHyperparameters
-
-# Get settings
-settings = FeatureModelBenchmarkSettings()
 
 
 class BaseExperiment:
@@ -48,8 +44,11 @@ class BaseExperiment:
         self.description: str = description
 
         # Save experiment path
-        self.save_dir: str = settings.benchmark_results_dir
+        self.save_dir: str = os.path.join(
+            os.path.dirname(__file__), "experiment_results"
+        )
         self.experiment_dir: str = os.path.join(self.save_dir, self.name)
+        print(self.experiment_dir)
         self.plot_dir: str = os.path.join(self.experiment_dir, "plots")
         self.readme_path: str | None = None
 

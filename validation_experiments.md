@@ -1,32 +1,13 @@
 # Experiment 1
 
-Long term experiment
+Evaluate model predicting all states. Use all states for training.  Find the best states
 
-**hypothesis**: To how long can the model predict the population until it converages.
+# Experiment 2 
 
-# Experiment 2
+Evaluate model predicting all states. Use Groups for training.  Find the best states 
 
-Accuracy experiment
+# Experiment 3 
 
-**hypothesis**: Model can predict the development of the population accuratly. (How accurate)
+Predict the data to for 50 years or something.
 
-# Experiment 3
 
-Method comparision
-
-**hypothesis**: Model is more accurate then traditional statistical predictions.
-
-# Experiment 4
-
-Context keeping
-
-**hypothesis**: The longer sequence is passed to the model, the better performance it has.
-
-# Experiment 5
-
-Different type of train and validation
-
-**hypothesis**: Model can genralize populations and predict unseen populations (accuretly)?.
-
-# Ppl
-Michal (?) Hradiš

@@ -18,11 +18,8 @@ from sklearn.metrics import (
 )
 
 
-# TODO: add MAPE
-
 # Custom imports
 from src.utils.log import setup_logging
-from src.statistical_models.arima import CustomARIMA
 
 from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
 
@@ -603,61 +600,3 @@ class EvaluateModel(BaseEvaluation):
             overall_metrics[metric] = [overall_metrics[metric]]
 
         return pd.DataFrame(overall_metrics)
-
-
-class EvaluateARIMA(BaseEvaluation):
-
-    def __init__(self, arima: CustomARIMA):
-
-        super().__init__()
-
-        # Get evaluation data
-        self.model: CustomARIMA = arima
-
-    def eval(
-        self,
-        test_X: pd.DataFrame,
-        test_y: pd.DataFrame,
-        features: list[str],
-        target: str,
-        index: str,
-    ):
-
-        # Set features as a constant
-        # FEATURES = features
-
-        # Get the last year and get the number of years
-        X_years = test_X[["year"]]
-        last_year = int(X_years.iloc[-1].item())
-
-        # # Get the prediction year
-        y_target_years = test_y[["year"]]
-        target_year = int(y_target_years.iloc[-1].item())
-
-        # Calculate steps
-        steps = target_year - last_year
-
-        # Get predicted years
-        self.predicted_years = range(last_year + 1, target_year + 1)
-
-        # Get copies of the data
-        train_data = test_X.copy()
-        test_data = test_y.copy()
-
-        # Set index of the dataframes
-        train_data.set_index(index, inplace=True)
-        test_data.set_index(index, inplace=True)
-
-        # Save true values
-        self.reference_values = test_data[target].to_frame()
-
-        # Get predictions
-        self.predicted = self.model.predict(data=test_data, steps=steps)
-
-        # Get overall metrtics
-        self.get_overall_metrics()
-
-
-if __name__ == "__main__":
-    # Setup logging
-    setup_logging()

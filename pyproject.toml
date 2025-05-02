@@ -4,7 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Andrew <ado.ponechal@gmail.com>"]
 readme = "README.md"
-packages = [{ include = "src" }, { include = "model_selection" }]
+packages = [{ include = "src" }, { include = "model_experiments" }, { include = "data_science" }]
 
 
 [tool.poetry.scripts]
