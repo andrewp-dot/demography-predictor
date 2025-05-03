@@ -3,6 +3,13 @@
 
 **Description:** Evaluates pipeline for all available data of available populations.
 
+Overall performance:
+
+```        mae       mse      rmse      mape        r2
+0  0.580307  0.929271  0.704092  0.029041 -3.937903
+```
+
+
 Best performance states:
 
 ```          mae       mse      rmse      mape         r2                           state

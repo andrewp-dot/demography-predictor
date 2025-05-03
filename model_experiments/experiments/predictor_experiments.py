@@ -69,6 +69,10 @@ class EvalAllStates(BaseExperiment):
             X_test_states=X_test_states, y_test_states=y_test_states
         )
 
+        ovearall_eval_df = evaluation.eval_for_every_state_overall(
+            X_test_states=X_test_states, y_test_states=y_test_states
+        )
+
         # Save to json file
         with open(os.path.join(self.plot_dir, "all_states_evaluation.json"), "w") as f:
 
@@ -79,6 +83,11 @@ class EvalAllStates(BaseExperiment):
             eval_df.to_json(f, indent=4, orient="records")
 
         # Print top 5 states and the worst 5 states
+
+        self.readme_add_section(
+            title=f"Overall performance:",
+            text=f"\n```{ovearall_eval_df}\n```\n\n",
+        )
 
         top_states_df = eval_df.head(5)
         self.readme_add_section(
