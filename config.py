@@ -54,10 +54,11 @@ class Config(BaseSettings):
     def prediction_models(self) -> Dict[str, str]:
         return {
             # model_name: f"pipeline_name"
-            "aging_model": "core_pipeline",
-            "aging_model_rich": "group_pipeline",
-            "aging_model_cz": "cz_pipeline",
-            "gender_model": "gender_core_pipeline",
+            # "aging_model": "core_pipeline",
+            # "aging_model_rich": "group_pipeline",
+            # "aging_model_cz": "aging_cz",
+            "aging_model_cz": "lstm-test-age-predictor",
+            # "gender_model": "gender_core_pipeline",
         }
 
     ALL_POSSIBLE_TARGET_FEATURES: List[str] = ALL_POSSIBLE_TARGET_FEATURES

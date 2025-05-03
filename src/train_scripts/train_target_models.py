@@ -11,11 +11,19 @@ from xgboost import XGBRegressor
 from sklearn.ensemble import RandomForestRegressor
 
 # Custom imports
-from src.utils.constants import categorical_columns
+from src.utils.log import setup_logging
+from src.utils.constants import (
+    categorical_columns,
+    basic_features,
+    highly_correlated_features,
+    aging_targets,
+    gender_distribution_targets,
+)
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
+from src.state_groups import StatesByWealth
 
 from src.base import RNNHyperparameters
 from src.pipeline import TargetModelPipeline
@@ -282,3 +290,35 @@ def train_global_arima_ensemble(
         transformer=DataTransformer(),
         model=model,
     )
+
+
+if __name__ == "__main__":
+    # Setup logging
+    setup_logging()
+
+    loader = StatesDataLoader()
+    all_states_data = loader.load_all_states()
+
+    state_wealth_groups = StatesByWealth()
+    # all_states_data = loader.load_states(
+    #     states=[
+    #         *state_wealth_groups.high_income,
+    #         *state_wealth_groups.upper_middle_income,
+    #         *state_wealth_groups.lower_middle_income,
+    #     ]
+    # )
+
+    FEATURES = basic_features(exclude=[*highly_correlated_features(), "arable_land"])
+    TARGETS = aging_targets()
+
+    print(FEATURES)
+
+    pipeline = train_global_model_tree(
+        name="test-target-model-tree",
+        states_data=all_states_data,
+        features=FEATURES,
+        targets=TARGETS,
+        sequence_len=3,
+        tree_model=XGBRegressor(n_estimators=100, random_state=42),
+    )
+    pipeline.save_pipeline()

@@ -90,7 +90,8 @@ def predict_from_request(request: PredictionRequest) -> pd.DataFrame:
     # 0. Create input dataframe and extract last and target year
 
     input_df = get_dataframe_from_request(
-        state=request.state, input_data=request.input_data
+        state=request.state,
+        # input_data=request.input_data,
     )
 
     # Verify if the 'year' columns is in the data
@@ -158,9 +159,7 @@ def read_root():
 
 @app.get("/info")
 def get_info():
-    return Info(
-        avialable_models=LOADED_MODELS.keys(), available_populations=[]
-    ).model_dump()
+    return Info(models=LOADED_MODELS.keys(), available_populations=[]).model_dump()
 
 
 @app.post("/predict")
@@ -174,7 +173,7 @@ def model_predict(request: PredictionRequest) -> PredictionResponse:
     Returns:
         out: PredictionResponse: response for the prediction request.
     """
-    logger.debug(f"Data: {request.input_data}")
+    # logger.debug(f"Data: {request.input_data}")
 
     prediction_df = predict_from_request(request=request)
 

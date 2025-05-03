@@ -28,7 +28,10 @@ def client():
 @client.command()
 def info():
     response = send_info_request()
-    print(response.json())
+    try:
+        print(response.json())
+    except:
+        print(response)
 
 
 @client.command()

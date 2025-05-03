@@ -94,7 +94,12 @@ def train():
 
 
 @train.command()
-@click.option("--name", type=str, help="Name of the predictor. It is also a model key.")
+@click.option(
+    "--name",
+    type=str,
+    help="Name of the predictor. It is also a model key.",
+    required=True,
+)
 @click.option(
     "--type",
     type=click.Choice(["LSTM", "ARIMA"], case_sensitive=False),
@@ -118,8 +123,7 @@ def train():
 )
 @click.option(
     "--modify-for-target-model",
-    action="store_true",
-    type=bool,
+    is_flag=True,
     help="If specified, modifed data will be used to train the target prediction model. By deafult, data are adjusted for feature target model",
 )
 def age_predictor(

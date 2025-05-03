@@ -1,28 +1,19 @@
-# TODO:
-# 1. get pipeline - (FeatureModelPipeline, TargetModelPipeline) or (PredictorPipeline)
-# 2. get the data (state) as an inputs
-#   2.1 figure out where to store results
-# 3. explain features
-# 4. create plots -> top 5 best performing, top 5 worst performing
-
-# Note:
-# model_test.py
-
-
 # Standard library imports
 import os
 import logging
 
 from typing import Union, List
 
-
 # Custom imports
 from src.utils.log import setup_logging
 from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
-from src.feature_explainer.explainers import LSTMExplainer, TargetModelExplainer
+from src.shap_explainer.explainers import LSTMExplainer, TargetModelExplainer
+
+from src.evaluation import EvaluateModel
+from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 # TODO: create logger
-logger = logging.getLogger("feature_engineering")
+logger = logging.getLogger("explain")
 
 
 def setup_save_dir(save_path: str):
@@ -115,7 +106,7 @@ def explain_tree(pipeline: TargetModelPipeline, save_path: str, states: List[str
         print()
 
 
-def main(
+def explain(
     pipeline: Union[FeatureModelPipeline, TargetModelPipeline, PredictorPipeline],
     states: List[str],
 ):
@@ -151,6 +142,53 @@ def main(
         )
 
 
+def explain_best_worst_states(
+    pipeline: Union[FeatureModelPipeline, TargetModelPipeline, PredictorPipeline],
+    metric: str = "rmse",
+):
+
+    evaluation = EvaluateModel(pipeline=pipeline)
+
+    loader = StatesDataLoader()
+    all_states_data_dict = loader.load_all_states()
+
+    if isinstance(pipeline, FeatureModelPipeline):
+        sequence_len = pipeline.model.hyperparameters.sequence_length
+    elif isinstance(pipeline, TargetModelPipeline):
+        sequence_len = 10
+    elif isinstance(pipeline, PredictorPipeline):
+        sequence_len = (
+            pipeline.local_model_pipeline.model.hyperparameters.sequence_length
+        )
+
+    X_test_states, y_test_states = loader.split_data(
+        states_dict=all_states_data_dict, sequence_len=sequence_len
+    )
+
+    one_metric = evaluation.eval_for_every_state_overall(
+        X_test_states=X_test_states, y_test_states=y_test_states
+    )
+    logger.info(f"\n{one_metric}")
+
+    every_state_evaluation_df = evaluation.eval_for_every_state(
+        X_test_states=X_test_states, y_test_states=y_test_states
+    )
+    every_state_evaluation_df.sort_values(by=[metric], inplace=True)
+
+    SAVE_PATH = os.path.join(os.path.dirname(__file__), "explanations", pipeline.name)
+
+    os.makedirs(SAVE_PATH, exist_ok=True)
+
+    with open(os.path.join(SAVE_PATH, "state_performance_sorted.json"), "w") as f:
+        every_state_evaluation_df.to_json(f, indent=4, orient="records")
+
+    best_state = every_state_evaluation_df.iloc[0]["state"]
+    worst_state = every_state_evaluation_df.iloc[-1]["state"]
+
+    logger.info(f"Best state: {best_state}, Worst state: {worst_state}")
+    explain(pipeline, states=[best_state, worst_state])
+
+
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
@@ -160,23 +198,25 @@ if __name__ == "__main__":
     # PIPELINE_NAME = "lstm_features_only"
     # pipeline = FeatureModelPipeline.get_pipeline(name=PIPELINE_NAME)
 
-    PIPELINE_NAME = "test_predictor"
-    pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
+    PIPELINE_NAME = "test-target-model-tree"
+    # pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
+    pipeline = TargetModelPipeline.get_pipeline(name=PIPELINE_NAME)
+    explain_best_worst_states(pipeline=pipeline)
 
-    BEST_PERFORMING_STATES: List[str] = [
-        "Guatemala",
-        "St. Vincent and the Grenadines",
-        "Nepal",
-        "Venezuela, RB",
-        "Philippines",
-    ]
-    WORST_PERFORMING_STATES: List[str] = [
-        "Egypt, Arab Rep.",
-        "Chile",
-        "Vanuatu",
-        "Senegal",
-        "Solomon Islands",
-    ]
+    # BEST_PERFORMING_STATES: List[str] = [
+    #     "Guatemala",
+    #     "St. Vincent and the Grenadines",
+    #     "Nepal",
+    #     "Venezuela, RB",
+    #     "Philippines",
+    # ]
+    # WORST_PERFORMING_STATES: List[str] = [
+    #     "Egypt, Arab Rep.",
+    #     "Chile",
+    #     "Vanuatu",
+    #     "Senegal",
+    #     "Solomon Islands",
+    # ]
 
-    # Run explainer for the pipeline
-    main(pipeline, states=(BEST_PERFORMING_STATES + WORST_PERFORMING_STATES))
+    # # Run explainer for the pipeline
+    # explain(pipeline, states=(BEST_PERFORMING_STATES + WORST_PERFORMING_STATES))

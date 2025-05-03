@@ -108,3 +108,8 @@ loggers:
     level: INFO
     handlers: [console]
     propagate: no
+
+  explain:
+    level: INFO
+    handlers: [console]
+    propagate: no
