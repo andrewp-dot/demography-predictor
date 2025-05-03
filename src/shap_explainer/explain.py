@@ -2,7 +2,7 @@
 import os
 import logging
 
-from typing import Union, List
+from typing import Union, List, Optional
 
 import matplotlib.pyplot as plt
 
@@ -12,6 +12,8 @@ from src.utils.log import setup_logging
 from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
 from src.shap_explainer.explainers import LSTMExplainer, TargetModelExplainer
 from src.shap_explainer.print_predictions import create_prediction_plots
+from src.feature_model.model import BaseRNN
+
 
 from src.evaluation import EvaluateModel
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -113,10 +115,14 @@ def explain_tree(pipeline: TargetModelPipeline, save_path: str, states: List[str
 def explain(
     pipeline: Union[FeatureModelPipeline, TargetModelPipeline, PredictorPipeline],
     states: List[str],
+    custom_dir: Optional[str] = None,
 ):
 
     # Save the explenation with plots to folder
-    SAVE_PATH = os.path.join(".", "explanations", pipeline.name)
+    if custom_dir:
+        SAVE_PATH = os.path.join(custom_dir, pipeline.name)
+    else:
+        SAVE_PATH = os.path.join(".", "explanations", pipeline.name)
 
     # Get the pipeline type
     if isinstance(pipeline, FeatureModelPipeline):
@@ -130,15 +136,16 @@ def explain(
     elif isinstance(pipeline, PredictorPipeline):
         # Explain base lstm  and explain XGB -> tree model explainer
 
-        explain_lstm(
-            states=states,
-            pipeline=pipeline.local_model_pipeline,
-            save_path=os.path.join(SAVE_PATH, "lstm"),
-        )
+        if isinstance(pipeline.local_model_pipeline.model, BaseRNN):
+            explain_lstm(
+                states=states,
+                pipeline=pipeline.local_model_pipeline,
+                save_path=os.path.join(SAVE_PATH, "lstm"),
+            )
         explain_tree(
             states=states,
             pipeline=pipeline.global_model_pipeline,
-            save_path=os.path.join(SAVE_PATH, "gm"),
+            save_path=os.path.join(SAVE_PATH, "target-model"),
         )
     else:
         raise ValueError(
@@ -149,6 +156,7 @@ def explain(
 def explain_best_worst_states(
     pipeline: Union[FeatureModelPipeline, TargetModelPipeline, PredictorPipeline],
     metric: str = "rmse",
+    custom_dir: Optional[str] = None,
 ):
 
     evaluation = EvaluateModel(pipeline=pipeline)
@@ -157,12 +165,15 @@ def explain_best_worst_states(
     all_states_data_dict = loader.load_all_states()
 
     if isinstance(pipeline, FeatureModelPipeline):
-        sequence_len = pipeline.model.hyperparameters.sequence_length
+        sequence_len = pipeline.sequence_length
     elif isinstance(pipeline, TargetModelPipeline):
-        sequence_len = 10
+        sequence_len = pipeline.model.sequence_len
     elif isinstance(pipeline, PredictorPipeline):
-        sequence_len = (
-            pipeline.local_model_pipeline.model.hyperparameters.sequence_length
+
+        # If it is BaseRNN just get sequence len form that
+        sequence_len = max(
+            pipeline.local_model_pipeline.sequence_length,
+            pipeline.global_model_pipeline.model.sequence_len,
         )
 
     X_test_states, y_test_states = loader.split_data(
@@ -199,7 +210,9 @@ def explain_best_worst_states(
     worst_state = every_state_evaluation_df.iloc[-1]["state"]
 
     logger.info(f"Best state: {best_state}, Worst state: {worst_state}")
-    explain(pipeline, states=[best_state, worst_state, "Czechia"])
+    explain(
+        pipeline, states=[best_state, worst_state, "Czechia"], custom_dir=custom_dir
+    )
 
     state_plots = create_prediction_plots(
         pipeline=pipeline, states=[best_state, worst_state, "Czechia"]

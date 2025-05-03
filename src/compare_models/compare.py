@@ -151,9 +151,7 @@ class ModelComparator:
                         input_size=1
                     ).sequence_length
                 else:
-                    model_sequence_len = (
-                        pipeline.local_model_pipeline.model.hyperparameters.sequence_length
-                    )
+                    model_sequence_len = pipeline.local_model_pipeline.sequence_length
             elif isinstance(pipeline.model, PureEnsembleModel) or isinstance(
                 pipeline.model, StatisticalMultistateWrapper
             ):

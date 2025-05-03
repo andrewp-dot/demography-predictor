@@ -160,10 +160,17 @@ class FeatureModelPipeline(BasePipeline):
             model=model,
             transformer=transformer,
             name=name,
-            features=self.model.FEATURES,
-            targets=self.model.TARGETS,
+            features=model.FEATURES,
+            targets=model.TARGETS,
         )
         self.training_stats = training_stats
+
+        if isinstance(model, StatisticalMultistateWrapper):
+            sequence_len: int = 10
+        else:
+            sequence_len = self.model.hyperparameters.sequence_length
+
+        self.sequence_length: int = sequence_len
 
     def predict(
         self,

@@ -77,7 +77,7 @@ def eval():
 
     X_test_states, y_test_states = loader.split_data(
         test_data_dict,
-        sequence_len=pipeline.local_model_pipeline.model.hyperparameters.sequence_length,
+        sequence_len=pipeline.local_model_pipeline.sequence_length,
     )
 
     evaluation = EvaluateModel(pipeline=pipeline)

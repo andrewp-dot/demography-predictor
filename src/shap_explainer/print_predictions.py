@@ -31,7 +31,7 @@ def create_prediction_plots(
 
     elif isinstance(pipeline, PredictorPipeline):
         sequence_len = max(
-            pipeline.local_model_pipeline.model.hyperparameters.sequence_length,
+            pipeline.local_model_pipeline.sequence_length,
             pipeline.global_model_pipeline.model.sequence_len,
         )
 

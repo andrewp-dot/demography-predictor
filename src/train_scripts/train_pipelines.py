@@ -96,7 +96,7 @@ def train_arima_xgboost_pipeline(
     target_model_targets: List[str],
     additional_target_model_targets: List[str] = None,
     split_rate: float = 0.8,
-    display_nth_epoch=10,
+    tune_hyperparams: bool = False,
 ) -> PredictorPipeline:
     # Train local model pipeline
     feature_model_pipeline = train_arima_ensemble_all_states(
@@ -107,24 +107,23 @@ def train_arima_xgboost_pipeline(
     )
 
     # Train global model pieplien
-    tune_parameters = XGBoostTuneParams(
-        n_estimators=[100, 400],
-        learning_rate=[0.001, 0.01, 0.05],
+    xgb_tune_parameters = XGBoostTuneParams(
+        n_estimators=[100, 300],
+        learning_rate=[0.01, 0.05, 0.1],
         max_depth=[3, 5, 7],
-        subsample=[0.5, 0.7],
-        colsample_bytree=[0.5, 0.7, 0.9, 1.0],
+        subsample=[0.6, 0.7, 0.8],
+        colsample_bytree=[0.6, 0.7, 0.8],
     )
 
     target_model_pipeline = train_global_model_tree(
         name="xgb-gm",
         states_data=target_model_data_dict,
-        tree_model=XGBRegressor(
-            n_estimators=100, objective="reg:squarederror", random_state=42
-        ),
+        tree_model=XGBRegressor(objective="reg:squarederror", random_state=42),
         features=list(set([*feature_model_features, *additional_target_model_targets])),
         targets=target_model_targets,
         sequence_len=10,
-        xgb_tune_parameters=tune_parameters,
+        xgb_tune_parameters=xgb_tune_parameters,
+        tune_hyperparams=tune_hyperparams,
     )
 
     # Create pipeline

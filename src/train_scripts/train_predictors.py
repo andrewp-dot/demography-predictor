@@ -150,6 +150,85 @@ def train_aging_predictor(
             feature_model_features=FEATURE_MODEL_FEATURES,
             additional_target_model_targets=TARGET_MODEL_ADDITIONAL_FEATURES,
             target_model_targets=TARGET_MODEL_TARGETS,
+            tune_hyperparams=True,
+        )
+
+    elif "LSTM" == model_type:
+        pipeline = train_basic_pipeline(
+            name=PIPELINE_NAME,
+            feature_model_data_dict=training_states_data_dict,
+            target_model_data_dict=training_states_data_dict,
+            hyperparameters=hyperparameters,
+            feature_model_features=FEATURE_MODEL_FEATURES,
+            additional_target_model_targets=TARGET_MODEL_ADDITIONAL_FEATURES,
+            target_model_targets=TARGET_MODEL_TARGETS,
+            enable_early_stopping=True,
+        )
+    else:
+        raise ValueError("Not supported type of pipeline.")
+
+    # Save pipeline
+    pipeline.save_pipeline()
+
+
+def train_gender_dist_predictor(
+    name: str,
+    model_type: Literal["LSTM", "ARIMA"],
+    wealth_groups: Optional[List[str]] = None,
+    geolocation_groups: Optional[List[str]] = None,
+    states: Optional[List[str]] = None,
+    modify_for_target_model: bool = False,
+):
+    # Feature model input/output
+    FEATURE_MODEL_FEATURES: List[str] = basic_features(
+        exclude=highly_correlated_features()
+    )
+
+    # Get global model settings
+    TARGET_MODEL_ADDITIONAL_FEATURES: List[str] = [col.lower() for col in ["year"]]
+    TARGET_MODEL_TARGETS: List[str] = gender_distribution_targets()
+
+    hyperparameters = get_core_hyperparameters(
+        input_size=len(FEATURE_MODEL_FEATURES),
+        batch_size=32,
+        epochs=50,
+        sequence_length=10,
+        num_layers=2,
+        hidden_size=256,
+    )
+
+    loader = StatesDataLoader()
+
+    # Get modified training data
+    training_states_data_dict = get_training_data(
+        wealth_groups=wealth_groups,
+        geolocation_groups=geolocation_groups,
+        states=states,
+    )
+
+    # Get all training data
+    all_states_data_dict = loader.load_all_states()
+
+    # Make the modification for one of the models
+    if modify_for_target_model:
+        feature_model_data_dict = all_states_data_dict
+        target_model_data_dict = training_states_data_dict
+    else:
+        feature_model_data_dict = training_states_data_dict
+        target_model_data_dict = all_states_data_dict
+
+    # Train pipeline based on type
+    PIPELINE_NAME: str = name
+
+    if "ARIMA" == model_type:
+        pipeline = train_arima_xgboost_pipeline(
+            name=PIPELINE_NAME,
+            feature_model_data_dict=feature_model_data_dict,
+            target_model_data_dict=target_model_data_dict,
+            feature_model_features=FEATURE_MODEL_FEATURES,
+            additional_target_model_targets=TARGET_MODEL_ADDITIONAL_FEATURES,
+            target_model_targets=TARGET_MODEL_TARGETS,
+            tune_hyperparams=True,
         )
 
     elif "LSTM" == model_type:
