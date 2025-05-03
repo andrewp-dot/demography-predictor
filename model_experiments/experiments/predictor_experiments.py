@@ -3,15 +3,12 @@ from typing import List, Optional, Dict, Tuple
 import pandas as pd
 import os
 
+import matplotlib.pyplot as plt
+
 
 # Custom imports
 from config import Config
 
-from src.utils.constants import (
-    basic_features,
-    aging_targets,
-    gender_distribution_targets,
-)
 from src.state_groups import StatesByWealth, StatesByGeolocation
 from src.utils.log import setup_logging
 from src.pipeline import PredictorPipeline
@@ -61,14 +58,13 @@ class EvalAllStates(BaseExperiment):
     def run(self, pipeline: PredictorPipeline):
 
         # Create readme
-        self.create_readme()
+        self.create_readme(readme_name=f"{pipeline.name}_README.md")
 
         X_test_states, y_test_states = create_evaluation_data(pipeline=pipeline)
 
         evaluation = EvaluateModel(pipeline=pipeline)
 
         # Eval for every state
-
         eval_df = evaluation.eval_for_every_state(
             X_test_states=X_test_states, y_test_states=y_test_states
         )
@@ -119,6 +115,7 @@ class EvalGroupStates(BaseExperiment):
 
         evaluation = EvaluateModel(pipeline=pipeline)
 
+        all_group_dfs: List[str] = []
         for group in groups:
 
             states = getattr(STATES_BY_WEALTH, group)
@@ -130,10 +127,17 @@ class EvalGroupStates(BaseExperiment):
                 X_test_states=X_test_dict, y_test_states=y_test_dict
             )
 
-            self.readme_add_section(
-                title=f"## Group {group} evaluation:",
-                text=f"\n```{group_metric_df}\n```\n\n",
-            )
+            # Get the group and concat
+            group_metric_df["group"] = group
+            all_group_dfs.append(group_metric_df)
+
+        all_groups_df = pd.concat(all_group_dfs, axis=0)
+        all_groups_df.sort_values(by=["rmse"], ascending=[True], inplace=True)
+
+        self.readme_add_section(
+            title=f"## All income groups evaluation:",
+            text=f"\n```{all_groups_df}\n```\n\n",
+        )
 
     def __evaluate_for_geolocation_groups(self, pipeline: PredictorPipeline):
 
@@ -147,6 +151,7 @@ class EvalGroupStates(BaseExperiment):
             text="",
         )
 
+        all_group_dfs: List[str] = []
         for group in groups:
 
             states = getattr(STATES_BY_GEOLOCATION, group)
@@ -158,15 +163,22 @@ class EvalGroupStates(BaseExperiment):
                 X_test_states=X_test_dict, y_test_states=y_test_dict
             )
 
-            self.readme_add_section(
-                title=f"## Group {group} evaluation:",
-                text=f"\n```{group_metric_df}\n```\n\n",
-            )
+            # Get the group and concat
+            group_metric_df["group"] = group
+            all_group_dfs.append(group_metric_df)
+
+        all_groups_df = pd.concat(all_group_dfs, axis=0)
+        all_groups_df.sort_values(by=["rmse"], ascending=[True], inplace=True)
+
+        self.readme_add_section(
+            title=f"## All geolocation groups evaluation:",
+            text=f"\n```{all_groups_df}\n```\n\n",
+        )
 
     def run(self, pipeline: PredictorPipeline):
 
         # Create readme
-        self.create_readme()
+        self.create_readme(readme_name=f"{pipeline.name}_README.md")
 
         # Evaluate for income groups
         self.__evaluate_for_income_groups(pipeline=pipeline)
@@ -174,38 +186,74 @@ class EvalGroupStates(BaseExperiment):
         # Evaluate for geolocation groups
         self.__evaluate_for_geolocation_groups(pipeline=pipeline)
 
-        # Create shap explanation for
-        # explain(
-        #     pipeline=pipeline,
-        #     states=[top_states_df.iloc[0]["state"], top_states_df.iloc[-1]["state"]],
-        #     custom_dir=self.plot_dir,
-        # )
-
 
 class EvalConvergenceExperiment(BaseExperiment):
 
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def run(self, pipeline: PredictorPipeline, states: List[str]):
+    def print_prediction_plot(
+        self, input_data: pd.DataFrame, prediction_df: pd.DataFrame, fig_name: str
+    ):
+        EXTRACT_VALUES = prediction_df.columns
+        TARGET_COLUMNS = [col for col in prediction_df.columns if col != "year"]
 
-        # Create readme
-        self.create_readme()
+        previous_target_data = input_data[EXTRACT_VALUES]
 
-        # Get the model
+        complete_df = pd.concat([previous_target_data, prediction_df], axis=0)
 
-        loader = StatesDataLoader()
+        print(complete_df)
 
-        X_test_dict, y_test_dict = create_evaluation_data(
-            pipeline=pipeline, states=states
+        # Plot
+        fig, axes = plt.subplots(
+            len(TARGET_COLUMNS), 1, figsize=(10, 5 * len(TARGET_COLUMNS))
         )
 
+        if len(EXTRACT_VALUES) == 1:
+            axes = [axes]
 
-if __name__ == "__main__":
-    # Setup logging
-    setup_logging()
+        for i, target in enumerate(TARGET_COLUMNS):
+            ax = axes[i]
 
-    pipeline_name = "age-predictor"
+            #
+            ax.plot(
+                complete_df["year"], complete_df[target], color="b", label="Známe dáta"
+            )
+            ax.plot(
+                prediction_df["year"],
+                prediction_df[target],
+                color="r",
+                label="Predpovedané dáta",
+            )
+
+            ax.set_title(f"Predpovedané dáta pre {target}")
+            ax.set_xlabel("Rok")
+            ax.set_ylabel(target)
+            ax.legend()
+
+        self.save_plot(fig_name=fig_name, figure=fig)
+
+    def run(self, pipeline: PredictorPipeline, states: List[str], target_year: int):
+        # Create readme
+        self.create_readme(readme_name=f"{pipeline.name}_README.md")
+
+        # Load the test data
+        loader = StatesDataLoader()
+
+        states_data_dict = loader.load_states(states=states)
+
+        for state, input_data in states_data_dict.items():
+            prediction_df = pipeline.predict(
+                input_data=input_data, target_year=target_year
+            )
+            self.print_prediction_plot(
+                input_data=input_data,
+                prediction_df=prediction_df,
+                fig_name=f"{state}.png",
+            )
+
+
+def run_all(pipeline_name: str):
     pipeline = PredictorPipeline.get_pipeline(pipeline_name)
 
     exp = EvalAllStates(
@@ -214,5 +262,20 @@ if __name__ == "__main__":
 
     exp_eval_groups = EvalGroupStates(description="Evalutes pipeline for groups.")
 
+    convergence_exp = EvalConvergenceExperiment(
+        description="Tries to predict data to specified years. Need to see where it converages."
+    )
+
+    # Run experiments
     exp.run(pipeline=pipeline)
-    # exp_eval_groups.run(pipeline=pipeline)
+    exp_eval_groups.run(pipeline=pipeline)
+    convergence_exp.run(
+        pipeline=pipeline, states=["Czechia", "United States"], target_year=2050
+    )
+
+
+if __name__ == "__main__":
+    # Setup logging
+    setup_logging()
+
+    run_all()

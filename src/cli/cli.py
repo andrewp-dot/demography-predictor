@@ -13,6 +13,8 @@ from src.train_scripts.train_predictors import (
     train_gender_dist_predictor,
 )
 
+from model_experiments.experiments.predictor_experiments import run_all
+
 
 @click.group()
 def cli():
@@ -218,6 +220,26 @@ def dist_predictor(
         geolocation_groups=geolocation_groups,
         modify_for_target_model=modify_for_target_model,
     )
+
+
+@cli.group()
+def predictor_experiments():
+    """
+    Defines the main cli group
+    """
+    setup_logging()
+    pass
+
+
+@predictor_experiments.command()
+@click.option(
+    "--name",
+    type=str,
+    help="Name of the predictor to run predictor experiments with.",
+    required=True,
+)
+def run(name: str):
+    run_all(pipeline_name=name)
 
 
 if __name__ == "__main__":

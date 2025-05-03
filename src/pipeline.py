@@ -637,7 +637,7 @@ class PredictorPipeline:
 
         # Add years to final predictions
         PREDICTED_YEARS = list(range(last_year + 1, target_year + 1))
-        predicted_years_df = pd.DataFrame({"years": PREDICTED_YEARS})
+        predicted_years_df = pd.DataFrame({"year": PREDICTED_YEARS})
 
         years_final_predictions_df = pd.concat(
             [predicted_years_df, predicted_data_df], axis=1
