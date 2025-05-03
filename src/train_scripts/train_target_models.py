@@ -48,7 +48,13 @@ def train_global_model_tree(
     xgb_tune_parameters: Optional[XGBoostTuneParams] = None,
     transformer: Optional[DataTransformer] = None,
     split_size: float = 0.8,
+    tune_hyperparams: bool = False,
+    to_compute_target: Optional[str] = None,
 ) -> TargetModelPipeline:
+
+    # Exclude from training if the compute target is here
+    if to_compute_target:
+        targets = [target for target in targets if target != to_compute_target]
 
     global_model = TargetModelTree(
         model=tree_model,
@@ -56,6 +62,7 @@ def train_global_model_tree(
         targets=targets,
         sequence_len=sequence_len,
         params=xgb_tune_parameters,
+        to_compute_target=to_compute_target,
     )
 
     states_loader = StatesDataLoader()
@@ -83,11 +90,14 @@ def train_global_model_tree(
     global_model.train(
         X_train=scaled_training_data,
         y_train=y_train,
+        tune_hyperparams=tune_hyperparams,
     )
 
     # Create Pipeline
     pipeline = TargetModelPipeline(
-        name=name, model=global_model, transformer=transformer
+        name=name,
+        model=global_model,
+        transformer=transformer,
     )
     return pipeline
 
@@ -299,7 +309,7 @@ if __name__ == "__main__":
     loader = StatesDataLoader()
     all_states_data = loader.load_all_states()
 
-    state_wealth_groups = StatesByWealth()
+    # state_wealth_groups = StatesByWealth()
     # all_states_data = loader.load_states(
     #     states=[
     #         *state_wealth_groups.high_income,
@@ -311,14 +321,28 @@ if __name__ == "__main__":
     FEATURES = basic_features(exclude=[*highly_correlated_features(), "arable_land"])
     TARGETS = aging_targets()
 
-    print(FEATURES)
+    TO_COMPUTE_TARGET = "population_ages_0-14"
+
+    TARGETS = [target for target in aging_targets() if target != TO_COMPUTE_TARGET]
+
+    xgb_tune_parameters = XGBoostTuneParams(
+        n_estimators=[100, 300],
+        learning_rate=[0.01, 0.05, 0.1],
+        max_depth=[3, 5, 7],
+        subsample=[0.6, 0.7, 0.8],
+        colsample_bytree=[0.6, 0.7, 0.8],
+    )
 
     pipeline = train_global_model_tree(
         name="test-target-model-tree",
         states_data=all_states_data,
         features=FEATURES,
         targets=TARGETS,
-        sequence_len=3,
+        sequence_len=10,
         tree_model=XGBRegressor(n_estimators=100, random_state=42),
+        xgb_tune_parameters=xgb_tune_parameters,
+        # tune_hyperparams=True,
+        to_compute_target=TO_COMPUTE_TARGET,
     )
+
     pipeline.save_pipeline()

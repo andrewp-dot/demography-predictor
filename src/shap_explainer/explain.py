@@ -4,10 +4,14 @@ import logging
 
 from typing import Union, List
 
+import matplotlib.pyplot as plt
+
+
 # Custom imports
 from src.utils.log import setup_logging
 from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
 from src.shap_explainer.explainers import LSTMExplainer, TargetModelExplainer
+from src.shap_explainer.print_predictions import create_prediction_plots
 
 from src.evaluation import EvaluateModel
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
@@ -112,7 +116,7 @@ def explain(
 ):
 
     # Save the explenation with plots to folder
-    SAVE_PATH = os.path.join(os.path.dirname(__file__), "explanations", pipeline.name)
+    SAVE_PATH = os.path.join(".", "explanations", pipeline.name)
 
     # Get the pipeline type
     if isinstance(pipeline, FeatureModelPipeline):
@@ -170,12 +174,21 @@ def explain_best_worst_states(
     )
     logger.info(f"\n{one_metric}")
 
+    # Eval for all states per targets
+    states_per_target_dict = evaluation.eval_for_every_state_per_target(
+        X_test_states=X_test_states, y_test_states=y_test_states
+    )
+
+    logger.info(
+        f"\n{states_per_target_dict[states_per_target_dict['state'] == 'Czechia']}"
+    )
+
     every_state_evaluation_df = evaluation.eval_for_every_state(
         X_test_states=X_test_states, y_test_states=y_test_states
     )
     every_state_evaluation_df.sort_values(by=[metric], inplace=True)
 
-    SAVE_PATH = os.path.join(os.path.dirname(__file__), "explanations", pipeline.name)
+    SAVE_PATH = os.path.join(".", "explanations", pipeline.name)
 
     os.makedirs(SAVE_PATH, exist_ok=True)
 
@@ -187,6 +200,16 @@ def explain_best_worst_states(
 
     logger.info(f"Best state: {best_state}, Worst state: {worst_state}")
     explain(pipeline, states=[best_state, worst_state])
+
+    state_plots = create_prediction_plots(
+        pipeline=pipeline, states=[best_state, worst_state]
+    )
+
+    # Save it to dir
+    for state, plot in state_plots.items():
+        path = os.path.join(SAVE_PATH, f"{state}_predictions.png")
+        plt.figure(plot.number)
+        plt.savefig(path, bbox_inches="tight")
 
 
 if __name__ == "__main__":
@@ -201,22 +224,5 @@ if __name__ == "__main__":
     PIPELINE_NAME = "test-target-model-tree"
     # pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
     pipeline = TargetModelPipeline.get_pipeline(name=PIPELINE_NAME)
+
     explain_best_worst_states(pipeline=pipeline)
-
-    # BEST_PERFORMING_STATES: List[str] = [
-    #     "Guatemala",
-    #     "St. Vincent and the Grenadines",
-    #     "Nepal",
-    #     "Venezuela, RB",
-    #     "Philippines",
-    # ]
-    # WORST_PERFORMING_STATES: List[str] = [
-    #     "Egypt, Arab Rep.",
-    #     "Chile",
-    #     "Vanuatu",
-    #     "Senegal",
-    #     "Solomon Islands",
-    # ]
-
-    # # Run explainer for the pipeline
-    # explain(pipeline, states=(BEST_PERFORMING_STATES + WORST_PERFORMING_STATES))

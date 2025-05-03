@@ -89,24 +89,37 @@ class TargetModelTree:
         targets: List[str],
         sequence_len: int,
         params: Optional[XGBoostTuneParams] = None,
+        to_compute_target: Optional[str] = None,
     ):
         # Define model
         self.model: Union[
             XGBRegressor, RandomForestRegressor, LGBMRegressor, MultiOutputRegressor
         ] = model
+
         self.params: XGBoostTuneParams = params
 
         # Define features and targets
 
-        # TODO: add to features history features also or not?
+        self.FEATURES: List[str] = features
+        self.TARGETS: List[str] = targets
+
+        # Get the pridiction targets
+        self.PREDICTION_TARGETS: List[str] = targets
+
+        if to_compute_target:
+            self.PREDICTION_TARGETS = [
+                target for target in targets if target != to_compute_target
+            ]
+
+        # Save the to copmute target
+        self.to_compute_target = to_compute_target
+
         self.sequence_len: int = sequence_len
         self.HISTORY_TARGET_FEATURES: List[str] = [
             f"{col}_t-{i}"
-            for col in targets
+            for col in self.PREDICTION_TARGETS
             for i in range(self.sequence_len - 1, -1, -1)
         ]
-        self.FEATURES: List[str] = features
-        self.TARGETS: List[str] = targets
 
         # Initialize evaluation results
         self.evaluation_results: pd.DataFrame | None = None
@@ -123,7 +136,7 @@ class TargetModelTree:
         """
 
         # Add lagged features for the target data
-        last_n_targets = input_data[self.TARGETS].tail(self.sequence_len)
+        last_n_targets = input_data[self.PREDICTION_TARGETS].tail(self.sequence_len)
 
         # Switch rows and columns and create 1D array -> unpacking the history of targets
         flattened = last_n_targets.to_numpy().T.flatten()
@@ -282,8 +295,7 @@ class TargetModelTree:
             self.model = MultiOutputRegressor(self.model)
 
         # Tune hyperparams if neaded
-        if tune_hyperparams and isinstance(self.model, XGBRegressor):
-
+        if tune_hyperparams:
             tscv = TimeSeriesSplit(n_splits=3)
 
             if param_dict is not None:
@@ -350,7 +362,7 @@ class TargetModelTree:
         predictions = self.model.predict(xgb_input)
 
         # Create predictions dataframe
-        predictions_df = pd.DataFrame(predictions, columns=self.TARGETS)
+        predictions_df = pd.DataFrame(predictions, columns=self.PREDICTION_TARGETS)
 
         return predictions_df
 

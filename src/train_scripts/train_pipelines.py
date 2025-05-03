@@ -123,7 +123,7 @@ def train_arima_xgboost_pipeline(
         ),
         features=list(set([*feature_model_features, *additional_target_model_targets])),
         targets=target_model_targets,
-        sequence_len=5,
+        sequence_len=10,
         xgb_tune_parameters=tune_parameters,
     )
 

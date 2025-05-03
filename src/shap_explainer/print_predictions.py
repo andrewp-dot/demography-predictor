@@ -24,18 +24,12 @@ def create_prediction_plots(
     to_plot_states_dict = loader.load_states(states=states)
 
     if isinstance(pipeline, FeatureModelPipeline):
-        # FEATURES = pipeline.model.FEATURES
-        # TARGETS = pipeline.model.TARGETS
 
         sequence_len = pipeline.model.hyperparameters.sequence_length
     elif isinstance(pipeline, TargetModelPipeline):
         sequence_len = pipeline.model.sequence_len
-        # FEATURES = pipeline.model.FEATURES
-        # TARGETS = pipeline.model.TARGETS
 
     elif isinstance(pipeline, PredictorPipeline):
-        # FEATURES = pipeline.global_model_pipeline.model.FEATURES
-        # TARGETS = pipeline.global_model_pipeline.model.TARGETS
         sequence_len = max(
             pipeline.local_model_pipeline.model.hyperparameters.sequence_length,
             pipeline.global_model_pipeline.model.sequence_len,
@@ -49,7 +43,6 @@ def create_prediction_plots(
     )
 
     # Save the evaluation predictions to dir
-
     plots: Dict[str, Figure] = {}
     evaluation = EvaluateModel(pipeline=pipeline)
 

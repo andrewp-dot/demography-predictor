@@ -306,6 +306,7 @@ class BaseEvaluation:
 
         # Get the feature data to create plots
         FEATURES = list(self.predicted.columns)
+
         N_FEATURES = len(FEATURES)
 
         # Create a figure with N rows and 1 column
@@ -365,6 +366,40 @@ class EvaluateModel(BaseEvaluation):
         # {"Czechia": {"predicted"..., "reference": ...}, "United States": ...}
         self.multiple_states_evaluations: Dict[str, Dict[str, pd.DataFrame]] = {}
 
+    def __transform_input_for_target_models(
+        self,
+        X_test: pd.DataFrame,
+        y_test: pd.DataFrame,
+        features: List[str],
+        targets: List[str],
+    ) -> pd.DataFrame:
+
+        # Make it constant
+        FEATURES = features
+        TARGETS = targets
+
+        # Get true feature values for testing ground truth
+        feature_df = pd.concat([X_test[FEATURES], y_test[FEATURES]], axis=0)
+
+        previous_targets_df = X_test[TARGETS]
+
+        # Pad previous_targets_df to match the length
+        pad_len = len(feature_df) - len(previous_targets_df)
+
+        # Delete the actual feature values
+        padding = pd.DataFrame(
+            np.nan, columns=previous_targets_df.columns, index=range(pad_len)
+        )
+
+        previous_targets_padded = pd.concat(
+            [previous_targets_df, padding], ignore_index=True
+        )
+
+        # Get the final input data
+        return pd.concat(
+            [feature_df.reset_index(drop=True), previous_targets_padded], axis=1
+        )
+
     def __get_refference_and_predicted_data(
         self, test_X: pd.DataFrame, test_y: pd.DataFrame
     ) -> None:
@@ -374,13 +409,13 @@ class EvaluateModel(BaseEvaluation):
             self.pipeline, TargetModelPipeline
         ):
             # Get features and targets
-            FEATURES = self.pipeline.model.FEATURES
-            TARGETS = self.pipeline.model.TARGETS
+            FEATURES = self.pipeline.FEATURES
+            TARGETS = self.pipeline.TARGETS
 
         elif isinstance(self.pipeline, PredictorPipeline):
             # Get features and targets
-            FEATURES = self.pipeline.global_model_pipeline.model.FEATURES
-            TARGETS = self.pipeline.global_model_pipeline.model.TARGETS
+            FEATURES = self.pipeline.global_model_pipeline.FEATURES
+            TARGETS = self.pipeline.global_model_pipeline.TARGETS
 
         # Get year data
         last_year, target_year = self.get_last_and_target_year(
@@ -411,27 +446,21 @@ class EvaluateModel(BaseEvaluation):
         elif isinstance(self.pipeline, TargetModelPipeline):
 
             # This is ground truth evaluation, so the last year and target year are the same
-            input_data = test_X
 
-            # Get true feature values for testing ground truth
-            feature_df = pd.concat([test_X[FEATURES], test_y[FEATURES]], axis=0)
-            previous_targets_df = test_X[TARGETS]
+            model_targets = TARGETS
 
-            # Pad previous_targets_df to match the length
-            pad_len = len(feature_df) - len(previous_targets_df)
+            if self.pipeline.to_compute_target:
+                model_targets = [
+                    target
+                    for target in model_targets
+                    if target != self.pipeline.to_compute_target
+                ]
 
-            # Delete the actual feature values
-            padding = pd.DataFrame(
-                np.nan, columns=previous_targets_df.columns, index=range(pad_len)
-            )
-
-            previous_targets_padded = pd.concat(
-                [previous_targets_df, padding], ignore_index=True
-            )
-
-            # Get the final input data
-            final_input = pd.concat(
-                [feature_df.reset_index(drop=True), previous_targets_padded], axis=1
+            final_input = self.__transform_input_for_target_models(
+                X_test=test_X,
+                y_test=test_y,
+                features=FEATURES,
+                targets=model_targets,
             )
 
             predictions_df = self.pipeline.predict(
@@ -556,6 +585,38 @@ class EvaluateModel(BaseEvaluation):
 
         # Save the evaluation
         return all_evaluation_df
+
+    def eval_for_every_state_per_target(
+        self,
+        X_test_states: Dict[str, pd.DataFrame],
+        y_test_states: Dict[str, pd.DataFrame],
+    ) -> pd.DataFrame:
+        states_evaluation_for_model: pd.DataFrame | None = None
+        for state in X_test_states.keys():
+
+            # Get per target per state evaluation
+            per_target_metrics = self.eval_per_target(
+                test_X=X_test_states[state], test_y=y_test_states[state]
+            )
+
+            per_target_metrics["state"] = state
+
+            # Init dataframe if none
+            if states_evaluation_for_model is None:
+                states_evaluation_for_model = per_target_metrics
+
+            # Concat dataframe if exists
+            else:
+                states_evaluation_for_model = pd.concat(
+                    [
+                        states_evaluation_for_model,
+                        per_target_metrics,
+                    ],
+                    axis=0,
+                )
+
+        # Save all states
+        return states_evaluation_for_model
 
     def eval_for_every_state_overall(
         self,

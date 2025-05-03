@@ -39,12 +39,17 @@ class BasePipeline:
         self,
         name: str,
         model: Any,
+        features: List[str],
+        targets: List[str],
         transformer: Optional[DataTransformer] = None,
     ):
 
         self.name: str = name
         self.model: Any = model
         self.transformer: Optional[DataTransformer] = transformer
+
+        self.FEATURES: List[str] = features
+        self.TARGETS: List[str] = targets
 
     def save_pipeline(
         self, custom_dir: Optional[str] = None, experimental: bool = False
@@ -152,7 +157,11 @@ class FeatureModelPipeline(BasePipeline):
         training_stats: Optional["TrainingStats"] = None,
     ):
         super(FeatureModelPipeline, self).__init__(
-            model=model, transformer=transformer, name=name
+            model=model,
+            transformer=transformer,
+            name=name,
+            features=self.model.FEATURES,
+            targets=self.model.TARGETS,
         )
         self.training_stats = training_stats
 
@@ -226,15 +235,42 @@ class FeatureModelPipeline(BasePipeline):
 
 class TargetModelPipeline(BasePipeline):
 
+    # Add typehints for the model types
+    model: Union[TargetModelTree, TargetModelRNN]
+
     def __init__(
         self,
-        model: TargetModelTree,
+        model: Union[TargetModelTree, TargetModelRNN],
         transformer: DataTransformer,
-        name: str = "global_model_pipeline",
-    ):
-        self.name: str = name
-        self.model: Union[TargetModelTree, TargetModelRNN] = model
-        self.transformer: DataTransformer = transformer
+        name: str = "target_model_pipeline",
+    ) -> None:
+        """
+        Initializes the model pipeline
+
+        Args:
+            model (Union[TargetModelTree, TargetModelRNN]): Target prediction model
+            transformer (DataTransformer): DataTransformer used for data preprocessing for this model.
+            name (str, optional): Name of the pipeline. Defaults to "target_model_pipeline".
+            to_compute_target (Optional[str], optional): Target with precentual value to be computed. Must be exluded from targets. Defaults to None.
+
+        Raises:
+            ValueError: _description_
+        """
+
+        self.TARGETS: List[str] = model.TARGETS
+        self.FEATURES: List[str] = model.FEATURES
+
+        self.to_compute_target: Optional[str] = None
+        if isinstance(model, TargetModelTree):
+            self.to_compute_target = model.to_compute_target
+
+        super(TargetModelPipeline, self).__init__(
+            name=name,
+            model=model,
+            features=self.FEATURES,
+            targets=self.TARGETS,
+            transformer=transformer,
+        )
 
     def __tree_based_model_predict(
         self, input_data_batch: pd.DataFrame
@@ -338,6 +374,11 @@ class TargetModelPipeline(BasePipeline):
         # If there is tree based model -> do not scale the targets
         if isinstance(self.model, TargetModelTree):
             TO_SCALE_TARGETS = None
+            TARGETS = [
+                target
+                for target in self.model.TARGETS
+                if target != self.to_compute_target
+            ]
 
         scaled_data_df = self.transformer.scale_data(
             data=input_data, features=FEATURES, targets=TO_SCALE_TARGETS
@@ -362,8 +403,8 @@ class TargetModelPipeline(BasePipeline):
             input_batch = np.concatenate([current_features, targets_for_pred], axis=1)
             input_batch_df = pd.DataFrame(
                 input_batch,
-                columns=self.model.FEATURES
-                + self.model.TARGETS,  # <- concat of feature and target names
+                columns=self.FEATURES
+                + TARGETS,  # <- concat of feature and target names
             )
 
             # Predict next target
@@ -445,7 +486,7 @@ class TargetModelPipeline(BasePipeline):
                     "For the TargetModelPipeline with model of type 'StatisticalMultistateWrapper' need state to be provided as argument!"
                 )
 
-            return self.__statistical_model_predict(
+            prediction_df = self.__statistical_model_predict(
                 state=state,
                 input_data=scaled_data_df,
                 last_year=last_year,
@@ -453,12 +494,26 @@ class TargetModelPipeline(BasePipeline):
             )
 
         # Else predict with the supported model architectures
-        return self.__ml_predict(
-            input_data=input_data,
-            features=self.model.FEATURES,
-            targets=self.model.TARGETS,
-            iterations_num=iterations_num,
-        )
+        else:
+            prediction_df = self.__ml_predict(
+                input_data=input_data,
+                features=self.FEATURES,
+                targets=self.TARGETS,
+                iterations_num=iterations_num,
+            )
+
+        # Copmutes last feature from percent targets if needed
+        if self.to_compute_target:
+
+            prediction_df[self.to_compute_target] = 100 - prediction_df[
+                [
+                    target
+                    for target in self.model.TARGETS
+                    if target != self.to_compute_target
+                ]
+            ].sum(axis=1)
+
+        return prediction_df
 
 
 class PredictorPipeline:
