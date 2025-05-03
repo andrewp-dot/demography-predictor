@@ -309,19 +309,11 @@ if __name__ == "__main__":
     loader = StatesDataLoader()
     all_states_data = loader.load_all_states()
 
-    # state_wealth_groups = StatesByWealth()
-    # all_states_data = loader.load_states(
-    #     states=[
-    #         *state_wealth_groups.high_income,
-    #         *state_wealth_groups.upper_middle_income,
-    #         *state_wealth_groups.lower_middle_income,
-    #     ]
-    # )
-
-    FEATURES = basic_features(exclude=[*highly_correlated_features(), "arable_land"])
+    FEATURES = basic_features(exclude=[*highly_correlated_features()])
     TARGETS = aging_targets()
 
-    TO_COMPUTE_TARGET = "population_ages_0-14"
+    # TO_COMPUTE_TARGET = "population_ages_0-14"
+    TO_COMPUTE_TARGET = ""
 
     TARGETS = [target for target in aging_targets() if target != TO_COMPUTE_TARGET]
 
@@ -341,8 +333,8 @@ if __name__ == "__main__":
         sequence_len=10,
         tree_model=XGBRegressor(n_estimators=100, random_state=42),
         xgb_tune_parameters=xgb_tune_parameters,
-        # tune_hyperparams=True,
-        to_compute_target=TO_COMPUTE_TARGET,
+        tune_hyperparams=True,
+        # to_compute_target=TO_COMPUTE_TARGET,
     )
 
     pipeline.save_pipeline()

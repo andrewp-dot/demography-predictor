@@ -169,9 +169,9 @@ class LSTMExplainer:
             list(sorted_feature_importance_dict.keys()),
             list(sorted_feature_importance_dict.values()),
         )
-        plt.ylabel("Features")
-        plt.xlabel("Mean |SHAP Value| (Feature Importance)")
-        plt.title("Overall Feature Importance")
+        plt.ylabel("Vstupnné premenné")
+        plt.xlabel("Priemer |hodnota SHAP| (Podstata premennej)")
+        plt.title("Celková podstata premenných")
         # plt.xticks(rotation=45)
         plt.tight_layout()
 
@@ -404,19 +404,15 @@ class TargetModelExplainer:
             )
         )
 
-        # import pprint
-
-        # pprint.pprint(sorted_feature_importance_dict)
-
         ## FEATURE IMPORTANCE PLOT
         plt.figure(figsize=(10, 10))
         plt.barh(
             list(sorted_feature_importance_dict.keys()),
             list(sorted_feature_importance_dict.values()),
         )
-        plt.ylabel("Features")
-        plt.xlabel("Mean |SHAP Value| (Feature Importance)")
-        plt.title("Overall Feature Importance")
+        plt.ylabel("Vstupnné premenné")
+        plt.xlabel("Priemer |hodnota SHAP| (Podstata premennej)")
+        plt.title("Celková podstata premenných")
         # plt.xticks(rotation=45)
         plt.tight_layout()
 
@@ -527,58 +523,3 @@ class TargetModelExplainer:
 
         if show_plot:
             plt.show()
-
-
-def main():
-    # Setup logging
-    setup_logging()
-
-    # Get pipeline
-    pipeline = FeatureModelPipeline(
-        # model=get_model("core_pipeline/local_model.pkl"),
-        # transformer=get_model("core_pipeline/local_transformer.pkl"),
-        model=get_model("put your model name here"),
-        transformer=get_model("put transformer name of model of yours here"),
-    )
-
-    explainer = LSTMExplainer(pipeline=pipeline)
-
-    # Get input and shap values
-    input_x = explainer.create_sequences(state="Czechia")
-    shap_values = explainer.get_shap_values(input_sequences=input_x)
-
-    # Get feature importance
-    feature_importance = explainer.get_feature_importance(
-        shap_values=shap_values, show_plot=True, save_plot=True
-    )
-    logger.info(f"Feature importance: {feature_importance}")
-
-    print("Creating plots...")
-    explainer.get_force_plot(
-        shap_values=shap_values,
-        input_sequences=input_x,
-        sample_idx=0,
-        time_step=0,
-        save_plot=True,
-    )
-    explainer.get_summary_plot(
-        shap_values=shap_values,
-        input_x=input_x,
-        sample_idx=0,
-        target_index=0,
-        save_plot=True,
-    )
-
-    # TODO: fix this
-    explainer.waterfall_plot(
-        shap_values=shap_values,
-        input_x=input_x,
-        sample_idx=0,
-        target_index=0,
-        save_plot=True,
-    )
-    logger.info("Done!")
-
-
-if __name__ == "__main__":
-    main()

@@ -264,6 +264,9 @@ class TargetModelPipeline(BasePipeline):
         if isinstance(model, TargetModelTree):
             self.to_compute_target = model.to_compute_target
 
+            if self.to_compute_target:
+                self.TARGETS += [model.to_compute_target]
+
         super(TargetModelPipeline, self).__init__(
             name=name,
             model=model,

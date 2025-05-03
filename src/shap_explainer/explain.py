@@ -199,10 +199,10 @@ def explain_best_worst_states(
     worst_state = every_state_evaluation_df.iloc[-1]["state"]
 
     logger.info(f"Best state: {best_state}, Worst state: {worst_state}")
-    explain(pipeline, states=[best_state, worst_state])
+    explain(pipeline, states=[best_state, worst_state, "Czechia"])
 
     state_plots = create_prediction_plots(
-        pipeline=pipeline, states=[best_state, worst_state]
+        pipeline=pipeline, states=[best_state, worst_state, "Czechia"]
     )
 
     # Save it to dir
