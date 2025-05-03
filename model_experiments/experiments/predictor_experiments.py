@@ -258,7 +258,7 @@ class EvalConvergenceExperiment(BaseExperiment):
             self.print_prediction_plot(
                 input_data=input_data,
                 prediction_df=prediction_df,
-                fig_name=f"{state}.png",
+                fig_name=f"{pipeline.name}_{state}.png",
             )
 
 
@@ -276,8 +276,8 @@ def run_all(pipeline_name: str):
     )
 
     # Run experiments
-    exp.run(pipeline=pipeline)
-    exp_eval_groups.run(pipeline=pipeline)
+    # exp.run(pipeline=pipeline)
+    # exp_eval_groups.run(pipeline=pipeline)
     convergence_exp.run(
         pipeline=pipeline, states=["Czechia", "United States"], target_year=2050
     )
