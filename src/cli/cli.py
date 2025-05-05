@@ -1,6 +1,12 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
+# Standard library imports
 import click
 from typing import Literal, Optional, List
 
+
+# Custom imports
 from src.utils.log import setup_logging
 from model_experiments.main import (
     print_available_experiments,

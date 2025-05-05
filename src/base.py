@@ -1,6 +1,5 @@
-"""
-In this script you can find the basic implementation for the local models. The classes are used for model definition, training and evaluation.
-"""
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
 
 # Standard library imports
 import pandas as pd

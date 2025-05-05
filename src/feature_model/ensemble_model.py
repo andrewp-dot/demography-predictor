@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Standard library imports
 import pandas as pd
 import logging
@@ -6,25 +9,16 @@ import torch
 
 # Custom library imports
 from src.utils.log import setup_logging
-from src.utils.save_model import save_model, get_model
-
-from src.base import RNNHyperparameters
 
 from src.feature_model.model import BaseRNN
 from src.feature_model.finetunable_model import FineTunableLSTM
 from src.statistical_models.arima import CustomARIMA
 
-from src.preprocessors.data_transformer import DataTransformer
-
-from src.preprocessors.state_preprocessing import StateDataLoader
-from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 # Get logger
 logger = logging.getLogger("local_model")
 
 
-# TODO: add hyperparameters or something...
-# TODO: fix this -> make pure ensemble model compatibile for pipeline
 class PureEnsembleModel:
 
     def __init__(

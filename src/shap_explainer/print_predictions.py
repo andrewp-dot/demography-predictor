@@ -1,5 +1,5 @@
-# TODO:
-# For each given states and given model create evaluation and plot prediction
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
 
 # Standard library imports
 import os

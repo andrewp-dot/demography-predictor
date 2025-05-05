@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 import numpy as np
 import pandas as pd
 from typing import Tuple

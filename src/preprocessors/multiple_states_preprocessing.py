@@ -1,6 +1,9 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
+
 import pandas as pd
 import logging
-import torch
 
 # from pydantic import BaseModel
 from typing import Dict, List, Tuple

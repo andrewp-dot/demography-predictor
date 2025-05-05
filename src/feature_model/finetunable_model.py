@@ -1,10 +1,12 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Standard library imports
 import pandas as pd
 import logging
 import torch
 from torch import nn
 from typing import Tuple, Dict, List, Union
-from sklearn.preprocessing import MinMaxScaler
 
 import matplotlib.pyplot as plt
 
@@ -13,37 +15,12 @@ from src.utils.log import setup_logging
 from src.utils.save_model import save_model, get_model, save_experiment_model
 from src.base import RNNHyperparameters, TrainingStats, CustomModelBase
 
-# from src.evaluation import EvaluateModel
 from src.feature_model.model import BaseRNN
-
-from src.preprocessors.state_preprocessing import StateDataLoader
-from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.preprocessors.data_transformer import DataTransformer
-
-from src.utils.constants import get_core_hyperparameters
 
 
 logger = logging.getLogger(name="finetuneable_local_model")
 
 
-# FIRE TODO:
-# 1. Update train model method -> training stats -> training and validation curve. -> TO TRY
-# 2. Update predict method -> scaled data in -> prediction tensor out -> TO TRY
-
-# NOTE:
-# What to do with hidden state initialization?
-# 1.    If you want to maintain the hidden state acros multiple inputs and outputs -> you should initialize the hidden state once.
-#       (Maybe add a resetting function).
-#
-# 2.    If you do want to have fresh start, initialize hidden state every time
-# 3.    If you dont initiliaze hidden state, pytorch does it automatically
-
-# TODO:
-# 1. Where to put resseting hidden state function?
-# 2. Add adapter layer for change the size shape of finetunable layer
-
-
-# TODO: edit this to correct way
 class FineTunableLSTM(CustomModelBase):
 
     def __init__(

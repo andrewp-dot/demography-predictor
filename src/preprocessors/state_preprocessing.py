@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Standard libraries imports
 import pandas as pd
 import numpy as np

@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Standard library imports
 import pandas as pd
 from typing import List, Dict, Tuple, Optional, Union, Type
@@ -22,8 +25,6 @@ from src.utils.constants import (
 from src.preprocessors.data_transformer import DataTransformer
 from src.preprocessors.state_preprocessing import StateDataLoader
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-
-from src.state_groups import StatesByWealth
 
 from src.base import RNNHyperparameters
 from src.pipeline import TargetModelPipeline

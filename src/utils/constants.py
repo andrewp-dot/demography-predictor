@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Custom library imports
 from src.base import RNNHyperparameters
 from typing import List

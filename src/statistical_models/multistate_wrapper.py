@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Standard library imports
 import pandas as pd
 from typing import List, Dict
@@ -7,8 +10,10 @@ from typing import List, Dict
 from src.feature_model.ensemble_model import PureEnsembleModel
 
 
-# TODO make this not just for one model, but train X MILLION models for every states (bcs it is fcking shitty arima which needs to be fitted just only ON ONE FUCKING STATE)
 class StatisticalMultistateWrapper:
+    """
+    Wrapper for training multiple models for each sequence (because of statistical model approach).
+    """
 
     def __init__(
         self,
@@ -25,7 +30,6 @@ class StatisticalMultistateWrapper:
         self, state: str, input_data: pd.DataFrame, last_year: int, target_year: int
     ) -> pd.DataFrame:
 
-        # print(input_data)
         # Get model by state
         model = self.model[state]
 
@@ -33,5 +37,4 @@ class StatisticalMultistateWrapper:
             input_data=input_data, last_year=last_year, target_year=target_year
         )
 
-        # print(prediction_df)
         return prediction_df

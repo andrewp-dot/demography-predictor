@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Standard library imports
 from typing import List, Optional, Dict, Tuple
 import pandas as pd

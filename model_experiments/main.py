@@ -1,6 +1,5 @@
-"""
-In this file are experiments with local model.
-"""
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
 
 # Standard libraries
 import logging

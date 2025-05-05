@@ -1,3 +1,7 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
+
 import pandas as pd
 from typing import Tuple, Dict, List, Optional, Union, Type
 import logging

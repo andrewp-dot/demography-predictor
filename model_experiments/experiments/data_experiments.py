@@ -1,7 +1,10 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Standard library imports
 import logging
 import pandas as pd
-from typing import List, Dict, Tuple, Literal
+from typing import List, Dict, Tuple
 import random
 
 from sklearn.model_selection import train_test_split
@@ -24,24 +27,14 @@ from src.state_groups import StatesGroups, StatesByGeolocation, StatesByWealth
 from model_experiments.base_experiment import BaseExperiment
 from src.train_scripts.train_feature_models import (
     train_base_rnn,
-    train_finetunable_model,
-    train_finetunable_model_from_scratch,
 )
 from src.pipeline import FeatureModelPipeline
 from src.feature_model.model import RNNHyperparameters, BaseRNN
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.preprocessors.data_transformer import DataTransformer
 
 # settings = FeatureModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
-
-
-# TODO:
-# More experiments
-# 1. Feature selection experiment?
-# 2. Compare group experiment using this?
-# 3. To exclude states? ... find out which population or what makes the problem.
 
 
 class DataUsedForTraining(BaseExperiment):

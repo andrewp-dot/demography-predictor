@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Standard library imports
 import os
 import pandas as pd
@@ -11,7 +14,6 @@ import matplotlib.pyplot as plt
 # Custom imports
 from src.utils.log import setup_logging
 from src.utils.constants import get_core_hyperparameters
-from src.state_groups import OnlyRealStates
 from src.utils.constants import (
     basic_features,
     highly_correlated_features,

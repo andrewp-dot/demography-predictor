@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Standard library imports
 from __future__ import annotations
 
@@ -11,8 +14,10 @@ from sklearn.metrics import (
     r2_score,
 )
 
+# Note: This script is not finished yet!
 
-class LocalGM11:
+
+class CustomGM11:
 
     # 3 phases:
     # 1. AGO (Accumulated Generating Operation)
@@ -37,6 +42,10 @@ class LocalGM11:
         # Test data values
         self.test_data: pd.DataFrame = None
         self.test_data_numpy: np.ndarray = None
+
+        raise NotImplementedError(
+            f"The '{self.__class__.__name__}' is not fully implemented yet!"
+        )
 
     def train_model(self, data: pd.DataFrame, target: str, split_rate: float = 0.8):
         """

@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 # Standard library imports
 import pandas as pd
 from typing import Tuple, Dict, List, Optional, Union, Type
@@ -15,13 +18,7 @@ from src.utils.early_stopping import EarlyStopping
 from src.utils.constants import get_core_hyperparameters
 from src.utils.save_model import save_model
 
-from src.base import RNNHyperparameters, TrainingStats, CustomModelBase
-
-# from src.evaluation import EvaluateModel
-
-from src.preprocessors.state_preprocessing import StateDataLoader
-from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.preprocessors.data_transformer import DataTransformer
+from src.base import RNNHyperparameters, CustomModelBase
 
 
 logger = logging.getLogger("local_model")
