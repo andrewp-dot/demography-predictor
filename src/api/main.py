@@ -41,6 +41,11 @@ AGING_COLUMNS: List[str] = gender_distribution_targets()
 GENDER_DIST_COLUMNS: List[str] = aging_targets()
 
 
+# Add settings for the available populations for predictions
+MIN_STATE_LEN = 10
+AVAILABLE_POPULATIONS: List[str] = []
+
+
 def load_models() -> None:
     # Load model(s) for prediction
     for model_key in settings.prediction_models.keys():
@@ -143,6 +148,14 @@ async def lifespan(app: FastAPI):
     # Setup
     setup_logging()
     load_models()
+
+    # Get available populations
+    df = pd.read_csv(settings.dataset_path)
+    frequent_states = df["state"].value_counts()
+    AVAILABLE_POPULATIONS = frequent_states[
+        frequent_states > MIN_STATE_LEN
+    ].index.tolist()
+
     logger.info(f"Models loaded: {list(LOADED_MODELS.keys())}")
 
     yield
@@ -162,7 +175,10 @@ def read_root():
 
 @app.get("/info")
 def get_info():
-    return Info(models=LOADED_MODELS.keys(), available_populations=[]).model_dump()
+
+    return Info(
+        models=LOADED_MODELS.keys(), available_populations=AVAILABLE_POPULATIONS
+    ).model_dump()
 
 
 @app.post("/predict")

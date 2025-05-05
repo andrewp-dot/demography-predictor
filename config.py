@@ -56,7 +56,8 @@ class Config(BaseSettings):
     @computed_field
     def prediction_models(self) -> Dict[str, str]:
         return {
-            "aging_model_cz": "arima-test-age-predictor",
+            "age-predictor": "age-predictor",
+            "gender-dist-predictor": "gender-dist-predictor",
         }
 
     ALL_POSSIBLE_TARGET_FEATURES: List[str] = ALL_POSSIBLE_TARGET_FEATURES

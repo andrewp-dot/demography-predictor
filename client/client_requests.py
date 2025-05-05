@@ -1,3 +1,7 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
+
 # Standard library imports
 import requests
 from typing import Dict

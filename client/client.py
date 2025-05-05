@@ -1,11 +1,15 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
+
 """
 This is just testing client for the API to access deployed model. Can be also used as a cookbook.
 """
 
 # Standard library imports
 import click
-from typing import Dict, List
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # Custom imports
 from config import Config
@@ -17,6 +21,39 @@ from client.client_requests import (
 
 # Get settings
 settings = Config()
+
+
+def plot_predictions(df: pd.DataFrame) -> None:
+
+    try:
+        prediction_years = df["year"]
+
+        prediction_columns = [col for col in df.columns if "year" != col]
+
+        # Create figure
+        fig, axes = plt.subplot(
+            len(prediction_columns),
+            1,
+            figsize=(10, 4 * len(prediction_columns)),
+            sharex=True,
+        )
+
+        if len(prediction_columns) == 1:
+            axes = [axes]
+
+        for ax, col in zip(axes, prediction_columns):
+            ax.plot(prediction_years, df[col], marker="o", label=col)
+            ax.set_ylabel(col)
+            ax.grid(True)
+            ax.legend()
+
+        axes[-1].set_xlabel("Year")
+        fig.suptitle("Model Predictions Over Time", fontsize=14)
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        plt.show()
+
+    except KeyError as e:
+        print(f"[Plotting error]: {str(e)}")
 
 
 @click.group()
@@ -53,7 +90,15 @@ def info():
     help="The year to the target data will be predicted.",
     required=True,
 )
-def predict(state: str, model_key: str, target_year: int):
+@click.option(
+    "--show-plots",
+    is_flag=True,
+    help="If specified, plots the predictions.",
+    required=False,
+    default=False,
+    show_default=True,
+)
+def predict(state: str, model_key: str, target_year: int, show_plots: bool):
     # Send the base prediction request
     response = send_base_prediction_request(
         state=state, model_key=model_key, target_year=target_year
@@ -62,6 +107,9 @@ def predict(state: str, model_key: str, target_year: int):
     if response.status_code == 200:
         prediction_df = pd.DataFrame(response.json()["predictions"])
         print(prediction_df)
+
+        if show_plots:
+            plot_predictions(df=prediction_df)
     else:
         print(f"{response.status_code}: {response.text}")
 
@@ -93,7 +141,17 @@ def predict(state: str, model_key: str, target_year: int):
     default=100,
     show_default=True,  # Show default in help text
 )
-def lakmoos_predict(state: str, model_key: str, target_year: int, max_age: int):
+@click.option(
+    "--show-plots",
+    is_flag=True,
+    help="If specified, plots the predictions.",
+    required=False,
+    default=False,
+    show_default=True,
+)
+def lakmoos_predict(
+    state: str, model_key: str, target_year: int, max_age: int, show_plots: bool
+):
     """
     Prediction for lakmoos prediction endpoint. Gets the predictions and also the distribution of the required parameter.
 
@@ -119,6 +177,11 @@ def lakmoos_predict(state: str, model_key: str, target_year: int, max_age: int):
             # Get and print distribution for the predictions
             distribution_df = pd.DataFrame(response.json()["distribution"])
             print(distribution_df)
+
+            if show_plots:
+                plot_predictions(df=prediction_df)
+                plot_predictions(df=distribution_df)
+
         except KeyError as e:
             print(str(e))
 
