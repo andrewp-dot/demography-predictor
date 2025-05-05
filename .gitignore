@@ -183,3 +183,5 @@ pyrightconfig.json
 ignore_*
 
 ourworldindata
+
+.DS_store
