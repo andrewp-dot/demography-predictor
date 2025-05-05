@@ -7,12 +7,6 @@ readme = "README.md"
 packages = [{ include = "src" }, { include = "model_experiments" }, { include = "data_science" }]
 
 
-[tool.poetry.scripts]
-dataset-create = "data_science.preprocessors.dataset_preprocessor:main"
-cli = "src.cli.cli:cli"
-api = "src.api.main:main"
-client = "client.client:client"
-
 [tool.poetry.dependencies]
 python = "~3.11"
 torch = "^2.6.0"
@@ -24,7 +18,6 @@ optree = ">=0.13.0"
 matplotlib = "<3.8.0"
 colorama = "^0.4.6"
 kaleido = "0.2.1"
-pycaret = "^3.3.2"
 pyyaml = "^6.0.2"
 lightgbm = "^4.6.0"
 xgboost = "^2.1.4"
@@ -34,6 +27,13 @@ seaborn = "^0.13.2"
 shap = "^0.47.1"
 fastapi = "^0.115.12"
 uvicorn = "^0.34.0"
+statsmodels = "^0.14.4"
+
+[tool.poetry.scripts]
+dataset-create = "data_science.preprocessors.dataset_preprocessor:main"
+cli = "src.cli.cli:cli"
+api = "src.api.main:main"
+client = "client.client:client"
 
 [build-system]
 requires = ["poetry-core"]

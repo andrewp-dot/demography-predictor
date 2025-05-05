@@ -13,6 +13,8 @@ from src.train_scripts.train_predictors import (
     train_gender_dist_predictor,
 )
 
+from src.shap_explainer.explain import explain_cli
+
 from model_experiments.experiments.predictor_experiments import run_all
 
 
@@ -32,6 +34,61 @@ def model_experiments():
     """
     setup_logging()
     pass
+
+
+@cli.command()
+@click.option(
+    "--name",
+    type=str,
+    help="The name of the required (trained) pipeline to explain.",
+    required=True,
+)
+@click.option(
+    "--type",
+    type=click.Choice(["feature", "target", "full-predictor"], case_sensitive=False),
+    help="The type of the required (trained) pipeline to explain.",
+    required=True,
+)
+@click.option(
+    "--experimental",
+    is_flag=True,
+    help="If set to true, loads the pipeline from the trained_modes/experimental_models folder",
+    default=False,
+)
+@click.option(
+    "--core-metric",
+    type=click.Choice(["mae", "mse", "rmse", "r2", "mape"]),
+    help="All states will be sorted by this metric.",
+    default="rmse",
+)
+@click.option(
+    "--additional-states",
+    type=str,
+    help='List of additional states included in model explaination. List states as a comma separated strings string, e.g. --additional-states "Czechia, United States"',
+    default=None,
+)
+def explain(
+    name: str,
+    type: Literal["feature", "target", "full-predictor"],
+    experimental: bool,
+    core_metric: Literal["mae", "mse", "rmse", "r2", "mape"],
+    additional_states: str,
+):
+
+    # Parse states
+    additional_states_list = (
+        [state.strip() for state in additional_states.split(",")]
+        if additional_states
+        else []
+    )
+
+    explain_cli(
+        pipeline_type=type,
+        name=name,
+        is_experimental=experimental,
+        core_metric=core_metric,
+        additional_states=additional_states_list,
+    )
 
 
 # Subgroup for the experiment group

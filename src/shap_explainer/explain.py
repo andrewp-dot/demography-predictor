@@ -2,8 +2,7 @@
 import os
 import logging
 
-from typing import Union, List, Optional
-
+from typing import Union, List, Optional, Literal
 import matplotlib.pyplot as plt
 
 
@@ -157,8 +156,10 @@ def explain_best_worst_states(
     pipeline: Union[FeatureModelPipeline, TargetModelPipeline, PredictorPipeline],
     metric: str = "rmse",
     custom_dir: Optional[str] = None,
+    additional_states: Optional[List[str]] = None,
 ):
 
+    # Create evaluation object and load data
     evaluation = EvaluateModel(pipeline=pipeline)
 
     loader = StatesDataLoader()
@@ -180,42 +181,42 @@ def explain_best_worst_states(
         states_dict=all_states_data_dict, sequence_len=sequence_len
     )
 
+    # Evaluate for every state with overall metric
     one_metric = evaluation.eval_for_every_state_overall(
         X_test_states=X_test_states, y_test_states=y_test_states
     )
     logger.info(f"\n{one_metric}")
 
-    # Eval for all states per targets
-    states_per_target_dict = evaluation.eval_for_every_state_per_target(
-        X_test_states=X_test_states, y_test_states=y_test_states
-    )
-
-    logger.info(
-        f"\n{states_per_target_dict[states_per_target_dict['state'] == 'Czechia']}"
-    )
-
+    # Evaluate for every state with separate metric for every state
     every_state_evaluation_df = evaluation.eval_for_every_state(
         X_test_states=X_test_states, y_test_states=y_test_states
     )
     every_state_evaluation_df.sort_values(by=[metric], inplace=True)
 
+    # Save gathered evaluations
     SAVE_PATH = os.path.join(".", "explanations", pipeline.name)
-
     os.makedirs(SAVE_PATH, exist_ok=True)
 
     with open(os.path.join(SAVE_PATH, "state_performance_sorted.json"), "w") as f:
         every_state_evaluation_df.to_json(f, indent=4, orient="records")
 
+    # Print best and worst state (or additional state). Create predictions, explain the model using SHAP plots.
     best_state = every_state_evaluation_df.iloc[0]["state"]
     worst_state = every_state_evaluation_df.iloc[-1]["state"]
 
     logger.info(f"Best state: {best_state}, Worst state: {worst_state}")
+
+    # Prevent 'None' unpacking error
+    additional_states = additional_states if additional_states else []
+
     explain(
-        pipeline, states=[best_state, worst_state, "Czechia"], custom_dir=custom_dir
+        pipeline,
+        states=[best_state, worst_state, *additional_states],
+        custom_dir=custom_dir,
     )
 
     state_plots = create_prediction_plots(
-        pipeline=pipeline, states=[best_state, worst_state, "Czechia"]
+        pipeline=pipeline, states=[best_state, worst_state, *additional_states]
     )
 
     # Save it to dir
@@ -225,17 +226,45 @@ def explain_best_worst_states(
         plt.savefig(path, bbox_inches="tight")
 
 
+def explain_cli(
+    pipeline_type: Literal["feature", "target", "full-predictor"],
+    name: str,
+    is_experimental: bool,
+    core_metric: Literal["mae", "mse", "rmse", "r2", "mape"] = "rmse",
+    additional_states: Optional[List[str]] = None,
+) -> Union[FeatureModelPipeline, TargetModelPipeline, PredictorPipeline]:
+
+    if "feature" == pipeline_type:
+        load_type = FeatureModelPipeline
+    elif "target" == pipeline_type:
+        load_type = TargetModelPipeline
+    elif "full-predictor" == PredictorPipeline:
+        load_type = PredictorPipeline
+    else:
+        raise ValueError(f"Unsupported type of pipeline. ({pipeline_type})")
+
+    pipeline = load_type.get_pipeline(name=name, experimental=is_experimental)
+    explain_best_worst_states(
+        pipeline=pipeline, metric=core_metric, additional_states=additional_states
+    )
+
+
+# Example usage
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
-    # Get pipeline
-    # TODO: maybe do some arguments in here?
-    # PIPELINE_NAME = "lstm_features_only"
-    # pipeline = FeatureModelPipeline.get_pipeline(name=PIPELINE_NAME)
-
+    # Example arguments
     PIPELINE_NAME = "test-target-model-tree"
-    # pipeline = PredictorPipeline.get_pipeline(name=PIPELINE_NAME)
-    pipeline = TargetModelPipeline.get_pipeline(name=PIPELINE_NAME)
+    PIPELINE_TYPE = "target"
+    IS_EXPERIMENTAL = False
+    CORE_METRIC = "rmse"
+    ADDITIONAL_STATES = ["Czechia"]
 
-    explain_best_worst_states(pipeline=pipeline)
+    explain_cli(
+        pipeline_type=PIPELINE_TYPE,
+        name=PIPELINE_NAME,
+        is_experimental=IS_EXPERIMENTAL,
+        core_metric=CORE_METRIC,
+        additional_states=ADDITIONAL_STATES,
+    )
