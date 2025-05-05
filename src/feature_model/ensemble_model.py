@@ -94,20 +94,3 @@ class PureEnsembleModel:
             columns=self.TARGETS,
         )
         return prediction_df
-
-
-#     [{'best_model': 'BaseRNN', 'feature': 'fertility rate, total'},
-#  {'best_model': 'BaseRNN', 'feature': 'population, total'},
-#  {'best_model': 'ARIMA', 'feature': 'net migration'},
-#  {'best_model': 'BaseRNN', 'feature': 'arable land'},
-#  {'best_model': 'BaseRNN', 'feature': 'birth rate, crude'},
-#  {'best_model': 'ARIMA', 'feature': 'gdp growth'},
-#  {'best_model': 'ARIMA', 'feature': 'death rate, crude'},
-#  {'best_model': 'BaseRNN', 'feature': 'agricultural land'},
-#  {'best_model': 'ARIMA', 'feature': 'rural population'},
-#  {'best_model': 'ARIMA', 'feature': 'rural population growth'},
-#  {'best_model': 'BaseRNN', 'feature': 'age dependency ratio'},
-#  {'best_model': 'ARIMA', 'feature': 'urban population'},
-#  {'best_model': 'BaseRNN', 'feature': 'population growth'},
-#  {'best_model': 'BaseRNN', 'feature': 'adolescent fertility rate'},
-#  {'best_model': 'BaseRNN', 'feature': 'life expectancy at birth, total'}]

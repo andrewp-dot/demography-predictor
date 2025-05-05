@@ -6,10 +6,10 @@ import pandas as pd
 from typing import List, Dict
 
 # Custom imports
-
 from src.feature_model.ensemble_model import PureEnsembleModel
 
 
+# TODO: add LazyLoading in here
 class StatisticalMultistateWrapper:
     """
     Wrapper for training multiple models for each sequence (because of statistical model approach).

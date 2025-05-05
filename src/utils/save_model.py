@@ -8,6 +8,9 @@ from typing import Any, List, Dict
 
 from config import Config
 
+# Custom imports
+from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
+
 
 settings = Config()
 
@@ -30,7 +33,13 @@ def get_model(name: str) -> Any:
     if not os.path.isfile(MODEL_PATH):
         raise ValueError(f"The specified model '{name}' does not exist!")
 
-    return joblib.load(MODEL_PATH)
+    model = joblib.load(MODEL_PATH)
+
+    # # TODO: improve this for lazy loading
+    # if isinstance(model, StatisticalMultistateWrapper):
+    #     raise NotImplementedError("")
+
+    return model
 
 
 def get_multiple_models(names: List[str]) -> Dict[str, Any]:
@@ -60,6 +69,12 @@ def save_model(model, name: str) -> None:
     """
 
     MODEL_PATH = os.path.join(settings.trained_models_dir, f"{name}")
+
+    # Based on model type get save the model
+
+    # # TODO: improve this for lazy loading
+    # if isinstance(model, StatisticalMultistateWrapper):
+    #     raise NotImplementedError("")
 
     joblib.dump(model, MODEL_PATH)
 

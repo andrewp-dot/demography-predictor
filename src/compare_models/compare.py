@@ -12,16 +12,13 @@ from src.utils.log import setup_logging
 from src.utils.save_model import get_model, get_multiple_models
 from src.utils.constants import get_core_hyperparameters
 
-from src.base import CustomModelBase
 from src.evaluation import EvaluateModel
-from src.feature_model.finetunable_model import FineTunableLSTM
 from src.feature_model.ensemble_model import PureEnsembleModel
 
 from src.target_model.model import TargetModelTree
 from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.preprocessors.data_transformer import DataTransformer
 
 from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
 
@@ -393,5 +390,3 @@ if __name__ == "__main__":
     # Display
     for state in COMPARATION_STATES:
         print(ranked_models[ranked_models["state"] == state])
-
-    # Plot predictions

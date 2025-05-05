@@ -8,6 +8,8 @@ from typing import Dict, List
 import logging
 import pandas as pd
 
+import time
+
 from contextlib import asynccontextmanager
 
 # Custom imports
@@ -36,9 +38,9 @@ logger = logging.getLogger("api")
 
 LOADED_MODELS: Dict[str, PredictorPipeline] = {}
 
-AGING_COLUMNS: List[str] = gender_distribution_targets()
-
-GENDER_DIST_COLUMNS: List[str] = aging_targets()
+# Define prediction columns for different approach
+AGING_COLUMNS: List[str] = aging_targets()
+GENDER_DIST_COLUMNS: List[str] = gender_distribution_targets()
 
 
 # Add settings for the available populations for predictions
@@ -47,6 +49,8 @@ AVAILABLE_POPULATIONS: List[str] = []
 
 
 def load_models() -> None:
+
+    start_time = time.time()
     # Load model(s) for prediction
     for model_key in settings.prediction_models.keys():
         try:
@@ -55,6 +59,11 @@ def load_models() -> None:
             )
         except Exception as e:
             logger.error(f"Could not load the model: '{model_key}'. Reason: {str(e)}")
+
+    # Print time
+    print(
+        f"Models '{LOADED_MODELS.keys()}' loaded. It took {time.time() - start_time:.4f}"
+    )
 
 
 def get_dataframe_from_request(
@@ -147,11 +156,15 @@ def predict_from_request(request: PredictionRequest) -> pd.DataFrame:
 async def lifespan(app: FastAPI):
     # Setup
     setup_logging()
+
     load_models()
 
     # Get available populations
     df = pd.read_csv(settings.dataset_path)
-    frequent_states = df["state"].value_counts()
+    frequent_states = df["country_name"].value_counts()
+
+    # Set the avialable populations to global variable
+    global AVAILABLE_POPULATIONS
     AVAILABLE_POPULATIONS = frequent_states[
         frequent_states > MIN_STATE_LEN
     ].index.tolist()
@@ -209,7 +222,6 @@ def model_lakmoos_predict(request: LakmoosPredictionRequest):
 
     # Generate predictions
     prediction_df = predict_from_request(request=request)
-    print(prediction_df.columns)
 
     # If the output contains aging data
     if set(AGING_COLUMNS).issubset(set(prediction_df.columns)):

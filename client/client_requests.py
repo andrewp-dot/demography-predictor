@@ -27,7 +27,17 @@ AVAILABLE_ENDPOINTS: Dict[str, str] = {
 
 
 def send_info_request() -> requests.Response:
-    response = requests.get(url=f"{BASE_URL}{AVAILABLE_ENDPOINTS['info']}")
+
+    response = None
+    try:
+        response = requests.get(
+            url=f"{BASE_URL}{AVAILABLE_ENDPOINTS['info']}", timeout=10
+        )
+    except requests.exceptions.Timeout:
+        print("Request timed out.")
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+
     return response
 
 
@@ -54,11 +64,17 @@ def send_base_prediction_request(
         model_key=model_key, state=state, input_data=input_data, target_year=target_year
     )
 
-    response = requests.post(
-        url=f"{BASE_URL}{AVAILABLE_ENDPOINTS['predict']}",
-        headers=headers,
-        json=request.model_dump(),
-    )
+    response = None
+    try:
+        response = requests.post(
+            url=f"{BASE_URL}{AVAILABLE_ENDPOINTS['predict']}",
+            headers=headers,
+            json=request.model_dump(),
+        )
+    except requests.exceptions.Timeout:
+        print("Request timed out.")
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
 
     return response
 
@@ -90,10 +106,16 @@ def send_lakmoos_prediction_request(
         max_age=max_age,
     )
 
-    response = requests.post(
-        url=f"{BASE_URL}{AVAILABLE_ENDPOINTS['lakmoos-predict']}",
-        headers=headers,
-        json=request.model_dump(),
-    )
+    response = None
+    try:
+        response = requests.post(
+            url=f"{BASE_URL}{AVAILABLE_ENDPOINTS['lakmoos-predict']}",
+            headers=headers,
+            json=request.model_dump(),
+        )
+    except requests.exceptions.Timeout:
+        print("Request timed out.")
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
 
     return response
