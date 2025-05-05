@@ -256,7 +256,7 @@ def age_predictor(
     is_flag=True,
     help="If specified, modifed data will be used to train the target prediction model. By deafult, data are adjusted for feature target model",
 )
-def dist_predictor(
+def gender_dist_predictor(
     name: str,
     type: Literal["LSTM", "ARIMA"],
     wealth_groups: Optional[str],

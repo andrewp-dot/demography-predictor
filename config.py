@@ -56,8 +56,10 @@ class Config(BaseSettings):
     @computed_field
     def prediction_models(self) -> Dict[str, str]:
         return {
-            "age-predictor": "age-predictor",
-            "gender-dist-predictor": "gender-dist-predictor",
+            # "age-predictor": "age-predictor",
+            # "gender-dist-predictor": "gender-dist-predictor",
+            "age-predictor": "lstm-age-predictor",
+            "gender-dist-predictor": "lstm-gender-dist-predictor",
         }
 
     ALL_POSSIBLE_TARGET_FEATURES: List[str] = ALL_POSSIBLE_TARGET_FEATURES
