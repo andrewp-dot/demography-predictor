@@ -178,7 +178,17 @@ pyrightconfig.json
 # Custom ignores
 *.txt
 
+# Ignore all models by default
+trained_models/*
 *.pkl
+
+# ...but allow files in this specific subfolder
+!trained_models/gender-dist-predictor/
+!trained_models/gender-dist-predictor/*.pkl
+
+!trained_models/age-predictor/
+!trained_models/age-predictor/*.pkl
+
 
 ignore_*
 

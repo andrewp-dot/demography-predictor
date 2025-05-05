@@ -10,17 +10,31 @@ You can create your own model by editing scripts in the `src` folder, or just us
 
 ## Installation
 
-Requirements:
+### Requirements
 
-1. python3.11
-2. poetry 
+- Python 3.11
+- [Poetry](https://python-poetry.org/)
 
-If the python and poetry are installed, just run `poetry install` in the project root directory.
+### Setup
+
+Clone the repository and install dependencies:
+
+If the python and poetry are installed, just run `poetry install` in the project root directory. 
+
 
 
 ## Available CLI
 
-For this project (WIP)
+To succesful run CLI you need `.env` file (see `.env.example` file). Path and other configuration are lised in the `config.py` file.
+
+### Running API
+...
+
+### Training the model
+...
+
+### Runing selection experiments
+...
 
 ## License
 

@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Adrián Ponechal
+# Licensed under the MIT License
+
 import os
 from pydantic import Field, DirectoryPath, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
