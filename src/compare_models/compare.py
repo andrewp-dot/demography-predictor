@@ -8,8 +8,9 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 # Custom imports
+from config import Config
 from src.utils.log import setup_logging
-from src.utils.save_model import get_model, get_multiple_models
+from src.utils.save_model import get_multiple_models
 from src.utils.constants import get_core_hyperparameters
 
 from src.evaluation import EvaluateModel
@@ -24,6 +25,8 @@ from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPip
 
 
 logger = logging.getLogger("model_compare")
+
+settings = Config()
 
 
 class ModelComparator:
@@ -235,7 +238,6 @@ class ModelComparator:
         self,
         state: str,
         model_names: Optional[List[str]] = None,
-        lang: Literal["en", "sk"] = "en",
     ) -> Figure:
         """
         Create comparison plot for the given state. The plot contains the reference values and predicted values for all models.
@@ -246,12 +248,13 @@ class ModelComparator:
             lang (Literal[&quot;en&quot;, &quot;sk&quot;], optional): Choose language for plotted images. Defaults to "en".
 
         Raises:
-            ValueError: _description_
+            ValueError: If there are no model evaluations to create state comparison plot.
 
         Returns:
-            Figure: _description_
+            out: Figure: The create comparision plot for the given state (with it's reference values).
         """
 
+        LANG = settings.plot_description_language
         LABELS: Dict[str, Dict[str, str]] = {
             "en": {
                 "reference_values": "Reference values",
@@ -309,7 +312,7 @@ class ModelComparator:
             axes[index].plot(
                 YEARS,
                 reference_data[target],
-                label=LABELS[lang]["reference_values"],
+                label=LABELS[LANG]["reference_values"],
                 color="r",
             )
 
@@ -324,13 +327,13 @@ class ModelComparator:
                     # evaluation.multiple_states_evaluations[state]["years"],
                     YEARS,
                     evaluation.multiple_states_evaluations[state]["predicted"][target],
-                    label=f"{LABELS[lang]['predicted_values']} - {model_name}",
+                    label=f"{LABELS[LANG]['predicted_values']} - {model_name}",
                 )
 
             # Set the axis
             axes[index].set_title(f"{target}")
-            axes[index].set_xlabel(LABELS[lang]["xaxis"])
-            axes[index].set_ylabel(LABELS[lang]["yaxis"])
+            axes[index].set_xlabel(LABELS[LANG]["xaxis"])
+            axes[index].set_ylabel(LABELS[LANG]["yaxis"])
             axes[index].grid()
             axes[index].legend()
 

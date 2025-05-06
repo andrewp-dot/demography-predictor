@@ -296,6 +296,7 @@ class BaseEvaluation:
 
         return fig
 
+    # TODO: change the language in here
     def plot_predictions(self) -> Figure:
         """
         Creates figure for a all features evaluation.

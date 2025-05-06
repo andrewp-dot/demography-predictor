@@ -371,14 +371,12 @@ class FeatureModelExperiment(BaseExperiment):
         comparator: ModelComparator,
         states: List[str],
         models: List[str],
-        lang: Literal["en", "sk"] = "en",
     ) -> None:
 
         for state in states:
             fig = comparator.create_state_comparison_plot(
                 state=state,
                 model_names=models,
-                lang=lang,
             )
             self.save_plot(fig_name=f"{state}_predictions.png", figure=fig)
 
@@ -504,7 +502,6 @@ class FeatureModelExperiment(BaseExperiment):
                 "Rwanda",
             ],
             models=TOP_N_MODELS,
-            lang="sk",
         )
 
 

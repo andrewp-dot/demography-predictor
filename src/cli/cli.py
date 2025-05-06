@@ -10,7 +10,9 @@ import matplotlib.pyplot as plt
 
 
 # Custom imports
+from config import Config
 from src.utils.log import setup_logging
+
 
 
 from model_experiments.main import (
@@ -38,6 +40,7 @@ from src.pipeline import PredictorPipeline
 ## Predictor-experiments command
 from model_experiments.experiments.predictor_experiments import run_all
 
+settings = Config()
 
 @click.group()
 def cli():
@@ -176,11 +179,26 @@ def compare_predictions(models: str, state: str, target_year: int, plot_prefix: 
         sharex=True,
     )
 
+    # Labels
+    LANG = settings.plot_description_language
+    LABELS = {
+        "en": {
+            "prediction_for": "Prediction for",
+            "year": "Year",
+            "value": "Value",
+        },
+        "sk": {
+            "prediction_for": "Predikcia",
+            "year": "Rok",
+            "value": "Hodnota",
+        },
+    }
+
     # Plot the predictions
     for i, target in enumerate(TARGETS):
-        axes[i].set_title(f"Prediction for {target}")
-        axes[i].set_xlabel("Year")
-        axes[i].set_ylabel("Value")
+        axes[i].set_title(f"{LABELS[LANG]["prediction_for"]} {target}")
+        axes[i].set_xlabel({LABELS[LANG]["year"]})
+        axes[i].set_ylabel({LABELS[LANG]["year"]})
 
         for name, prediction_df in model_predictions.items():
             target_df = prediction_df[["year", target]]
@@ -271,7 +289,6 @@ def compare_predictorsl(
             model_comparator.create_state_comparison_plot(
                 state=state,
                 model_names=MODEL_NAMES,
-                lang="en",
             )
             # plt.show()
             plt.savefig(os.path.join("imgs", "comparision_plots", f"{state}.png"))

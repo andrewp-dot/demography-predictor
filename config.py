@@ -9,6 +9,7 @@ from typing import Literal, Dict, List
 
 # Custom settings
 DATASET_VERSION: Literal["v0", "v1", "v2", "v3"] = "v3"
+PLOT_DESCRIPTION_LANGUAGE: Literal["en", "sk"] = "sk"
 
 ALL_POSSIBLE_TARGET_FEATURES: List[str] = [
     "population_total",
@@ -34,8 +35,14 @@ class Config(BaseSettings):
     # Configure settings config
     model_config: dict = SettingsConfigDict(env_file=".env", frozen=True)
 
+    # Plot description language
+    dataset_version: str = Field(..., env="DATASET_VERSION", default=DATASET_VERSION)
+    plot_description_language: str = Field(
+        ..., env="PLOT_DESCRIPTION_LANGUAGE", default=PLOT_DESCRIPTION_LANGUAGE
+    )
+
     # Dataset settings
-    selected_dataset: str = f"dataset_{DATASET_VERSION}"
+    selected_dataset: str = f"dataset_{dataset_version}"
     dataset_dir: str = os.path.join(".", "data_science", "datasets", selected_dataset)
     dataset_path: str = os.path.join(dataset_dir, f"{selected_dataset}.csv")
     states_data_dir: str = os.path.join(dataset_dir, "states")
