@@ -186,8 +186,18 @@ trained_models/*
 !trained_models/gender-dist-predictor/
 !trained_models/gender-dist-predictor/*.pkl
 
+!trained_models/lstm-gender-dist-predictor/
+!trained_models/lstm-gender-dist-predictor/*.pkl
+
 !trained_models/age-predictor/
 !trained_models/age-predictor/*.pkl
+
+!trained_models/lstm-age-predictor/
+!trained_models/lstm-age-predictor/*.pkl
+
+
+
+
 
 
 ignore_*
