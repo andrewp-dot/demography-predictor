@@ -3,6 +3,7 @@
 
 # Standard library imports
 import os
+import pandas as pd
 import click
 from typing import Literal, Optional, List, Dict
 import matplotlib.pyplot as plt
@@ -25,6 +26,10 @@ from src.train_scripts.train_predictors import (
 
 ## Explain command
 from src.shap_explainer.explain import explain_cli
+
+## Compare predictions command
+
+from src.preprocessors.state_preprocessing import StateDataLoader
 
 ## Compare command
 from src.compare_models.compare import ModelComparator
@@ -115,6 +120,97 @@ def explain(
     required=True,
 )
 @click.option(
+    "--state",
+    type=str,
+    help="For prediction future.",
+    required=True,
+)
+@click.option(
+    "--target-year",
+    type=int,
+    help="Get the target year for prediction.",
+    default=2035,
+)
+@click.option(
+    "--plot-prefix",
+    type=str,
+    help="If set, the plot will be saved with this prefix.",
+    default="",
+)
+def compare_predictions(models: str, state: str, target_year: int, plot_prefix: str):
+    """
+    Compares predictions of the models. If models are not specified, all models are compared.
+    """
+
+    # Get models
+    MODEL_NAMES = [model.strip() for model in models.split(",")]
+
+    to_compare_models: Dict[str, PredictorPipeline] = {
+        name: PredictorPipeline.get_pipeline(name=name) for name in MODEL_NAMES
+    }
+
+    # Get state input data
+    loader = StateDataLoader(state=state)
+
+    input_data = loader.load_data()
+
+    # Create predictions for model
+    TARGETS = None
+    model_predictions: Dict[str, pd.DataFrame] = {}
+    for name, model in to_compare_models.items():
+        prediction_df = model.predict(
+            input_data=input_data,
+            target_year=target_year,
+        )
+        model_predictions[name] = prediction_df
+
+        # Get targets
+        if not TARGETS:
+            TARGETS = model.TARGETS
+
+    # Create plots
+    fig, axes = plt.subplots(
+        nrows=len(TARGETS),
+        ncols=1,
+        figsize=(10, 5 * len(TARGETS)),
+        sharex=True,
+    )
+
+    # Plot the predictions
+    for i, target in enumerate(TARGETS):
+        axes[i].set_title(f"Prediction for {target}")
+        axes[i].set_xlabel("Year")
+        axes[i].set_ylabel("Value")
+
+        for name, prediction_df in model_predictions.items():
+            target_df = prediction_df[["year", target]]
+            axes[i].plot(
+                target_df["year"],
+                target_df[target],
+                label=name,
+            )
+
+        axes[i].legend()
+        axes[i].grid()
+        axes[i].set_xticks(prediction_df["year"].unique())
+        axes[i].set_xticklabels(prediction_df["year"].unique(), rotation=45)
+
+    # Save the plot
+    plt.tight_layout()
+    if plot_prefix:
+        plot_prefix += "_"
+
+    plt.savefig(os.path.join("imgs", "comparision_plots", f"{plot_prefix}{state}.png"))
+
+
+@cli.command()
+@click.option(
+    "--models",
+    type=str,
+    help='List of comma separated models to compare. as a comma separated strings string, e.g. --models "model_1, model_2"',
+    required=True,
+)
+@click.option(
     "--states",
     type=str,
     help='List of comma separated states to use for evaluation (or plotting) as a comma separated strings string, e.g. --states "Czechia, Honduras"',
@@ -136,7 +232,7 @@ def explain(
     help="By which metric to compare models. Default is 'overall-metrics'.",
     default="overall-metrics",
 )
-def compare_predictors(
+def compare_predictorsl(
     models: str,
     states: str,
     show_plots: bool,
