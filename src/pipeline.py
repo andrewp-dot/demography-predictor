@@ -540,9 +540,12 @@ class PredictorPipeline:
         # Name for storing the pipeline
         self.name: str = name
 
-        # Is this correct?
         self.local_model_pipeline = local_model_pipeline
         self.global_model_pipeline = global_model_pipeline
+
+        # Setup correct features and targets
+        self.FEATURES: List[str] = self.global_model_pipeline.FEATURES
+        self.TARGETS: List[str] = self.global_model_pipeline.TARGETS
 
     def predict(self, input_data: pd.DataFrame, target_year: int) -> pd.DataFrame:
 

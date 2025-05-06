@@ -111,11 +111,12 @@ class ModelComparator:
         # Check if the models has same features and targets
         # first_model_features: List[str] = to_compare_models[models[0]].FEATURES
         model_names: List[str] = list(pipelines.keys())
-        first_model_targets: List[str] = pipelines[model_names[0]].model.TARGETS
+
+        first_model_targets: List[str] = pipelines[model_names[0]].TARGETS
 
         for model_name in model_names[1:]:
             # Get next model
-            model = pipelines[model_name].model
+            model = pipelines[model_name]
 
             # Check if they have the same targets
             if model.TARGETS != first_model_targets:
@@ -236,6 +237,20 @@ class ModelComparator:
         model_names: Optional[List[str]] = None,
         lang: Literal["en", "sk"] = "en",
     ) -> Figure:
+        """
+        Create comparison plot for the given state. The plot contains the reference values and predicted values for all models.
+
+        Args:
+            state (str): The predicted state.
+            model_names (Optional[List[str]], optional): If specified, display these models in the prediction plot. If None, use all compared models. Defaults to None.
+            lang (Literal[&quot;en&quot;, &quot;sk&quot;], optional): Choose language for plotted images. Defaults to "en".
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            Figure: _description_
+        """
 
         LABELS: Dict[str, Dict[str, str]] = {
             "en": {
@@ -267,7 +282,7 @@ class ModelComparator:
         first_model_name = plot_model_names[0]
 
         # Get the refference data for the state
-        TARGETS = self.model_evaluations[first_model_name].pipeline.model.TARGETS
+        TARGETS = self.model_evaluations[first_model_name].pipeline.TARGETS
         N_TARGETS = len(TARGETS)
 
         # Get evalution for the first model for the state to get refference data info

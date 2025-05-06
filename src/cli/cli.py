@@ -2,12 +2,16 @@
 # Licensed under the MIT License
 
 # Standard library imports
+import os
 import click
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, Dict
+import matplotlib.pyplot as plt
 
 
 # Custom imports
 from src.utils.log import setup_logging
+
+
 from model_experiments.main import (
     print_available_experiments,
     run_all_experiments,
@@ -19,8 +23,14 @@ from src.train_scripts.train_predictors import (
     train_gender_dist_predictor,
 )
 
+## Explain command
 from src.shap_explainer.explain import explain_cli
 
+## Compare command
+from src.compare_models.compare import ModelComparator
+from src.pipeline import PredictorPipeline
+
+## Predictor-experiments command
 from model_experiments.experiments.predictor_experiments import run_all
 
 
@@ -95,6 +105,80 @@ def explain(
         core_metric=core_metric,
         additional_states=additional_states_list,
     )
+
+
+@cli.command()
+@click.option(
+    "--models",
+    type=str,
+    help='List of comma separated models to compare. as a comma separated strings string, e.g. --models "model_1, model_2"',
+    required=True,
+)
+@click.option(
+    "--states",
+    type=str,
+    help='List of comma separated states to use for evaluation (or plotting) as a comma separated strings string, e.g. --states "Czechia, Honduras"',
+    required=True,
+)
+@click.option(
+    "--show-plots",
+    is_flag=True,
+    help="If specified, plots will be shown.",
+    required=False,
+    default=False,
+)
+@click.option(
+    "--by",
+    type=click.Choice(
+        ["overall-metrics", "overall-one-metric", "per-targets"],
+        case_sensitive=False,
+    ),
+    help="By which metric to compare models. Default is 'overall-metrics'.",
+    default="overall-metrics",
+)
+def compare_predictors(
+    models: str,
+    states: str,
+    show_plots: bool,
+    by: Literal["overall-metrics", "overall-one-metric", "per-targets"],
+):
+    """
+    Compares models. If models are not specified, all models are compared.
+    """
+
+    # Get models
+    MODEL_NAMES = [model.strip() for model in models.split(",")]
+
+    to_compare_models: Dict[str, PredictorPipeline] = {
+        name: PredictorPipeline.get_pipeline(name=name) for name in MODEL_NAMES
+    }
+
+    COMPARATION_STATES = [state.strip() for state in states.split(",")]
+
+    # Create comparator
+    model_comparator = ModelComparator()
+
+    # Compare models dict
+    ranked_models = model_comparator.compare_models_by_states(
+        pipelines=to_compare_models,
+        states=COMPARATION_STATES,
+        by=by,
+    )
+
+    # Display better models for state
+    for state in COMPARATION_STATES:
+        print(ranked_models[ranked_models["state"] == state])
+
+    # Show plots
+    if show_plots:
+        for state in COMPARATION_STATES:
+            model_comparator.create_state_comparison_plot(
+                state=state,
+                model_names=MODEL_NAMES,
+                lang="en",
+            )
+            # plt.show()
+            plt.savefig(os.path.join("imgs", "comparision_plots", f"{state}.png"))
 
 
 # Subgroup for the experiment group

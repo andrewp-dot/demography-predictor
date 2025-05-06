@@ -502,6 +502,20 @@ class EvaluateModel(BaseEvaluation):
         # Make predictions and save reference data
         self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
 
+        # Add this for plot creation
+        try:
+            state = test_X["country_name"].iloc[0]
+            self.multiple_states_evaluations[state] = {
+                "reference": self.reference_values,
+                "predicted": self.predicted,
+                "years": self.predicted_years,
+            }
+        except KeyError:
+            # If the country name is not in the test data, we cannot save it
+            logger.warning(
+                "Could not find country name in the test data. Skipping saving reference and predicted values to the multiple_states_evaluations."
+            )
+
         # Get overall metrics for model
         return self.get_overall_metrics()
 
@@ -524,19 +538,20 @@ class EvaluateModel(BaseEvaluation):
         # Make predictions and save reference data
         self.__get_refference_and_predicted_data(test_X=test_X, test_y=test_y)
 
-        # Get metrics for per target evaluation
-        if isinstance(self.pipeline, FeatureModelPipeline):
-            TARGETS = self.pipeline.model.TARGETS
+        TARGETS = self.pipeline.TARGETS
 
-        elif isinstance(self.pipeline, TargetModelPipeline):
-            TARGETS = self.pipeline.model.TARGETS
-
-        elif isinstance(self.pipeline, PredictorPipeline):
-            TARGETS = self.pipeline.global_model_pipeline.model.TARGETS
-
-        else:
-            raise ValueError(
-                f"Not supported type of pipeline '{self.pipeline.__class__.__name__}'."
+        # Add this for plot creation
+        try:
+            state = test_X["country_name"].iloc[0]
+            self.multiple_states_evaluations[state] = {
+                "reference": self.reference_values,
+                "predicted": self.predicted,
+                "years": self.predicted_years,
+            }
+        except KeyError:
+            # If the country name is not in the test data, we cannot save it
+            logger.warning(
+                "Could not find country name in the test data. Skipping saving reference and predicted values to the multiple_states_evaluations."
             )
         return self.get_target_specific_metrics(targets=TARGETS)
 
