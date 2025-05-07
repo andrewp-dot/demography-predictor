@@ -15,6 +15,9 @@ from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapp
 settings = Config()
 
 
+# def get_statstistical_model(name: str) -> StatisticalMultistateWrapper:
+
+
 def get_model(name: str) -> Any:
     """
     Get the model object from the specified directory in the config file.
@@ -34,10 +37,6 @@ def get_model(name: str) -> Any:
         raise ValueError(f"The specified model '{name}' does not exist!")
 
     model = joblib.load(MODEL_PATH)
-
-    # # TODO: improve this for lazy loading
-    # if isinstance(model, StatisticalMultistateWrapper):
-    #     raise NotImplementedError("")
 
     return model
 

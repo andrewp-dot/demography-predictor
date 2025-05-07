@@ -36,16 +36,29 @@ class Config(BaseSettings):
     model_config: dict = SettingsConfigDict(env_file=".env", frozen=True)
 
     # Plot description language
-    dataset_version: str = Field(..., env="DATASET_VERSION", default=DATASET_VERSION)
+    dataset_version: str = Field(default=DATASET_VERSION, env="DATASET_VERSION")
     plot_description_language: str = Field(
-        ..., env="PLOT_DESCRIPTION_LANGUAGE", default=PLOT_DESCRIPTION_LANGUAGE
+        default=PLOT_DESCRIPTION_LANGUAGE, env="PLOT_DESCRIPTION_LANGUAGE"
     )
 
     # Dataset settings
-    selected_dataset: str = f"dataset_{dataset_version}"
-    dataset_dir: str = os.path.join(".", "data_science", "datasets", selected_dataset)
-    dataset_path: str = os.path.join(dataset_dir, f"{selected_dataset}.csv")
-    states_data_dir: str = os.path.join(dataset_dir, "states")
+    @property
+    def selected_dataset(self):
+        return f"dataset_{self.dataset_version}"
+
+    # dataset_dir: str = os.path.join(".", "data_science", "datasets", selected_dataset)
+
+    @property
+    def dataset_dir(self):
+        return os.path.join(".", "data_science", "datasets", self.selected_dataset)
+
+    @property
+    def dataset_path(self):
+        return os.path.join(self.dataset_dir, f"{self.selected_dataset}.csv")
+
+    @property
+    def states_data_dir(self):
+        return os.path.join(self.dataset_dir, "states")
 
     # Local model benchmark settings
     model_experiments_rsults_dir: str = os.path.join(

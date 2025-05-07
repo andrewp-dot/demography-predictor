@@ -7,9 +7,7 @@ import logging
 from typing import Dict, Union, List, Optional
 import torch
 
-# Custom library imports
-from src.utils.log import setup_logging
-
+# Custom imports
 from src.feature_model.model import BaseRNN
 from src.feature_model.finetunable_model import FineTunableLSTM
 from src.statistical_models.arima import CustomARIMA

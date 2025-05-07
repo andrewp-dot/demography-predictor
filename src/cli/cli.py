@@ -14,7 +14,6 @@ from config import Config
 from src.utils.log import setup_logging
 
 
-
 from model_experiments.main import (
     print_available_experiments,
     run_all_experiments,
@@ -41,6 +40,7 @@ from src.pipeline import PredictorPipeline
 from model_experiments.experiments.predictor_experiments import run_all
 
 settings = Config()
+
 
 @click.group()
 def cli():
@@ -196,9 +196,9 @@ def compare_predictions(models: str, state: str, target_year: int, plot_prefix: 
 
     # Plot the predictions
     for i, target in enumerate(TARGETS):
-        axes[i].set_title(f"{LABELS[LANG]["prediction_for"]} {target}")
+        axes[i].set_title(f"{LABELS[LANG]['prediction_for']} {target}")
         axes[i].set_xlabel({LABELS[LANG]["year"]})
-        axes[i].set_ylabel({LABELS[LANG]["year"]})
+        axes[i].set_ylabel({LABELS[LANG]["value"]})
 
         for name, prediction_df in model_predictions.items():
             target_df = prediction_df[["year", target]]
@@ -250,7 +250,7 @@ def compare_predictions(models: str, state: str, target_year: int, plot_prefix: 
     help="By which metric to compare models. Default is 'overall-metrics'.",
     default="overall-metrics",
 )
-def compare_predictorsl(
+def compare_predictors(
     models: str,
     states: str,
     show_plots: bool,
