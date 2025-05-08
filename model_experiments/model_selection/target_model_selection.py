@@ -45,7 +45,7 @@ from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 logger = logging.getLogger("benchmark")
 
 
-class SecondModelSelection(BaseExperiment):
+class TargetModelSelection(BaseExperiment):
     """
     Question: How to evaluate this? GROUND TRUTH testing? For now YES.
     """
@@ -516,14 +516,7 @@ class SecondModelSelection(BaseExperiment):
         # Plot top N models
         self.create_and_save_state_comparision_plots(
             comparator=comparator,
-            states=[
-                "Czechia",
-                "Slovak Republic",
-                "United States",
-                "Honduras",
-                "China",
-                "Rwanda",
-            ],
+            states=evaluation_states,
             models=TOP_N_MODELS,
         )
 
@@ -533,7 +526,7 @@ if __name__ == "__main__":
     setup_logging()
 
     # Experiment for aging
-    exp_aging = SecondModelSelection(
+    exp_aging = TargetModelSelection(
         description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
         target_group_prefix="aging",
     )
@@ -541,14 +534,14 @@ if __name__ == "__main__":
     exp_aging.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=False)
 
     # Experiment for population total
-    exp_pop_total = SecondModelSelection(
+    exp_pop_total = TargetModelSelection(
         description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
         target_group_prefix="pop_total",
     )
     exp_pop_total.run(split_rate=0.8, force_retrain=False, only_rnn_retrain=False)
 
     # Experiment for gender distribution
-    exp_gender_dist = SecondModelSelection(
+    exp_gender_dist = TargetModelSelection(
         description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
         target_group_prefix="gender_dist",
     )

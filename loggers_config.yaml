@@ -45,11 +45,11 @@ handlers:
     # level: INFO
     filename: logs/data_preprocessing.log
 
-  rnn_benchmark:
+  model_experiments:
     class: logging.FileHandler
     formatter: default
     # level: INFO
-    filename: logs/rnn_benchmark_experiments.log
+    filename: logs/model_experiments.log
 
   api:
     class: logging.FileHandler
@@ -89,9 +89,9 @@ loggers:
     handlers: [console]
     propagate: no
 
-  benchmark:
+  model_experiments:
     level: INFO
-    handlers: [console, rnn_benchmark]
+    handlers: [console, model_experiments]
     propagate: no
 
   api:

@@ -12,10 +12,6 @@ from data_science.preprocessors.base import BasePreprocessor
 
 settings = DatasetCreatorSettings()
 
-# This is main in here
-# TODO:
-# 1. Comments in here -> make code more readable
-# 2. Delete states with low number of records
 
 MAX_NAN_VALUES = 0
 
@@ -170,7 +166,7 @@ class DatasetPreprocessor(BasePreprocessor):
             # If there are enough known points (more than 70% of values), interpolate
             if (
                 len(y) / len(series) > 0.7 and len(x) > 2
-            ):  # for cubic interpolation there must by minimum of 2 values
+            ):  # for cubic interpolation there must by minimum of 3 values
                 spline = interp1d(x, y, kind="cubic", fill_value="extrapolate")
                 series[missing] = spline(missing)
             return series

@@ -3,7 +3,7 @@
 
 # Standard libraries
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional, Literal
 import traceback
 import pprint
 
@@ -20,24 +20,30 @@ from model_experiments.experiments.model_experiments import (
     FineTunedModels,
     CompareWithStatisticalModels,
 )
-from model_experiments.base_experiment import Experiment
+
+# Selection model experiments
+from model_experiments.model_selection.feature_model_selection import (
+    FeatureModelExperiment,
+)
+from model_experiments.model_selection.target_model_selection import (
+    TargetModelSelection,
+)
+from model_experiments.base_experiment import BaseExperiment
 
 
 settings = Config()
-logger = logging.getLogger("benchmark")
+logger = logging.getLogger("model_experiments")
 
-# TODO: Define experiments
-# TODO: doc comments
 
-# Setup logging if it is not
-# setup_logging()
+# TODO: rework this to run it by CLI
 
-data_experiments: List[Experiment] = [
+
+data_experiments: List[BaseExperiment] = [
     # s
 ]
 
 # List of available experimets
-model_experiments: List[Experiment] = [
+model_experiments: List[BaseExperiment] = [
     # LSTMOptimalParameters(),
     # RNNvsStatisticalMethodsSingleFeature(),
     # RNNvsStatisticalMethods(),
@@ -48,23 +54,48 @@ model_experiments: List[Experiment] = [
 # Setup experiments -> convert experiment list to dict
 
 
-# TODO: rework this to run it by CLI
-AVAILABLE_EXPERIMENTS_BY_GROUP: Dict[str, Dict[str, Experiment]] = {
-    "model_experiments": {exp.exp.name: exp for exp in data_experiments},
-    "data_experiments": {exp.exp.name: exp for exp in model_experiments},
+AVAILABLE_EXPERIMENTS: Dict[str, BaseExperiment] = {
+    exp.name: exp for exp in (model_experiments + data_experiments)
 }
 
-AVAILABLE_EXPERIMENTS: Dict[str, Experiment] = {
-    exp.exp.name: exp for exp in (model_experiments + data_experiments)
+
+# Model selection experiments
+MODEL_SELECTION_EXPERIMENTS: Dict[str, BaseExperiment] = {
+    # Create experiment
+    "feature_model": FeatureModelExperiment(
+        description="Compare models for predicting all features which are used for target predictions."
+    ),
+    "target_model_aging": TargetModelSelection(
+        description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
+        target_group_prefix="aging",
+    ),
+    "target_model_pop_total": TargetModelSelection(
+        description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
+        target_group_prefix="pop_total",
+    ),
+    "target_model_gender_dist": TargetModelSelection(
+        description="Compares models to predict the target variable(s) using past data and future known (ground truth) data.",
+        target_group_prefix="gender_dist",
+    ),
+}
+
+
+# All experiments by group
+AVAILABLE_EXPERIMENTS_BY_GROUP: Dict[str, Dict[str, BaseExperiment]] = {
+    "model_experiments": {exp.name: exp for exp in data_experiments},
+    "data_experiments": {exp.name: exp for exp in model_experiments},
+    "model_selection": MODEL_SELECTION_EXPERIMENTS,
 }
 
 
 def print_available_experiments(
     with_description: bool = False,
-) -> Dict[str, Experiment]:
+) -> Dict[str, BaseExperiment]:
 
     print("Available experiments:")
     print("-" * 50)
+
+    # 1. print model selection experiments
 
     for exp_group, experiments_dict in AVAILABLE_EXPERIMENTS_BY_GROUP.items():
         # Print experiments by group
@@ -73,7 +104,7 @@ def print_available_experiments(
         # Print single experiments
         if with_description:
             for exp_name, exp in experiments_dict.items():
-                print(f" {exp_name}".ljust(50), exp.exp.description)
+                print(f" {exp_name}".ljust(50), exp.description)
 
         else:
             for exp_name in experiments_dict.keys():
@@ -82,12 +113,13 @@ def print_available_experiments(
     return
 
 
+# Fix this
 def run_experiments(
     experiments: List[str], state: str = "Czechia", split_rate: float = 0.8
 ) -> None:
 
     try:
-        to_run_experiments_dict: Dict[str, Experiment] = {
+        to_run_experiments_dict: Dict[str, BaseExperiment] = {
             name: AVAILABLE_EXPERIMENTS[name] for name in experiments
         }
     except KeyError as e:
@@ -125,24 +157,50 @@ def run_all_experiments(state: str = "Czechia", split_rate: float = 0.8) -> None
         logger.error(f"Failed experiemnts: {formatted_failed_experiments}")
 
 
+## Model selection experiments
+def run_feature_model_selection(
+    split_rate: float = 0.8,
+    force_retrain: bool = False,
+    only_rnn_retrain: bool = False,
+    evaluation_states: Optional[List[str]] = None,
+) -> None:
+    # Create experiment
+    feature_model_selection = AVAILABLE_EXPERIMENTS_BY_GROUP["model_selection"][
+        "feature_model"
+    ]
+
+    # Run the experiment
+    feature_model_selection.run(
+        split_rate=split_rate,
+        force_retrain=force_retrain,
+        only_rnn_retrain=only_rnn_retrain,
+        evaluation_states=evaluation_states,
+    )
+
+
+def run_target_model_selection(
+    split_rate: float = 0.8,
+    force_retrain: bool = False,
+    only_rnn_retrain: bool = False,
+    evaluation_states: Optional[List[str]] = None,
+    exp_type: Literal["aging", "pop_total", "gender_dist"] = "aging",
+) -> None:
+
+    target_model_selection = AVAILABLE_EXPERIMENTS_BY_GROUP["model_selection"][
+        f"target_model_{exp_type}"
+    ]
+
+    target_model_selection.run(
+        split_rate=split_rate,
+        force_retrain=force_retrain,
+        only_rnn_retrain=only_rnn_retrain,
+        evaluation_states=evaluation_states,
+    )
+
+
 if __name__ == "__main__":
     # Setup logging
     setup_logging()
 
     # Print all experiments
     print_available_experiments(True)
-
-
-# Use different scaler(s)
-# 1. Robust scalers, MinMax, Logaritmic transformation
-
-# Odstranit outliers?
-# Zaokrúhlenie dát, čo s nimi?
-
-# Spájanie modelov:
-# Stacking? - priemerovanie vysledkov viacerych modelov subezne
-# Boosting? - Ada boost (les neuroniek? :D) , XGBoost
-
-# TODO: try different loss functions
-
-#  criterion = nn.HuberLoss(delta=1.0)

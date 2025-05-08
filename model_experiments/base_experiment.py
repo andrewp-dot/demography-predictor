@@ -204,22 +204,22 @@ class BaseExperiment:
 
 
 # Hardcode the experiments
-class Experiment:
+# class Experiment:
 
-    def __init__(
-        self,
-        name: str,
-        model: BaseRNN,
-        features: List[str],
-        hyperparameters: RNNHyperparameters,
-        experiment: BaseExperiment,
-    ):
-        self.name: str = name
-        self.model: BaseRNN = model
-        self.hyperparameters: RNNHyperparameters = hyperparameters
-        self.FEATURES: List[str] = features
-        self.exp: BaseExperiment = experiment
+#     def __init__(
+#         self,
+#         name: str,
+#         model: BaseRNN,
+#         features: List[str],
+#         hyperparameters: RNNHyperparameters,
+#         experiment: BaseExperiment,
+#     ):
+#         self.name: str = name
+#         self.model: BaseRNN = model
+#         self.hyperparameters: RNNHyperparameters = hyperparameters
+#         self.FEATURES: List[str] = features
+#         self.exp: BaseExperiment = experiment
 
-    @abstractmethod
-    def run(self, state: str = "Czechia", split_rate: float = 0.8, *args, **kwargs):
-        raise NotImplementedError("No run method is implemented for this experiment!")
+#     @abstractmethod
+#     def run(self, state: str = "Czechia", split_rate: float = 0.8, *args, **kwargs):
+#         raise NotImplementedError("No run method is implemented for this experiment!")
