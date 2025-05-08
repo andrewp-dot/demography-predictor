@@ -58,7 +58,12 @@ class EvalAllStates(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def run(self, pipeline: PredictorPipeline):
+    def run(
+        self,
+        pipeline: PredictorPipeline,
+        core_metric: str = "rmse",
+        sort_ascending: bool = True,
+    ):
 
         # Create readme
         self.create_readme(readme_name=f"{pipeline.name}_README.md")
@@ -79,9 +84,8 @@ class EvalAllStates(BaseExperiment):
         # Save to json file
         with open(os.path.join(self.plot_dir, "all_states_evaluation.json"), "w") as f:
 
-            # Sort
             eval_df.sort_values(
-                by=["rmse", "r2"], ascending=[True, False], inplace=True
+                by=[core_metric], ascending=[sort_ascending], inplace=True
             )
             eval_df.to_json(f, indent=4, orient="records")
 
@@ -115,7 +119,12 @@ class EvalGroupStates(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def __evaluate_for_income_groups(self, pipeline: PredictorPipeline):
+    def __evaluate_for_income_groups(
+        self,
+        pipeline: PredictorPipeline,
+        core_metric: str = "rmse",
+        sort_ascending: bool = True,
+    ):
 
         STATES_BY_WEALTH = StatesByWealth()
         groups = STATES_BY_WEALTH.model_fields
@@ -144,14 +153,21 @@ class EvalGroupStates(BaseExperiment):
             all_group_dfs.append(group_metric_df)
 
         all_groups_df = pd.concat(all_group_dfs, axis=0)
-        all_groups_df.sort_values(by=["rmse"], ascending=[True], inplace=True)
+        all_groups_df.sort_values(
+            by=[core_metric], ascending=[sort_ascending], inplace=True
+        )
 
         self.readme_add_section(
             title=f"## All income groups evaluation:",
             text=f"\n```{all_groups_df}\n```\n\n",
         )
 
-    def __evaluate_for_geolocation_groups(self, pipeline: PredictorPipeline):
+    def __evaluate_for_geolocation_groups(
+        self,
+        pipeline: PredictorPipeline,
+        core_metric: str = "rmse",
+        sort_ascending: bool = True,
+    ):
 
         STATES_BY_GEOLOCATION = StatesByGeolocation()
         groups = STATES_BY_GEOLOCATION.model_fields
@@ -180,23 +196,34 @@ class EvalGroupStates(BaseExperiment):
             all_group_dfs.append(group_metric_df)
 
         all_groups_df = pd.concat(all_group_dfs, axis=0)
-        all_groups_df.sort_values(by=["rmse"], ascending=[True], inplace=True)
+        all_groups_df.sort_values(
+            by=[core_metric], ascending=[sort_ascending], inplace=True
+        )
 
         self.readme_add_section(
             title=f"## All geolocation groups evaluation:",
             text=f"\n```{all_groups_df}\n```\n\n",
         )
 
-    def run(self, pipeline: PredictorPipeline):
+    def run(
+        self,
+        pipeline: PredictorPipeline,
+        core_metric: str = "rmse",
+        sort_ascending: bool = True,
+    ):
 
         # Create readme
         self.create_readme(readme_name=f"{pipeline.name}_README.md")
 
         # Evaluate for income groups
-        self.__evaluate_for_income_groups(pipeline=pipeline)
+        self.__evaluate_for_income_groups(
+            pipeline=pipeline, core_metric=core_metric, sort_ascending=sort_ascending
+        )
 
         # Evaluate for geolocation groups
-        self.__evaluate_for_geolocation_groups(pipeline=pipeline)
+        self.__evaluate_for_geolocation_groups(
+            pipeline=pipeline, core_metric=core_metric, sort_ascending=sort_ascending
+        )
 
 
 class EvalConvergenceExperiment(BaseExperiment):

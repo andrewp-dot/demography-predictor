@@ -351,6 +351,8 @@ class CompareWithStatisticalModels(BaseExperiment):
         split_rate: float = 0.8,
         evaluation_states: Optional[List[str]] = None,
         force_retrain: bool = False,
+        core_metric: str = "rmse",
+        sort_ascending: bool = True,
     ):
         # Create readme
         self.create_readme()
@@ -369,7 +371,7 @@ class CompareWithStatisticalModels(BaseExperiment):
 
         # Sort by target and then by mape
         per_target_metrics_df_sorted = per_target_metrics_df.sort_values(
-            by=["target", "mape"], ascending=[True, True]
+            by=["target", core_metric], ascending=[True, sort_ascending]
         )
 
         # Get the best model per target (lowest mape)
@@ -381,7 +383,9 @@ class CompareWithStatisticalModels(BaseExperiment):
             ["mae", "mse", "rmse", "mape", "r2"]
         ].mean()
 
-        model_avg_df = model_avg_df.sort_values(by="mape")
+        model_avg_df = model_avg_df.sort_values(
+            by=core_metric, ascending=sort_ascending
+        )
 
         # Optional: Reset index to include 'model' as a column
         model_avg_df_reset = model_avg_df.reset_index()
@@ -442,7 +446,13 @@ class DifferentHiddenAndNumOfLayers(BaseExperiment):
     def __init__(self, description: str):
         super().__init__(name=self.__class__.__name__, description=description)
 
-    def run(self, split_rate: float = 0.8, evaluation_states: List[str] = None):
+    def run(
+        self,
+        split_rate: float = 0.8,
+        evaluation_states: List[str] = None,
+        core_metric: str = "rmse",
+        sort_ascending: bool = True,
+    ):
         # Create readme
         self.create_readme()
 
@@ -500,7 +510,7 @@ class DifferentHiddenAndNumOfLayers(BaseExperiment):
 
         # Sort the df by the model type
         overall_metrics_df_sorted = overall_metrics_df.sort_values(
-            by=["model_type", "mse"], ascending=[True, True]
+            by=["model_type", core_metric], ascending=[True, sort_ascending]
         ).reset_index(drop=True)
 
         # Drop the model type

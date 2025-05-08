@@ -22,8 +22,6 @@ from sklearn.metrics import (
 
 
 # Custom imports
-from src.utils.log import setup_logging
-
 from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
 
 
