@@ -36,13 +36,13 @@ from src.compare_models.compare import ModelComparator
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
 
-logger = logging.getLogger("benchmark")
+logger = logging.getLogger("method_selection")
 
 
 class FeatureModelExperiment(BaseExperiment):
 
     SAVE_MODEL_DIR: str = os.path.abspath(
-        os.path.join(".", "model_selection", "trained_models")
+        os.path.join(".", "model_experiments", "model_selection", "trained_models")
     )
 
     STATS_MODEL_NAMES: List[str] = ["feature_ARIMA"]
@@ -221,7 +221,10 @@ class FeatureModelExperiment(BaseExperiment):
             try:
                 return self.get_models(model_names=self.MODEL_NAMES)
             except Exception as e:
+                import traceback
+
                 logger.info(f"Models not found. Reatraining all models ({e}).")
+                logger.critical("Full traceback:\n" + traceback.format_exc())
 
         # If I need to train only RNNs, because re-training all ARIMA models takes too long
         if only_rnn_retrain:
@@ -378,6 +381,20 @@ class FeatureModelExperiment(BaseExperiment):
                 state=state,
                 model_names=models,
             )
+
+            # Make bigger font size for thesis
+            for ax in fig.axes:
+                ax.set_title(ax.get_title(), fontsize=16)
+                ax.set_xlabel(ax.get_xlabel(), fontsize=14)
+                ax.set_ylabel(ax.get_ylabel(), fontsize=14)
+                ax.tick_params(axis="both", which="major", labelsize=12)
+
+                # If legend exists, update its font size
+                legend = ax.get_legend()
+                if legend is not None:
+                    legend.set_title(legend.get_title().get_text(), prop={"size": 12})
+                    for text in legend.get_texts():
+                        text.set_fontsize(12)
             self.save_plot(fig_name=f"{state}_predictions.png", figure=fig)
 
     def run(
@@ -386,10 +403,11 @@ class FeatureModelExperiment(BaseExperiment):
         force_retrain: bool = False,
         only_rnn_retrain: bool = False,
         evaluation_states: Optional[List[str]] = None,
+        core_metric: Literal["mae", "rmse", "mape"] = "rmse",
     ) -> None:
 
         # Setup readme
-        self.create_readme(readme_name="experiment_based_params_README.md")
+        self.create_readme(readme_name="README.md")
 
         # Load data
         loader = StatesDataLoader()
@@ -431,7 +449,7 @@ class FeatureModelExperiment(BaseExperiment):
         for model in self.MODEL_NAMES:
             model_state_metrics_df = overall_metrics_per_state_df[
                 overall_metrics_per_state_df["model"] == model
-            ].sort_values(by=["r2", "mse"], ascending=[False, True])
+            ].sort_values(by=[core_metric], ascending=[True])
 
             # Write section
             self.readme_add_section(
@@ -453,12 +471,12 @@ class FeatureModelExperiment(BaseExperiment):
 
         # Sort by a specific metric (e.g., mae) and reset the index
         per_target_metrics_df_sorted = per_target_metrics_df_mean.sort_values(
-            by=["target", "r2", "mse"], ascending=[True, False, True]
+            by=["target", core_metric], ascending=[True, True]
         ).reset_index(drop=True)
 
         # Add rank column based on sorted values
         per_target_metrics_df_sorted["rank"] = (
-            per_target_metrics_df_sorted["mae"].rank(method="first").astype(int)
+            per_target_metrics_df_sorted[core_metric].rank(method="first").astype(int)
         )
 
         self.readme_add_section(
@@ -495,11 +513,10 @@ class FeatureModelExperiment(BaseExperiment):
             comparator=comparator,
             states=[
                 "Czechia",
-                "Slovak Republic",
-                "United States",
                 "Honduras",
+                "United States",
                 "China",
-                "Rwanda",
+                "Germany",
             ],
             models=TOP_N_MODELS,
         )

@@ -45,7 +45,7 @@ from src.compare_models.compare import ModelComparator
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
-logger = logging.getLogger("benchmark")
+logger = logging.getLogger("method_selection")
 
 
 class TargetModelSelection(BaseExperiment):
@@ -54,7 +54,7 @@ class TargetModelSelection(BaseExperiment):
     """
 
     SAVE_MODEL_DIR: str = os.path.abspath(
-        os.path.join(".", "model_selection", "trained_models")
+        os.path.join(".", "model_experiments", "model_selection", "trained_models")
     )
 
     MODEL_NAMES: List[str] = [
@@ -422,6 +422,7 @@ class TargetModelSelection(BaseExperiment):
         force_retrain: bool = False,
         only_rnn_retrain: bool = False,
         evaluation_states: Optional[List[str]] = None,
+        core_metric: Literal["mae", "rmse", "mape"] = "rmse",
     ) -> None:
 
         # Create readme
@@ -471,7 +472,7 @@ class TargetModelSelection(BaseExperiment):
             model_state_metrics_df = overall_metrics_per_state_df[
                 overall_metrics_per_state_df["model"]
                 == f"{self.TARGET_GROUP_PREFIX}_{model}"
-            ].sort_values(by=["r2", "mse"], ascending=[False, True])
+            ].sort_values(by=[core_metric], ascending=[True])
 
             # Write section
             self.readme_add_section(
@@ -493,12 +494,12 @@ class TargetModelSelection(BaseExperiment):
 
         # Sort by a specific metric (e.g., mae) and reset the index
         per_target_metrics_df_sorted = per_target_metrics_df_mean.sort_values(
-            by=["target", "r2", "mse"], ascending=[True, False, True]
+            by=["target", core_metric], ascending=[True, True]
         ).reset_index(drop=True)
 
         # Add rank column based on sorted values
         per_target_metrics_df_sorted["rank"] = (
-            per_target_metrics_df_sorted["mae"].rank(method="first").astype(int)
+            per_target_metrics_df_sorted[core_metric].rank(method="first").astype(int)
         )
 
         self.readme_add_section(
@@ -519,7 +520,13 @@ class TargetModelSelection(BaseExperiment):
         # Plot top N models
         self.create_and_save_state_comparision_plots(
             comparator=comparator,
-            states=evaluation_states,
+            states=[
+                "Czechia",
+                "Honduras",
+                "United States",
+                "China",
+                "Germany",
+            ],
             models=TOP_N_MODELS,
         )
 

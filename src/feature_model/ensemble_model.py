@@ -38,6 +38,22 @@ class PureEnsembleModel:
             target_models
         )
 
+        self.sequence_length: int = self.__get_sequence_length()
+
+    def __get_sequence_length(self) -> int:
+        """
+        Get the sequence length of the model.
+
+        Returns:
+            out: int: The sequence length of the model.
+        """
+
+        for model in self.model.values():
+            if isinstance(model, BaseRNN) or isinstance(model, FineTunableLSTM):
+                return model.hyperparameters.sequence_length
+            else:
+                return 10
+
     # TODO: put the tensor on the same device as the model is.
     def predict(
         self, input_data: pd.DataFrame, last_year: int, target_year: int

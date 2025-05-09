@@ -29,15 +29,24 @@ from src.train_scripts.train_predictors import (
 from src.shap_explainer.explain import explain_cli
 
 ## Compare predictions command
-
 from src.preprocessors.state_preprocessing import StateDataLoader
+
 
 ## Compare command
 from src.compare_models.compare import ModelComparator
 from src.pipeline import PredictorPipeline
 
+
 ## Predictor-experiments command
 from model_experiments.experiments.predictor_experiments import run_all
+
+
+## Model selection experiments
+from model_experiments.main import (
+    run_feature_model_selection,
+    run_target_model_selection,
+)
+
 
 settings = Config()
 
@@ -54,7 +63,7 @@ def cli():
 @cli.group()
 def model_experiments():
     """
-    Defines the main cli group
+    Defines the model experiment group. Used to run experiments on the models.
     """
     setup_logging()
     pass
@@ -76,7 +85,7 @@ def model_experiments():
 @click.option(
     "--experimental",
     is_flag=True,
-    help="If set to true, loads the pipeline from the trained_modes/experimental_models folder",
+    help="If set to true, loads the pipeline from the trained_modes/experimental_models folder.",
     default=False,
 )
 @click.option(
@@ -98,6 +107,16 @@ def explain(
     core_metric: Literal["mae", "mse", "rmse", "r2", "mape"],
     additional_states: str,
 ):
+    """
+    Explains the model using SHAP. The model is loaded from the trained_models folder.
+
+    Args:
+        name (str): Name of the model to explain
+        type (Literal[&quot;feature&quot;, &quot;target&quot;, &quot;full&quot;): Type of the model (pipeline).
+        experimental (bool): If set to true, loads the pipeline from the trained_modes/experimental_models folder.
+        core_metric (Literal[&quot;mae&quot;, &quot;mse&quot;, &quot;rmse&quot;, &quot;r2&quot;, &quot;mape&quot;]): Core metric to sort the evaluation by.
+        additional_states (str): States to include in the explanation.
+    """
 
     # Parse states
     additional_states_list = (
@@ -352,7 +371,7 @@ def run(all, experiments, state, split_rate):
 @cli.group()
 def train():
     """
-    Defines the main cli group
+    Defines training group, used to train models.
     """
     setup_logging()
     pass
@@ -485,7 +504,7 @@ def gender_dist_predictor(
 @cli.group()
 def predictor_experiments():
     """
-    Defines the main cli group
+    The predictor validation/evaluation experiments.
     """
     setup_logging()
     pass
@@ -500,6 +519,119 @@ def predictor_experiments():
 )
 def run(name: str):
     run_all(pipeline_name=name)
+
+
+@cli.group()
+def model_selection():
+    """
+    The model selection experiments.
+    """
+    setup_logging()
+    pass
+
+
+@model_selection.command()
+@click.option(
+    "--split-rate",
+    type=float,
+    help="Size of the training set. For example 0.8 is equal to 80% of the dataset is used for training.",
+    default=0.8,
+)
+@click.option(
+    "--force-retrain",
+    is_flag=True,
+    help="If set, the model will be retrained even if it already exists.",
+)
+@click.option(
+    "--only-rnn-retrain",
+    is_flag=True,
+    help="If set, only the RNN model will be retrained.",
+)
+@click.option(
+    "--evaluation-states",
+    type=str,
+    help='List of comma separated states to use for evaluation (or plotting) as a comma separated strings string, e.g. --evaluation-states "Czechia, Honduras"',
+)
+@click.option(
+    "--core-metric",
+    type=click.Choice(["mae", "rmse", "mape"]),
+    default="rmse",
+    help="Core metric to sort the evaluation by.",
+)
+def feature_model(
+    split_rate: float = 0.8,
+    force_retrain: bool = False,
+    only_rnn_retrain: bool = False,
+    evaluation_states: Optional[List[str]] = None,
+    core_metric: Literal["mae", "rmse", "mape"] = "rmse",
+):
+    """
+    Runs the feature model selection experiments.
+    """
+    # Run the feature model selection
+    run_feature_model_selection(
+        split_rate=split_rate,
+        force_retrain=force_retrain,
+        only_rnn_retrain=only_rnn_retrain,
+        evaluation_states=evaluation_states,
+        core_metric=core_metric,
+    )
+
+
+@model_selection.command()
+@click.option(
+    "--split-rate",
+    type=float,
+    help="Size of the training set. For example 0.8 is equal to 80% of the dataset is used for training.",
+    default=0.8,
+)
+@click.option(
+    "--force-retrain",
+    is_flag=True,
+    help="If set, the model will be retrained even if it already exists.",
+)
+@click.option(
+    "--only-rnn-retrain",
+    is_flag=True,
+    help="If set, only the RNN model will be retrained.",
+)
+@click.option(
+    "--evaluation-states",
+    type=str,
+    help='List of comma separated states to use for evaluation (or plotting) as a comma separated strings string, e.g. --evaluation-states "Czechia, Honduras"',
+)
+@click.option(
+    "--exp-type",
+    type=click.Choice(["aging", "pop_total", "gender_dist"]),
+    default="aging",
+    help="Type of the experiment to run. Default is 'aging'.",
+)
+@click.option(
+    "--core-metric",
+    type=click.Choice(["mae", "rmse", "mape"]),
+    default="rmse",
+    help="Core metric to sort the evaluation by.",
+)
+def target_model(
+    split_rate: float = 0.8,
+    force_retrain: bool = False,
+    only_rnn_retrain: bool = False,
+    evaluation_states: Optional[List[str]] = None,
+    exp_type: Literal["aging", "pop_total", "gender_dist"] = "aging",
+    core_metric: Literal["mae", "rmse", "mape"] = "rmse",
+):
+    """
+    Runs the target model selection experiments.
+    """
+    # Run the target model selection
+    run_target_model_selection(
+        split_rate=split_rate,
+        force_retrain=force_retrain,
+        only_rnn_retrain=only_rnn_retrain,
+        evaluation_states=evaluation_states,
+        exp_type=exp_type,
+        core_metric=core_metric,
+    )
 
 
 if __name__ == "__main__":

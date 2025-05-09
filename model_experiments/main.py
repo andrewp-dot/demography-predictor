@@ -163,6 +163,7 @@ def run_feature_model_selection(
     force_retrain: bool = False,
     only_rnn_retrain: bool = False,
     evaluation_states: Optional[List[str]] = None,
+    core_metric: Literal["mae", "rmse", "mape"] = "rmse",
 ) -> None:
     # Create experiment
     feature_model_selection = AVAILABLE_EXPERIMENTS_BY_GROUP["model_selection"][
@@ -175,6 +176,7 @@ def run_feature_model_selection(
         force_retrain=force_retrain,
         only_rnn_retrain=only_rnn_retrain,
         evaluation_states=evaluation_states,
+        core_metric=core_metric,
     )
 
 
@@ -184,6 +186,7 @@ def run_target_model_selection(
     only_rnn_retrain: bool = False,
     evaluation_states: Optional[List[str]] = None,
     exp_type: Literal["aging", "pop_total", "gender_dist"] = "aging",
+    core_metric: Literal["mae", "rmse", "mape"] = "rmse",
 ) -> None:
 
     target_model_selection = AVAILABLE_EXPERIMENTS_BY_GROUP["model_selection"][
@@ -195,6 +198,7 @@ def run_target_model_selection(
         force_retrain=force_retrain,
         only_rnn_retrain=only_rnn_retrain,
         evaluation_states=evaluation_states,
+        core_metric=core_metric,
     )
 
 

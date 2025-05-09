@@ -33,7 +33,6 @@ from src.feature_model.model import RNNHyperparameters, BaseRNN
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
 
-# settings = FeatureModelBenchmarkSettings()
 logger = logging.getLogger("benchmark")
 
 

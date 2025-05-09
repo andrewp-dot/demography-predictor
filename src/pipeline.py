@@ -170,6 +170,8 @@ class FeatureModelPipeline(BasePipeline):
 
         if isinstance(model, StatisticalMultistateWrapper):
             sequence_len: int = 10
+        elif isinstance(model, PureEnsembleModel):
+            sequence_len = model.sequence_length
         else:
             sequence_len = self.model.hyperparameters.sequence_length
 

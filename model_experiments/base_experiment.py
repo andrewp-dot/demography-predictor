@@ -52,7 +52,6 @@ class BaseExperiment:
             os.path.dirname(__file__), "experiment_results"
         )
         self.experiment_dir: str = os.path.join(self.save_dir, self.name)
-        print(self.experiment_dir)
         self.plot_dir: str = os.path.join(self.experiment_dir, "plots")
         self.readme_path: str | None = None
 
@@ -201,25 +200,3 @@ class BaseExperiment:
         raise NotImplementedError(
             f"Experiment '{self.name}' does not have implemented the run function!"
         )
-
-
-# Hardcode the experiments
-# class Experiment:
-
-#     def __init__(
-#         self,
-#         name: str,
-#         model: BaseRNN,
-#         features: List[str],
-#         hyperparameters: RNNHyperparameters,
-#         experiment: BaseExperiment,
-#     ):
-#         self.name: str = name
-#         self.model: BaseRNN = model
-#         self.hyperparameters: RNNHyperparameters = hyperparameters
-#         self.FEATURES: List[str] = features
-#         self.exp: BaseExperiment = experiment
-
-#     @abstractmethod
-#     def run(self, state: str = "Czechia", split_rate: float = 0.8, *args, **kwargs):
-#         raise NotImplementedError("No run method is implemented for this experiment!")
