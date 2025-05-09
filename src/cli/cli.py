@@ -569,7 +569,12 @@ def feature_model(
     Runs the feature model selection experiments.
     """
 
-    evaluation_states_list = [state.strip() for state in evaluation_states.split(",")]
+    evaluation_states_list = None
+    if evaluation_states:
+        evaluation_states_list = [
+            state.strip() for state in evaluation_states.split(",")
+        ]
+
     # Run the feature model selection
     run_feature_model_selection(
         split_rate=split_rate,
@@ -626,7 +631,11 @@ def target_model(
     Runs the target model selection experiments.
     """
 
-    evaluation_states_list = [state.strip() for state in evaluation_states.split(",")]
+    evaluation_states_list = None
+    if evaluation_states:
+        evaluation_states_list = [
+            state.strip() for state in evaluation_states.split(",")
+        ]
 
     # Run the target model selection
     run_target_model_selection(
