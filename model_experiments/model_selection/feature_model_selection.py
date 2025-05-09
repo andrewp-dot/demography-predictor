@@ -392,9 +392,9 @@ class FeatureModelExperiment(BaseExperiment):
                 # If legend exists, update its font size
                 legend = ax.get_legend()
                 if legend is not None:
-                    legend.set_title(legend.get_title().get_text(), prop={"size": 12})
+                    legend.set_title(legend.get_title().get_text(), prop={"size": 10})
                     for text in legend.get_texts():
-                        text.set_fontsize(12)
+                        text.set_fontsize(10)
             self.save_plot(fig_name=f"{state}_predictions.png", figure=fig)
 
     def run(
@@ -509,15 +509,21 @@ class FeatureModelExperiment(BaseExperiment):
         TOP_N_MODELS: List[str] = list(overall_metrics_df.iloc[0:TOP_N]["model"])
 
         # Plot top N models
+        if evaluation_states:
+            print_states = evaluation_states
+        else:
+            print_states = (
+                [
+                    "Czechia",
+                    "Honduras",
+                    "United States",
+                    "China",
+                    "Germany",
+                ],
+            )
         self.create_and_save_state_comparision_plots(
             comparator=comparator,
-            states=[
-                "Czechia",
-                "Honduras",
-                "United States",
-                "China",
-                "Germany",
-            ],
+            states=print_states,
             models=TOP_N_MODELS,
         )
 

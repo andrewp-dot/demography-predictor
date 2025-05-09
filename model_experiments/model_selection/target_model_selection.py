@@ -517,16 +517,22 @@ class TargetModelSelection(BaseExperiment):
         TOP_N: int = 3
         TOP_N_MODELS: List[str] = list(overall_metrics_df.iloc[0:TOP_N]["model"])
 
-        # Plot top N models
+        if evaluation_states:
+            print_states = evaluation_states
+        else:
+            print_states = (
+                [
+                    "Czechia",
+                    "Honduras",
+                    "United States",
+                    "China",
+                    "Germany",
+                ],
+            )
+
         self.create_and_save_state_comparision_plots(
             comparator=comparator,
-            states=[
-                "Czechia",
-                "Honduras",
-                "United States",
-                "China",
-                "Germany",
-            ],
+            states=print_states,
             models=TOP_N_MODELS,
         )
 

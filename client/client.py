@@ -10,6 +10,7 @@ This is just testing client for the API to access deployed model. Can be also us
 import click
 import pandas as pd
 import matplotlib.pyplot as plt
+import json
 
 # Custom imports
 from config import Config
@@ -98,14 +99,36 @@ def info():
     default=False,
     show_default=True,
 )
-def predict(state: str, model_key: str, target_year: int, show_plots: bool):
+@click.option(
+    "--save-response",
+    is_flag=True,
+    help="If specified, saves the response to a file.",
+    required=False,
+    default=False,
+    show_default=True,
+)
+def predict(
+    state: str,
+    model_key: str,
+    target_year: int,
+    show_plots: bool,
+    save_response: bool = False,
+):
     # Send the base prediction request
     response = send_base_prediction_request(
         state=state, model_key=model_key, target_year=target_year
     )
 
     if response.status_code == 200:
-        prediction_df = pd.DataFrame(response.json()["predictions"])
+
+        if save_response:
+            # Save the response to a file
+            with open("predict_response.json", "w") as f:
+                json.dump(response.json(), f, indent=4)
+            print("Response saved to predict_response.json")
+
+        json_response = response.json()
+        prediction_df = pd.DataFrame(json_response["predictions"])
         print(prediction_df)
 
         if show_plots:
@@ -149,8 +172,21 @@ def predict(state: str, model_key: str, target_year: int, show_plots: bool):
     default=False,
     show_default=True,
 )
+@click.option(
+    "--save-response",
+    is_flag=True,
+    help="If specified, saves the response to a file.",
+    required=False,
+    default=False,
+    show_default=True,
+)
 def lakmoos_predict(
-    state: str, model_key: str, target_year: int, max_age: int, show_plots: bool
+    state: str,
+    model_key: str,
+    target_year: int,
+    max_age: int,
+    show_plots: bool,
+    save_response: bool = False,
 ):
     """
     Prediction for lakmoos prediction endpoint. Gets the predictions and also the distribution of the required parameter.
@@ -171,11 +207,19 @@ def lakmoos_predict(
     if response.status_code == 200:
         try:
             # Get and print predictions
-            prediction_df = pd.DataFrame(response.json()["predictions"])
+            if save_response:
+                # Save the response to a file
+                with open("lakmoos_predict_response.json", "w") as f:
+                    json.dump(response.json(), f, indent=4)
+
+                print("Response saved to lakmoos_predict_response.json")
+
+            json_response = response.json()
+            prediction_df = pd.DataFrame(json_response["predictions"])
             print(prediction_df)
 
             # Get and print distribution for the predictions
-            distribution_df = pd.DataFrame(response.json()["distribution"])
+            distribution_df = pd.DataFrame(json_response["distribution"])
             print(distribution_df)
 
             if show_plots:

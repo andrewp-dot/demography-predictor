@@ -3,6 +3,7 @@
 
 
 # Standard library imports
+import json
 import requests
 from typing import Dict
 
@@ -45,6 +46,7 @@ def send_base_prediction_request(
     state: str,
     model_key: str,
     target_year: int,
+    save_request: bool = False,
 ) -> requests.Response:
 
     # Get headers
@@ -84,6 +86,7 @@ def send_lakmoos_prediction_request(
     model_key: str,
     target_year: int,
     max_age: int = 100,
+    save_request: bool = False,
 ) -> requests.Response:
     # Get headers
     headers = {

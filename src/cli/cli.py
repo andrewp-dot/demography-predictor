@@ -562,18 +562,20 @@ def feature_model(
     split_rate: float = 0.8,
     force_retrain: bool = False,
     only_rnn_retrain: bool = False,
-    evaluation_states: Optional[List[str]] = None,
+    evaluation_states: Optional[str] = None,
     core_metric: Literal["mae", "rmse", "mape"] = "rmse",
 ):
     """
     Runs the feature model selection experiments.
     """
+
+    evaluation_states_list = [state.strip() for state in evaluation_states.split(",")]
     # Run the feature model selection
     run_feature_model_selection(
         split_rate=split_rate,
         force_retrain=force_retrain,
         only_rnn_retrain=only_rnn_retrain,
-        evaluation_states=evaluation_states,
+        evaluation_states=evaluation_states_list,
         core_metric=core_metric,
     )
 
@@ -616,19 +618,22 @@ def target_model(
     split_rate: float = 0.8,
     force_retrain: bool = False,
     only_rnn_retrain: bool = False,
-    evaluation_states: Optional[List[str]] = None,
+    evaluation_states: Optional[str] = None,
     exp_type: Literal["aging", "pop_total", "gender_dist"] = "aging",
     core_metric: Literal["mae", "rmse", "mape"] = "rmse",
 ):
     """
     Runs the target model selection experiments.
     """
+
+    evaluation_states_list = [state.strip() for state in evaluation_states.split(",")]
+
     # Run the target model selection
     run_target_model_selection(
         split_rate=split_rate,
         force_retrain=force_retrain,
         only_rnn_retrain=only_rnn_retrain,
-        evaluation_states=evaluation_states,
+        evaluation_states=evaluation_states_list,
         exp_type=exp_type,
         core_metric=core_metric,
     )
