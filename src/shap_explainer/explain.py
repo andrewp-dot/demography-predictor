@@ -241,7 +241,7 @@ def explain_cli(
         load_type = FeatureModelPipeline
     elif "target" == pipeline_type:
         load_type = TargetModelPipeline
-    elif "full-predictor" == PredictorPipeline:
+    elif "full-predictor" == pipeline_type:
         load_type = PredictorPipeline
     else:
         raise ValueError(f"Unsupported type of pipeline. ({pipeline_type})")

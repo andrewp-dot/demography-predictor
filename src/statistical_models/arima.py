@@ -36,7 +36,6 @@ class CustomARIMA:
         q: int,
         features: List[str],
         target: str,
-        index: str,
         trend: Optional[str] = None,
     ):
         """
@@ -60,12 +59,10 @@ class CustomARIMA:
         # Input and target variable(s)
         self.features: List[str] = features
         self.target: str = target
-        self.index: str = index
         self.trend: Optional[str] = trend
 
         # Create the model
         self.model: Optional[ARIMA] = None
-        self.last_known_year: int = None
 
     def __repr__(self) -> str:
         return f"ARIMA({self.p}, {self.d}, {self.q})"
@@ -113,18 +110,13 @@ class CustomARIMA:
         # Set index of dataframe
         train_data = data.copy()
 
-        # Get last known year
-        self.last_known_year = train_data[self.index].max()
-
-        train_data.set_index(self.index, inplace=True)
-
         # Get the values of the features
         exog_values = None
         if self.features:
-            exog_values = data[self.features]
+            exog_values = train_data[self.features]
 
         # Get target values
-        target_values = data[self.target]
+        target_values = train_data[self.target]
 
         # Create the arima model
         new_model = ARIMA(
@@ -169,7 +161,7 @@ class CustomARIMA:
         self.model = new_model.fit(method_kwargs={"maxiter": 1000})
         logger.info(f"{self} model fitted!")
 
-    def predict(self, data: pd.DataFrame, target_year: int) -> pd.DataFrame:
+    def predict(self, data: pd.DataFrame, steps: int) -> pd.DataFrame:
         # Ensure model is trained
         if self.model is None:
             raise ValueError(
@@ -178,15 +170,11 @@ class CustomARIMA:
 
         data_copy = data.copy()
 
-        # Get steps using last known year
-        steps = target_year - self.last_known_year
-
         # Find known target values (non-NaN)
         known_target = data_copy[self.target].dropna()
-        start = len(known_target)
-        end = start + steps - 1
+        start = len(known_target) - 1
 
-        # To predict target values are set to None -> these rows also contains the known exogeneous variables
+        end = start + steps - 1
 
         # Extract corresponding future exogenous variables
         try:
@@ -215,4 +203,5 @@ class CustomARIMA:
 
         # Rename the predicted mean to target name
         prediction_df.rename(columns={"predicted_mean": self.target}, inplace=True)
+
         return prediction_df.iloc[-steps:]

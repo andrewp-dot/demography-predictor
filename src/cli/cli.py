@@ -214,10 +214,21 @@ def compare_predictions(models: str, state: str, target_year: int, plot_prefix: 
     }
 
     # Plot the predictions
+    plot_input_data = True
     for i, target in enumerate(TARGETS):
+
+        if plot_input_data:
+            # Plot the input data
+            axes[i].plot(
+                input_data["year"],
+                input_data[target],
+                label="Input data",
+                color="blue",
+            )
+
         axes[i].set_title(f"{LABELS[LANG]['prediction_for']} {target}")
-        axes[i].set_xlabel({LABELS[LANG]["year"]})
-        axes[i].set_ylabel({LABELS[LANG]["value"]})
+        axes[i].set_xlabel(LABELS[LANG]["year"])
+        axes[i].set_ylabel(LABELS[LANG]["value"])
 
         for name, prediction_df in model_predictions.items():
             target_df = prediction_df[["year", target]]

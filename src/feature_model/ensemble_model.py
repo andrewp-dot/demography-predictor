@@ -73,10 +73,9 @@ class PureEnsembleModel:
             if isinstance(current_model, CustomARIMA):
 
                 target_prediction_df = current_model.predict(
-                    data=input_data, target_year=target_year
+                    data=input_data, steps=len(years_to_predict)
                 )
 
-                # TODO: make the tensor from this
                 target_prediction = torch.tensor(
                     target_prediction_df.values, dtype=torch.float32
                 )

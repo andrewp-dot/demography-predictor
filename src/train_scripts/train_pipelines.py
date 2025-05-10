@@ -74,12 +74,12 @@ def train_basic_pipeline(
         )
 
     # Train global model pieplien
-    tune_parameters = XGBoostTuneParams(
-        n_estimators=[50, 100],
-        learning_rate=[0.001, 0.01, 0.05],
+    xgb_tune_parameters = XGBoostTuneParams(
+        n_estimators=[100, 300],
+        learning_rate=[0.01, 0.05, 0.1],
         max_depth=[3, 5, 7],
-        subsample=[0.5, 0.7],
-        colsample_bytree=[0.5, 0.7, 0.9, 1.0],
+        subsample=[0.6, 0.7, 0.8],
+        colsample_bytree=[0.6, 0.7, 0.8],
     )
 
     target_model_pipeline = train_global_model_tree(
@@ -91,7 +91,7 @@ def train_basic_pipeline(
         features=list(set([*feature_model_features, *additional_target_model_targets])),
         targets=target_model_targets,
         sequence_len=5,
-        xgb_tune_parameters=tune_parameters,
+        xgb_tune_parameters=xgb_tune_parameters,
         tune_hyperparams=tune_hyperparams,
     )
 
@@ -140,7 +140,7 @@ def train_arima_xgboost_pipeline(
         targets=target_model_targets,
         sequence_len=10,
         xgb_tune_parameters=xgb_tune_parameters,
-        tune_hyperparams=tune_hyperparams,
+        tune_hyperparams=False,
     )
 
     # Create pipeline
@@ -157,7 +157,7 @@ def main():
 
     # Local model features
     FEATURE_MODEL_FEATURES: List[str] = basic_features(
-        exclude=highly_correlated_features()
+        exclude=[*highly_correlated_features(), "year"]
     )
 
     # Get global model settings

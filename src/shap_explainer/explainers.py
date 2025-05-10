@@ -321,9 +321,9 @@ class LSTMExplainer:
 
             # Save the force plot to a file (using matplotlib)
             fig = plt.gcf()  # Get current figure
-            fig.set_size_inches(20, 5)
+            # fig.set_size_inches(20, 5)
             plt.tight_layout()
-            plt.subplots_adjust(bottom=0.15, left=0.1, right=0.9, top=0.9)
+            # plt.subplots_adjust(bottom=0.15, left=0.1, right=0.9, top=0.9)
             plt.savefig(save_path, format="png", dpi=300, bbox_inches="tight")
 
 

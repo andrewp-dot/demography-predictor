@@ -380,6 +380,9 @@ def train_arima_ensemble_all_states(
         trained_models: Dict[str, CustomARIMA] = {}
         for target in features:
 
+            if "year" == target:
+                continue
+
             # Create ARIMA (or ARMA if d = 0)
             arima = CustomARIMA(
                 p=p,
@@ -387,7 +390,6 @@ def train_arima_ensemble_all_states(
                 q=q,
                 features=arima_model_features,
                 target=target,
-                index="year",
             )
 
             # Train model

@@ -612,6 +612,8 @@ class PredictorPipeline:
             axis=0,
         )
 
+        future_feature_values_df.reset_index(drop=True, inplace=True)
+
         # Get history of the previous targets
         previous_targets_df = input_data[self.global_model_pipeline.model.TARGETS]
 
@@ -635,6 +637,10 @@ class PredictorPipeline:
             ],
             axis=1,
         )
+
+        print(final_input)
+
+        # print(final_input)
 
         predicted_data_df = self.global_model_pipeline.predict(
             state=state,
@@ -686,7 +692,9 @@ class PredictorPipeline:
         )
 
     @classmethod
-    def get_pipeline(cls, name: str, custom_dir: Optional[str] = None):
+    def get_pipeline(
+        cls, name: str, custom_dir: Optional[str] = None, experimental: bool = False
+    ):
         # Gets the pipeline by name
 
         if custom_dir:

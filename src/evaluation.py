@@ -22,10 +22,13 @@ from sklearn.metrics import (
 
 
 # Custom imports
+from config import Config
 from src.pipeline import FeatureModelPipeline, TargetModelPipeline, PredictorPipeline
 
 
 logger = logging.getLogger("model_compare")
+
+settings = Config()
 
 
 class BaseEvaluation:
@@ -318,13 +321,28 @@ class BaseEvaluation:
         if N_FEATURES == 1:
             axes = [axes]  # Convert to list for consistent indexing
 
+        LABELS = {
+            "en": {
+                "reference_values": "Reference values",
+                "predicted_values": "Predicted values",
+                "year": "Year",
+                "value": "Value",
+            },
+            "sk": {
+                "reference_values": "Referenčné hodnoty",
+                "predicted_values": "Predikované hodnoty",
+                "year": "Rok",
+                "value": "Hodnota",
+            },
+        }
         # Plotting in each subplot
+        LANG = settings.plot_description_language
         for index, feature in zip(range(N_FEATURES), FEATURES):
             # Plot reference values
             axes[index].plot(
                 YEARS,
                 self.reference_values[feature],
-                label=f"Reference values",
+                label=LABELS[LANG]["reference_values"],
                 color="b",
             )
 
@@ -332,12 +350,12 @@ class BaseEvaluation:
             axes[index].plot(
                 YEARS,
                 self.predicted[feature],
-                label=f"Predicted",
+                label=LABELS[LANG]["predicted_values"],
                 color="r",
             )
             axes[index].set_title(f"{feature}")
-            axes[index].set_xlabel("Years")
-            axes[index].set_ylabel("Value")
+            axes[index].set_xlabel(LABELS[LANG]["year"])
+            axes[index].set_ylabel(LABELS[LANG]["value"])
             axes[index].legend()
             axes[index].grid(True)
 

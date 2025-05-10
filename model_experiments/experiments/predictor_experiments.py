@@ -89,19 +89,19 @@ class EvalAllStates(BaseExperiment):
             )
             eval_df.to_json(f, indent=4, orient="records")
 
-        # Print top 5 states and the worst 5 states
-
+        # Print top 3 states and the worst 3 states
+        TOP_N = 3
         self.readme_add_section(
             title=f"Overall performance:",
             text=f"\n```{ovearall_eval_df}\n```\n\n",
         )
 
-        top_states_df = eval_df.head(5)
+        top_states_df = eval_df.head(TOP_N)
         self.readme_add_section(
             title="Best performance states:", text=f"\n```{top_states_df}\n```\n\n"
         )
 
-        worst_states_df = eval_df.tail(5)
+        worst_states_df = eval_df.tail(TOP_N)
         self.readme_add_section(
             title=f"Worst performance for states:",
             text=f"\n```{worst_states_df}\n```\n\n",
@@ -150,6 +150,7 @@ class EvalGroupStates(BaseExperiment):
 
             # Get the group and concat
             group_metric_df["group"] = group
+            group_metric_df["group_records"] = len(group_metric_df)
             all_group_dfs.append(group_metric_df)
 
         all_groups_df = pd.concat(all_group_dfs, axis=0)
@@ -306,8 +307,10 @@ def run_all(pipeline_name: str):
     )
 
     # Run experiments
-    # exp.run(pipeline=pipeline)
-    # exp_eval_groups.run(pipeline=pipeline)
+    exp.run(pipeline=pipeline)
+    exp_eval_groups.run(pipeline=pipeline)
+
+    # Here use just one state -> Czechia for example
     convergence_exp.run(
         pipeline=pipeline, states=["Czechia", "United States"], target_year=2050
     )
