@@ -2,8 +2,10 @@
 # Licensed under the MIT License
 
 # Standard library imports
+import os
 import pandas as pd
 from typing import List, Dict
+import matplotlib.pyplot as plt
 from xgboost import XGBRegressor
 
 # Custom library imports
@@ -12,12 +14,9 @@ from src.utils.constants import (
     basic_features,
     highly_correlated_features,
     aging_targets,
-    gender_distribution_targets,
-    population_total_targets,
 )
 from src.utils.constants import get_core_hyperparameters
-from src.base import RNNHyperparameters
-from src.evaluation import EvaluateModel
+from src.base import RNNHyperparameters, TrainingStats
 
 from src.target_model.model import XGBoostTuneParams
 
@@ -47,6 +46,8 @@ def train_basic_pipeline(
     split_rate: float = 0.8,
     display_nth_epoch=10,
     enable_early_stopping: bool = True,
+    save_loss_curve: bool = False,
+    tune_hyperparams: bool = False,
 ) -> PredictorPipeline:
 
     # Train local model pipeline
@@ -59,6 +60,18 @@ def train_basic_pipeline(
         display_nth_epoch=display_nth_epoch,
         enable_early_stopping=enable_early_stopping,
     )
+
+    if save_loss_curve:
+        stats = TrainingStats.from_dict(feature_model_pipeline.model.training_stats)
+        fig = stats.create_plot()
+
+        # Create dir if does not exist
+        save_dir = os.path.join(".", "imgs")
+        os.makedirs(save_dir, exist_ok=True)
+
+        plt.savefig(
+            os.path.join(save_dir, f"loss_curve_{feature_model_pipeline.name}.png")
+        )
 
     # Train global model pieplien
     tune_parameters = XGBoostTuneParams(
@@ -79,6 +92,7 @@ def train_basic_pipeline(
         targets=target_model_targets,
         sequence_len=5,
         xgb_tune_parameters=tune_parameters,
+        tune_hyperparams=tune_hyperparams,
     )
 
     # Create pipeline

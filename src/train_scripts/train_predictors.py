@@ -8,21 +8,17 @@ import logging
 
 
 # Custom library imports
-from src.utils.log import setup_logging
 from src.utils.constants import (
     basic_features,
     highly_correlated_features,
     aging_targets,
     gender_distribution_targets,
-    population_total_targets,
 )
 from src.utils.constants import get_core_hyperparameters
 
 from src.preprocessors.multiple_states_preprocessing import StatesDataLoader
-from src.state_groups import StatesByWealth, StatesByGeolocation, OnlyRealStates
+from src.state_groups import StatesByWealth, StatesByGeolocation
 
-
-from src.pipeline import PredictorPipeline
 
 from src.train_scripts.train_pipelines import (
     train_arima_xgboost_pipeline,
@@ -103,6 +99,7 @@ def train_aging_predictor(
     geolocation_groups: Optional[List[str]] = None,
     states: Optional[List[str]] = None,
     modify_for_target_model: bool = False,
+    save_loss_curve: bool = False,
 ):
     # Feature model input/output
     FEATURE_MODEL_FEATURES: List[str] = basic_features(
@@ -166,6 +163,8 @@ def train_aging_predictor(
             additional_target_model_targets=TARGET_MODEL_ADDITIONAL_FEATURES,
             target_model_targets=TARGET_MODEL_TARGETS,
             enable_early_stopping=True,
+            save_loss_curve=save_loss_curve,
+            tune_hyperparams=True,
         )
     else:
         raise ValueError("Not supported type of pipeline.")
@@ -181,6 +180,7 @@ def train_gender_dist_predictor(
     geolocation_groups: Optional[List[str]] = None,
     states: Optional[List[str]] = None,
     modify_for_target_model: bool = False,
+    save_loss_curve: bool = False,
 ):
     # Feature model input/output
     FEATURE_MODEL_FEATURES: List[str] = basic_features(
@@ -244,6 +244,8 @@ def train_gender_dist_predictor(
             additional_target_model_targets=TARGET_MODEL_ADDITIONAL_FEATURES,
             target_model_targets=TARGET_MODEL_TARGETS,
             enable_early_stopping=True,
+            save_loss_curve=save_loss_curve,
+            tune_hyperparams=True,
         )
     else:
         raise ValueError("Not supported type of pipeline.")

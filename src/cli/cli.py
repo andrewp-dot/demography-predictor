@@ -410,6 +410,11 @@ def train():
     is_flag=True,
     help="If specified, modifed data will be used to train the target prediction model. By deafult, data are adjusted for feature target model",
 )
+@click.option(
+    "--save-loss-curve",
+    is_flag=True,
+    help="If specified, the loss curve will be saved.",
+)
 def age_predictor(
     name: str,
     type: Literal["LSTM", "ARIMA"],
@@ -417,6 +422,7 @@ def age_predictor(
     geolocation_groups: Optional[str],
     states: Optional[str],
     modify_for_target_model: bool,
+    save_loss_curve: bool,
 ):
 
     # Parse data arguments
@@ -436,6 +442,7 @@ def age_predictor(
         wealth_groups=wealth_groups,
         geolocation_groups=geolocation_groups,
         modify_for_target_model=modify_for_target_model,
+        save_loss_curve=save_loss_curve,
     )
 
 
@@ -472,6 +479,11 @@ def age_predictor(
     is_flag=True,
     help="If specified, modifed data will be used to train the target prediction model. By deafult, data are adjusted for feature target model",
 )
+@click.option(
+    "--save-loss-curve",
+    is_flag=True,
+    help="If specified, the loss curve will be saved.",
+)
 def gender_dist_predictor(
     name: str,
     type: Literal["LSTM", "ARIMA"],
@@ -479,6 +491,7 @@ def gender_dist_predictor(
     geolocation_groups: Optional[str],
     states: Optional[str],
     modify_for_target_model: bool,
+    save_loss_curve: bool,
 ):
 
     # Parse data arguments
@@ -498,6 +511,7 @@ def gender_dist_predictor(
         wealth_groups=wealth_groups,
         geolocation_groups=geolocation_groups,
         modify_for_target_model=modify_for_target_model,
+        save_loss_curve=save_loss_curve,
     )
 
 

@@ -8,14 +8,18 @@ from torch import nn
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from sklearn.preprocessing import MinMaxScaler
 from abc import abstractmethod
 from typing import List
 
 import logging
 
+# Custiom imports
+from config import Config
+
 logger = logging.getLogger("local_model")
 
+
+settings = Config()
 
 # Set the seed for reproducibility
 torch.manual_seed(42)
@@ -107,13 +111,31 @@ class TrainingStats:
         # Define figure parameters
         fig = plt.figure(figsize=(10, 5))
 
+        LABELS = {
+            "en": {
+                "training_loss": "Training loss",
+                "validation_loss": "Validation loss",
+                "epoch": "Epoch",
+                "loss": "Loss",
+            },
+            "sk": {
+                "training_loss": "Trénovacia strata",
+                "validation_loss": "Validačná strata",
+                "epoch": "Epocha",
+                "loss": "Strata",
+            },
+        }
+
         # Name the axis
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
+        LANG = settings.plot_description_language
+        plt.xlabel(LABELS[LANG]["epoch"])
+        plt.ylabel(LABELS[LANG]["loss"])
 
         # Plot the graph(s)
-        plt.plot(self.epochs, self.training_loss, label="Training loss")
-        plt.plot(self.epochs, self.validation_loss, label="Validation loss")
+        plt.plot(self.epochs, self.training_loss, label=LABELS[LANG]["training_loss"])
+        plt.plot(
+            self.epochs, self.validation_loss, label=LABELS[LANG]["validation_loss"]
+        )
 
         # Show the plot
         plt.legend()
