@@ -184,7 +184,7 @@ def train_gender_dist_predictor(
 ):
     # Feature model input/output
     FEATURE_MODEL_FEATURES: List[str] = basic_features(
-        exclude=highly_correlated_features()
+        exclude=[*highly_correlated_features(), "year"]
     )
 
     # Get global model settings

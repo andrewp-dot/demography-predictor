@@ -159,7 +159,15 @@ def explain(
     help="If set, the plot will be saved with this prefix.",
     default="",
 )
-def compare_predictions(models: str, state: str, target_year: int, plot_prefix: str):
+@click.option(
+    "--plot-input-data",
+    is_flag=True,
+    help="If set, the input data will be plotted.",
+    default=False,
+)
+def compare_predictions(
+    models: str, state: str, target_year: int, plot_prefix: str, plot_input_data: bool
+):
     """
     Compares predictions of the models. If models are not specified, all models are compared.
     """
@@ -214,7 +222,6 @@ def compare_predictions(models: str, state: str, target_year: int, plot_prefix: 
     }
 
     # Plot the predictions
-    plot_input_data = True
     for i, target in enumerate(TARGETS):
 
         if plot_input_data:

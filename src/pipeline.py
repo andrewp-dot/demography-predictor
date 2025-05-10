@@ -638,10 +638,6 @@ class PredictorPipeline:
             axis=1,
         )
 
-        print(final_input)
-
-        # print(final_input)
-
         predicted_data_df = self.global_model_pipeline.predict(
             state=state,
             input_data=final_input,

@@ -140,7 +140,7 @@ def train_arima_xgboost_pipeline(
         targets=target_model_targets,
         sequence_len=10,
         xgb_tune_parameters=xgb_tune_parameters,
-        tune_hyperparams=False,
+        tune_hyperparams=tune_hyperparams,
     )
 
     # Create pipeline
