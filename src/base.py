@@ -128,8 +128,8 @@ class TrainingStats:
 
         # Name the axis
         LANG = settings.plot_description_language
-        plt.xlabel(LABELS[LANG]["epoch"])
-        plt.ylabel(LABELS[LANG]["loss"])
+        plt.xlabel(LABELS[LANG]["epoch"], fontdict={"fontsize": 14})
+        plt.ylabel(LABELS[LANG]["loss"], fontdict={"fontsize": 14})
 
         # Plot the graph(s)
         plt.plot(self.epochs, self.training_loss, label=LABELS[LANG]["training_loss"])
@@ -138,7 +138,7 @@ class TrainingStats:
         )
 
         # Show the plot
-        plt.legend()
+        plt.legend(fontsize=12)
         plt.grid()
 
         return fig
