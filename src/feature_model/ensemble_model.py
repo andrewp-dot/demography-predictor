@@ -73,7 +73,7 @@ class PureEnsembleModel:
             if isinstance(current_model, CustomARIMA):
 
                 target_prediction_df = current_model.predict(
-                    data=input_data, steps=len(years_to_predict)
+                    data=input_data, target_year=target_year
                 )
 
                 # TODO: make the tensor from this

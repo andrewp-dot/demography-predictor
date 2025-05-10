@@ -65,6 +65,7 @@ class CustomARIMA:
 
         # Create the model
         self.model: Optional[ARIMA] = None
+        self.last_known_year: int = None
 
     def __repr__(self) -> str:
         return f"ARIMA({self.p}, {self.d}, {self.q})"
@@ -111,6 +112,10 @@ class CustomARIMA:
 
         # Set index of dataframe
         train_data = data.copy()
+
+        # Get last known year
+        self.last_known_year = train_data[self.index].max()
+
         train_data.set_index(self.index, inplace=True)
 
         # Get the values of the features
@@ -164,7 +169,7 @@ class CustomARIMA:
         self.model = new_model.fit(method_kwargs={"maxiter": 1000})
         logger.info(f"{self} model fitted!")
 
-    def predict(self, data: pd.DataFrame, steps: int) -> pd.DataFrame:
+    def predict(self, data: pd.DataFrame, target_year: int) -> pd.DataFrame:
         # Ensure model is trained
         if self.model is None:
             raise ValueError(
@@ -172,6 +177,9 @@ class CustomARIMA:
             )
 
         data_copy = data.copy()
+
+        # Get steps using last known year
+        steps = target_year - self.last_known_year
 
         # Find known target values (non-NaN)
         known_target = data_copy[self.target].dropna()

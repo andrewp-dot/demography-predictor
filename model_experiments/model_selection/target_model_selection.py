@@ -520,15 +520,13 @@ class TargetModelSelection(BaseExperiment):
         if evaluation_states:
             print_states = evaluation_states
         else:
-            print_states = (
-                [
-                    "Czechia",
-                    "Honduras",
-                    "United States",
-                    "China",
-                    "Germany",
-                ],
-            )
+            print_states = [
+                "Czechia",
+                "Honduras",
+                "United States",
+                "China",
+                "Germany",
+            ]
 
         self.create_and_save_state_comparision_plots(
             comparator=comparator,
