@@ -76,8 +76,8 @@ class Config(BaseSettings):
     @computed_field
     def prediction_models(self) -> Dict[str, str]:
         return {
-            "age-predictor": "age-predictor",
-            "gender-dist-predictor": "gender-dist-predictor",
+            "arima-age-predictor": "arima-age-predictor",
+            "arima-gender-dist-predictor": "arima-gender-dist-predictor",
             "lstm-age-predictor": "lstm-age-predictor",
             "lstm-gender-dist-predictor": "lstm-gender-dist-predictor",
         }

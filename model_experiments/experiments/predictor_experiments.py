@@ -150,7 +150,14 @@ class EvalGroupStates(BaseExperiment):
 
             # Get the group and concat
             group_metric_df["group"] = group
-            group_metric_df["group_records"] = len(group_metric_df)
+
+            # Get the number of records for each group
+            group_records = 0
+            for df in X_test_dict.values():
+                group_records += len(df)
+            group_metric_df["group_records"] = group_records
+
+            # Append data to group evaluation dfs
             all_group_dfs.append(group_metric_df)
 
         all_groups_df = pd.concat(all_group_dfs, axis=0)
@@ -194,6 +201,13 @@ class EvalGroupStates(BaseExperiment):
 
             # Get the group and concat
             group_metric_df["group"] = group
+
+            # Get the number of records for each group
+            group_records = 0
+            for df in X_test_dict.values():
+                group_records += len(df)
+            group_metric_df["group_records"] = group_records
+
             all_group_dfs.append(group_metric_df)
 
         all_groups_df = pd.concat(all_group_dfs, axis=0)
