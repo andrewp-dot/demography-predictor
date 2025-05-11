@@ -112,16 +112,13 @@ class LSTMExplainer:
         # Set training batches as input_x
 
         self.pipeline.model.train()
-        self.pipeline.model.lstm.train()
+        self.pipeline.model.rnn.train()
 
         # Get the model to the wrapper to get the time step output of the feature in index
         model = self.ReducedModelWrapper(
             model=self.pipeline.model,
             predicted_timestep_index=predicted_timestep,
         )
-
-        # # Set model to evaluation mode
-        # self.pipeline.model.eval()
 
         # Compute shap values
         torch.backends.cudnn.enabled = False

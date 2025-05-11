@@ -3,3 +3,5 @@
 *.pkl filter=lfs diff=lfs merge=lfs -text
 trained_models/lstm-age-predictor filter=lfs diff=lfs merge=lfs -text
 trained_models/lstm-gender-dist-predictor filter=lfs diff=lfs merge=lfs -text
+trained_models/arima-gender-dist-predictor filter=lfs diff=lfs merge=lfs -text
+trained_models/arima-age-predictor filter=lfs diff=lfs merge=lfs -text
