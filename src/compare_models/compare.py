@@ -238,6 +238,8 @@ class ModelComparator:
         self,
         state: str,
         model_names: Optional[List[str]] = None,
+        label_font_size: Optional[int] = None,
+        legend_font_size: Optional[int] = None,
     ) -> Figure:
         """
         Create comparison plot for the given state. The plot contains the reference values and predicted values for all models.
@@ -332,10 +334,16 @@ class ModelComparator:
 
             # Set the axis
             axes[index].set_title(f"{target}")
-            axes[index].set_xlabel(LABELS[LANG]["xaxis"])
-            axes[index].set_ylabel(LABELS[LANG]["yaxis"])
+            axes[index].set_xlabel(LABELS[LANG]["xaxis"], fontsize=label_font_size)
+            axes[index].set_ylabel(LABELS[LANG]["yaxis"], fontsize=label_font_size)
             axes[index].grid()
-            axes[index].legend()
+
+            # Update fontsize for legend
+            legend = axes[index].legend()
+
+            if legend and legend_font_size is not None:
+                for text in legend.get_texts():
+                    text.set_fontsize(legend_font_size)
 
         # Add some space
         fig.subplots_adjust(hspace=1)

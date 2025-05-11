@@ -326,9 +326,13 @@ def compare_predictors(
             model_comparator.create_state_comparison_plot(
                 state=state,
                 model_names=MODEL_NAMES,
+                label_font_size=14,
+                legend_font_size=10,
             )
-            # plt.show()
+
+            plt.tight_layout()
             plt.savefig(os.path.join("imgs", "comparision_plots", f"{state}.png"))
+            plt.clf()  # Clear figure after saving
 
 
 # Subgroup for the experiment group
