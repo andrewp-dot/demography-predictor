@@ -183,14 +183,14 @@ trained_models/*
 *.pkl
 
 # ...but allow files in this specific subfolder
-!trained_models/gender-dist-predictor/
-!trained_models/gender-dist-predictor/*.pkl
+!trained_models/arima-gender-dist-predictor/
+!trained_models/arima-gender-dist-predictor/*.pkl
 
 !trained_models/lstm-gender-dist-predictor/
 !trained_models/lstm-gender-dist-predictor/*.pkl
 
-!trained_models/age-predictor/
-!trained_models/age-predictor/*.pkl
+!trained_models/arima-age-predictor/
+!trained_models/arima-age-predictor/*.pkl
 
 !trained_models/lstm-age-predictor/
 !trained_models/lstm-age-predictor/*.pkl
