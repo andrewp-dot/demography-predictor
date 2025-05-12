@@ -249,9 +249,12 @@ def compare_predictions(
     for i, target in enumerate(TARGETS):
 
         # Set the descriptions of axes
-        axes[i].set_title(f"{translate_target(target, to_capitalize=True)}")
-        axes[i].set_xlabel(LABELS[LANG]["year"])
-        axes[i].set_ylabel(LABELS[LANG]["value"])
+        axes[i].set_title(
+            f"{translate_target(target, to_capitalize=True)}", fontsize=18
+        )
+        axes[i].set_xlabel(LABELS[LANG]["year"], fontsize=16)
+        axes[i].set_ylabel(LABELS[LANG]["value"], fontsize=16)
+        axes[i].tick_params(axis="both", labelsize=14)
 
         if plot_input_data:
             # Plot the input data
@@ -279,10 +282,14 @@ def compare_predictions(
                 label=f"{LABELS[LANG]['prediction_for']} {name}",
             )
 
-        axes[i].legend()
+        legend = axes[i].legend()
+        if legend is not None:
+            for text in legend.get_texts():
+                text.set_fontsize(12)
+
         axes[i].grid()
-        axes[i].set_xticks(YEARS)
-        axes[i].set_xticklabels(YEARS, rotation=45)
+        # axes[i].set_xticks(YEARS)
+        # axes[i].set_xticklabels(YEARS, rotation=45)
 
     # Save the plot
     plt.tight_layout()
