@@ -4,6 +4,9 @@
 # Custom library imports
 from src.base import RNNHyperparameters
 from typing import List
+from config import Config
+
+settings = Config()
 
 
 # Create or load base model
@@ -138,3 +141,31 @@ def wide_range_columns() -> List[str]:
         "population_total",
         "gdp",
     ]
+
+
+def translate_target(target: str, to_capitalize: bool = False) -> str:
+
+    LANG = settings.plot_description_language
+    TARGETS = {
+        "en": {
+            "population_ages_15-64": "population ages 15-64",
+            "population_ages_0-14": "population ages 0-14",
+            "population_ages_65_and_above": "population ages 65 and above",
+            "population_female": "female population",
+            "population_male": "male population",
+            "population_total": "population total",
+        },
+        "sk": {
+            "population_ages_15-64": "populácia vo veku 15-64 rokov",
+            "population_ages_0-14": "populácia vo veku  0-14 rokov",
+            "population_ages_65_and_above": "populácia vo veku 65 a viac",
+            "population_female": "ženská populácia",
+            "population_male": "mužská populácia",
+            "population_total": "celková počet ľudí v populácii",
+        },
+    }
+
+    if to_capitalize:
+        return TARGETS[LANG][target].capitalize()
+
+    return TARGETS[LANG][target]

@@ -11,7 +11,7 @@ from matplotlib.figure import Figure
 from config import Config
 from src.utils.log import setup_logging
 from src.utils.save_model import get_multiple_models
-from src.utils.constants import get_core_hyperparameters
+from src.utils.constants import get_core_hyperparameters, translate_target
 
 from src.evaluation import EvaluateModel
 from src.feature_model.ensemble_model import PureEnsembleModel
@@ -240,6 +240,7 @@ class ModelComparator:
         model_names: Optional[List[str]] = None,
         label_font_size: Optional[int] = None,
         legend_font_size: Optional[int] = None,
+        value_unit: Optional[str] = "%",
     ) -> Figure:
         """
         Create comparison plot for the given state. The plot contains the reference values and predicted values for all models.
@@ -261,13 +262,13 @@ class ModelComparator:
             "en": {
                 "reference_values": "Reference values",
                 "predicted_values": "Predicted",
-                "yaxis": "Value",
+                "yaxis": f"Value ({value_unit})",
                 "xaxis": "Year",
             },
             "sk": {
                 "reference_values": "Referenčné hodnoty",
                 "predicted_values": "Predikcie",
-                "yaxis": "Hodnota",
+                "yaxis": f"Hodnota ({value_unit})",
                 "xaxis": "Rok",
             },
         }
@@ -325,6 +326,7 @@ class ModelComparator:
                 evaluation = self.model_evaluations[model_name]
 
                 # Plot predicted values
+
                 axes[index].plot(
                     # evaluation.multiple_states_evaluations[state]["years"],
                     YEARS,
@@ -333,9 +335,9 @@ class ModelComparator:
                 )
 
             # Set the axis
-            axes[index].set_title(f"{target}")
+            axes[index].set_title(f"{translate_target(target, to_capitalize=True)}")
             axes[index].set_xlabel(LABELS[LANG]["xaxis"], fontsize=label_font_size)
-            axes[index].set_ylabel(LABELS[LANG]["yaxis"], fontsize=label_font_size)
+            axes[index].set_ylabel(f"{LABELS[LANG]['yaxis']}", fontsize=label_font_size)
             axes[index].grid()
 
             # Update fontsize for legend

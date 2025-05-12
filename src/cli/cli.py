@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from config import Config
 from src.utils.log import setup_logging
 
+from src.utils.constants import translate_target
 
 from model_experiments.main import (
     print_available_experiments,
@@ -138,7 +139,7 @@ def explain(
 @click.option(
     "--models",
     type=str,
-    help='List of comma separated models to compare. as a comma separated strings string, e.g. --models "model_1, model_2"',
+    help='List of comma separated models to compare as a comma separated strings string, e.g. --models "model_1, model_2"',
     required=True,
 )
 @click.option(
@@ -165,8 +166,19 @@ def explain(
     help="If set, the input data will be plotted.",
     default=False,
 )
+@click.option(
+    "--value-unit",
+    type=str,
+    help="Unit of the value to be plotted.",
+    default="%",
+)
 def compare_predictions(
-    models: str, state: str, target_year: int, plot_prefix: str, plot_input_data: bool
+    models: str,
+    state: str,
+    target_year: int,
+    plot_prefix: str,
+    plot_input_data: bool,
+    value_unit: str,
 ):
     """
     Compares predictions of the models. If models are not specified, all models are compared.
@@ -206,49 +218,71 @@ def compare_predictions(
         sharex=True,
     )
 
-    # Labels
+    # Labels and translation for plots
     LANG = settings.plot_description_language
     LABELS = {
         "en": {
-            "prediction_for": "Prediction for",
+            "prediction_for": "Predictions of model",
             "year": "Year",
-            "value": "Value",
+            "value": f"Value ({value_unit})",
+            "input_data": "Vstupné dáta",
         },
         "sk": {
-            "prediction_for": "Predikcia",
+            "prediction_for": "Predikcie modelu",
             "year": "Rok",
-            "value": "Hodnota",
+            "value": f"Hodnota ({value_unit})",
+            "input_data": "Vstupné dáta",
         },
     }
 
+    # Set the correct prediction years
+    first_model = MODEL_NAMES[0]
+    if plot_input_data:
+        YEARS = pd.concat(
+            [input_data["year"], model_predictions[first_model]["year"]], axis=0
+        )
+    else:
+        YEARS = model_predictions[first_model]["year"]
+
     # Plot the predictions
+
     for i, target in enumerate(TARGETS):
+
+        # Set the descriptions of axes
+        axes[i].set_title(f"{translate_target(target, to_capitalize=True)}")
+        axes[i].set_xlabel(LABELS[LANG]["year"])
+        axes[i].set_ylabel(LABELS[LANG]["value"])
 
         if plot_input_data:
             # Plot the input data
             axes[i].plot(
                 input_data["year"],
                 input_data[target],
-                label="Input data",
+                label=LABELS[LANG]["input_data"],
                 color="blue",
             )
 
-        axes[i].set_title(f"{LABELS[LANG]['prediction_for']} {target}")
-        axes[i].set_xlabel(LABELS[LANG]["year"])
-        axes[i].set_ylabel(LABELS[LANG]["value"])
-
         for name, prediction_df in model_predictions.items():
-            target_df = prediction_df[["year", target]]
+
+            # Plot the missing part in the graph
+            if plot_input_data:
+                last_input_row = input_data[["year", target]].tail(1)
+                target_df = pd.concat(
+                    [last_input_row, prediction_df[["year", target]]], ignore_index=True
+                )
+            else:
+                target_df = prediction_df[["year", target]]
+
             axes[i].plot(
                 target_df["year"],
                 target_df[target],
-                label=name,
+                label=f"{LABELS[LANG]['prediction_for']} {name}",
             )
 
         axes[i].legend()
         axes[i].grid()
-        axes[i].set_xticks(prediction_df["year"].unique())
-        axes[i].set_xticklabels(prediction_df["year"].unique(), rotation=45)
+        axes[i].set_xticks(YEARS)
+        axes[i].set_xticklabels(YEARS, rotation=45)
 
     # Save the plot
     plt.tight_layout()
@@ -287,11 +321,18 @@ def compare_predictions(
     help="By which metric to compare models. Default is 'overall-metrics'.",
     default="overall-metrics",
 )
+@click.option(
+    "--value-unit",
+    type=str,
+    help="Unit of the value to be plotted.",
+    default="%",
+)
 def compare_predictors(
     models: str,
     states: str,
     show_plots: bool,
     by: Literal["overall-metrics", "overall-one-metric", "per-targets"],
+    value_unit: str,
 ):
     """
     Compares models. If models are not specified, all models are compared.
@@ -328,11 +369,13 @@ def compare_predictors(
                 model_names=MODEL_NAMES,
                 label_font_size=14,
                 legend_font_size=10,
+                value_unit=value_unit,
             )
 
             plt.tight_layout()
             plt.savefig(os.path.join("imgs", "comparision_plots", f"{state}.png"))
-            plt.clf()  # Clear figure after saving
+            # Clear figure after saving
+            plt.clf()
 
 
 # Subgroup for the experiment group
