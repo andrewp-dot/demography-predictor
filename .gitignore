@@ -195,10 +195,7 @@ trained_models/*
 !trained_models/lstm-age-predictor/
 !trained_models/lstm-age-predictor/*.pkl
 
-
-
-
-
+.DS_store
 
 ignore_*
 
