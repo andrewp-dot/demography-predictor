@@ -24,6 +24,14 @@ from client.client_requests import (
 settings = Config()
 
 
+def plot_age_distribution_curve(distribution_df: pd.DataFrame) -> None:
+
+    if "age" in distribution_df:
+        plt.figure(figsize=(10, 4))
+        plt.plot(distribution_df["age"], distribution_df["probability"])
+        plt.show()
+
+
 def plot_predictions(df: pd.DataFrame) -> None:
 
     try:
@@ -32,7 +40,7 @@ def plot_predictions(df: pd.DataFrame) -> None:
         prediction_columns = [col for col in df.columns if "year" != col]
 
         # Create figure
-        fig, axes = plt.subplot(
+        fig, axes = plt.subplots(
             len(prediction_columns),
             1,
             figsize=(10, 4 * len(prediction_columns)),
@@ -224,7 +232,7 @@ def lakmoos_predict(
 
             if show_plots:
                 plot_predictions(df=prediction_df)
-                plot_predictions(df=distribution_df)
+                plot_age_distribution_curve(distribution_df=distribution_df)
 
         except KeyError as e:
             print(str(e))
