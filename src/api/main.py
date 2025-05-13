@@ -285,4 +285,4 @@ def main(reload: bool = True):
 
 
 if __name__ == "__main__":
-    main(reload=True)
+    main(reload=False)

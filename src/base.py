@@ -193,7 +193,7 @@ class CustomModelBase(nn.Module):
         self.TARGETS: List[str] = targets
 
         # Initialize device
-        self.to(device)
+        self.set_device(device)
 
     def set_device(self, device: torch.device) -> None:
         """
