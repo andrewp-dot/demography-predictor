@@ -4,21 +4,19 @@
 # Standard library imports
 import os
 import joblib
+import torch
 from typing import Any, List, Dict
 
 from config import Config
 
 # Custom imports
 from src.statistical_models.multistate_wrapper import StatisticalMultistateWrapper
-
+from src.base import CustomModelBase
 
 settings = Config()
 
 
-# def get_statstistical_model(name: str) -> StatisticalMultistateWrapper:
-
-
-def get_model(name: str) -> Any:
+def get_model(name: str, automatically_detect_device: bool = True) -> Any:
     """
     Get the model object from the specified directory in the config file.
 
@@ -37,6 +35,10 @@ def get_model(name: str) -> Any:
         raise ValueError(f"The specified model '{name}' does not exist!")
 
     model = joblib.load(MODEL_PATH)
+
+    # Put this on GPU or CPU, based on available device
+    if isinstance(model, CustomModelBase) and automatically_detect_device:
+        model.redetect_device()
 
     return model
 
@@ -67,13 +69,11 @@ def save_model(model, name: str) -> None:
         name (str): Name of the model you want to save (including .pkl suffix).
     """
 
+    # Save the model always on cpu
+    if isinstance(model, CustomModelBase):
+        model.set_device(torch.device("cpu"))
+
     MODEL_PATH = os.path.join(settings.trained_models_dir, f"{name}")
-
-    # Based on model type get save the model
-
-    # # TODO: improve this for lazy loading
-    # if isinstance(model, StatisticalMultistateWrapper):
-    #     raise NotImplementedError("")
 
     joblib.dump(model, MODEL_PATH)
 

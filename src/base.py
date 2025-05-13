@@ -192,7 +192,8 @@ class CustomModelBase(nn.Module):
         self.FEATURES: List[str] = features
         self.TARGETS: List[str] = targets
 
-        self.device = device
+        # Initialize device
+        self.to(device)
 
     def set_device(self, device: torch.device) -> None:
         """
@@ -202,12 +203,14 @@ class CustomModelBase(nn.Module):
             device (torch.device): Device for the BaseRNN object.
         """
         self.device = device
+        self.to(device)
 
     def redetect_device(self) -> None:
         """
         Set the device to cuda if available. Useful if you are loading pre-trained model.
         """
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.set_device(device)
 
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:

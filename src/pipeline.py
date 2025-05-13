@@ -709,7 +709,8 @@ class PredictorPipeline:
             return get_model(name=os.path.join(pipeline_dir, name))
 
         # Save local model and its transformer
-        local_model = get_from_pipeline_dir(name="local_model.pkl")
+        local_model: BaseRNN = get_from_pipeline_dir(name="local_model.pkl")
+
         local_transformer = get_from_pipeline_dir(name="local_transformer.pkl")
 
         lm_pipeline = FeatureModelPipeline(
@@ -717,7 +718,7 @@ class PredictorPipeline:
         )
 
         # Save global model and its transformer
-        global_model = get_from_pipeline_dir(name="global_model.pkl")
+        global_model: TargetModelTree = get_from_pipeline_dir(name="global_model.pkl")
         global_transformer = get_from_pipeline_dir(name="global_transformer.pkl")
 
         gm_pipeline = TargetModelPipeline(

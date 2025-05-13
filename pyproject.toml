@@ -28,6 +28,7 @@ shap = "^0.47.1"
 fastapi = "^0.115.12"
 uvicorn = "^0.34.0"
 statsmodels = "^0.14.4"
+requests = "^2.32.3"
 
 [tool.poetry.scripts]
 dataset-create = "data_science.preprocessors.dataset_preprocessor:main"
