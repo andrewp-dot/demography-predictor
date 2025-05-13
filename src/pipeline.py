@@ -689,7 +689,11 @@ class PredictorPipeline:
 
     @classmethod
     def get_pipeline(
-        cls, name: str, custom_dir: Optional[str] = None, experimental: bool = False
+        cls,
+        name: str,
+        custom_dir: Optional[str] = None,
+        experimental: bool = False,
+        autodetect_device: bool = True,
     ):
         # Gets the pipeline by name
 
@@ -706,7 +710,10 @@ class PredictorPipeline:
             )
 
         def get_from_pipeline_dir(name: str) -> Any:
-            return get_model(name=os.path.join(pipeline_dir, name))
+            return get_model(
+                name=os.path.join(pipeline_dir, name),
+                automatically_detect_device=autodetect_device,
+            )
 
         # Save local model and its transformer
         local_model = get_from_pipeline_dir(name="local_model.pkl")

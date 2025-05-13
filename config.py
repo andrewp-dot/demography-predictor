@@ -78,6 +78,7 @@ class Config(BaseSettings):
         return {
             "arima-age-predictor": "arima-age-predictor",
             "arima-gender-dist-predictor": "arima-gender-dist-predictor",
+            # "arima-gender-dist-predictor": "test_lstm-gender-dist-predictor",
             "lstm-age-predictor": "lstm-age-predictor",
             "lstm-gender-dist-predictor": "lstm-gender-dist-predictor",
         }
