@@ -35,10 +35,33 @@ To select models modify `config.py` script. Then to run API simply run:
 poetry run api
 ```
 
-To try API you can use pre-implemented client. For more info run:
+To try API you can use pre-implemented client. Each command represents request for specific endpoint. 
 
 ```
-poetry run client --help
+Usage: client [OPTIONS] COMMAND [ARGS]...
+
+  Creates client command group
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  info
+  lakmoos-predict  Prediction for lakmoos prediction endpoint.
+  predict
+```
+
+For more info about endpoint run:
+
+```
+poetry run client lakmoos-predict --help
+```
+
+
+Example usage:
+
+```
+poetry run client lakmoos-predict --state Czechia --target-year 2035 --model-key arima-age-predictor
 ```
 
 ### Training the model
